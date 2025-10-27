@@ -5,3 +5,12 @@ description = "rl_for_llms"
 readme = "README.md"
 requires-python = "==3.13.9"
 dependencies = []
+
+[dependency-groups]
+dev = [
+    "ruff==0.14.2",
+]
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = ["D100", "D104", "D203", "D213", "COM812"]
