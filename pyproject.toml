@@ -8,9 +8,13 @@ dependencies = []
 
 [dependency-groups]
 dev = [
+    "mypy==1.18.2",
     "ruff==0.14.2",
 ]
 
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = ["D100", "D104", "D203", "D213", "COM812"]
+
+[tool.mypy]
+strict = true

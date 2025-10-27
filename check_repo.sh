@@ -8,3 +8,6 @@ uv run ruff format
 
 # lint all files
 uv run ruff check --fix
+
+# run type checking
+uv run mypy .
