@@ -14,3 +14,8 @@ def get_relative_training_file_path() -> str:
 def get_train_split() -> Split:
     """Return the default training split."""
     return Split.TRAIN
+
+
+def get_gitignore_file_name() -> str:
+    """Return the .gitignore file name."""
+    return ".gitignore"

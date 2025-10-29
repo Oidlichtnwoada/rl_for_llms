@@ -21,10 +21,16 @@ def get_training_data_dir() -> pathlib.Path:
     return get_data_dir() / "training"
 
 
-def is_folder_empty(folder_path: pathlib.Path) -> bool:
+def is_folder_empty(
+    folder_path: pathlib.Path, ignore_file_names: tuple[str, ...] = ()
+) -> bool:
     """Check if a folder is empty."""
     if not folder_path.is_dir():
         raise ValueError
-    folder_contents = list(folder_path.rglob("*"))
-    content_amount = len(folder_contents)
-    return content_amount == 0
+    relevant_folder_contents = [
+        x
+        for x in folder_path.rglob("*")
+        if not x.is_file() or x.name not in ignore_file_names
+    ]
+    relevant_content_amount = len(relevant_folder_contents)
+    return relevant_content_amount == 0
