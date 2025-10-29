@@ -43,7 +43,8 @@ dev = [
 
 [tool.ruff.lint]
 select = ["ALL"]
-ignore = ["D100", "D104", "D203", "D213", "COM812"]
+ignore = ["D100", "D104", "D203", "D213", "COM812", "RET504"]
 
 [tool.mypy]
 strict = true
+ignore_missing_imports = true
