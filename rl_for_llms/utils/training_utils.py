@@ -47,7 +47,7 @@ def load_training_data_from_disk() -> Dataset:
 def load_evaluation_data() -> Dataset:
     """Load evaluation data."""
     file_path = get_evaluation_data_dir() / get_default_evaluation_file_name()
-    dataset = load_dataset(str(file_path.resolve()))
+    dataset = load_dataset("json", data_files=[str(file_path.resolve())])
     return dataset
 
 
