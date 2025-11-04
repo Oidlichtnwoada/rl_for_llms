@@ -19,3 +19,13 @@ def get_train_split() -> Split:
 def get_gitignore_file_name() -> str:
     """Return the .gitignore file name."""
     return ".gitignore"
+
+
+def get_default_hf_model_id() -> str:
+    """Return the default Hugging Face model ID."""
+    return "OctoThinker/OctoThinker-3B-Short-Base"
+
+
+def get_default_evaluation_file_name() -> str:
+    """Return the default evaluation file name."""
+    return "math-500-test.jsonl"

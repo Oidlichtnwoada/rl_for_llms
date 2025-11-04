@@ -11,6 +11,11 @@ def get_data_dir() -> pathlib.Path:
     return get_repo_root() / "data"
 
 
+def get_checkpoints_data_dir() -> pathlib.Path:
+    """Return the checkpoints data directory path."""
+    return get_data_dir() / "checkpoints"
+
+
 def get_evaluation_data_dir() -> pathlib.Path:
     """Return the evaluation data directory path."""
     return get_data_dir() / "evaluation"
@@ -34,3 +39,14 @@ def is_folder_empty(
     ]
     relevant_content_amount = len(relevant_folder_contents)
     return relevant_content_amount == 0
+
+
+def get_checkpoint_folder_for_model_id(
+    model_id: str, *, create: bool = True
+) -> pathlib.Path:
+    """Return the checkpoint folder path for a given model ID."""
+    first_part, second_part = model_id.split("/")
+    full_path = get_checkpoints_data_dir() / first_part / second_part
+    if create:
+        full_path.mkdir(exist_ok=True, parents=True)
+    return full_path
