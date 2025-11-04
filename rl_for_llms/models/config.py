@@ -10,3 +10,4 @@ class Config(BaseModel):
     learning_rate: float = Field(default=1e-6)
     num_train_epochs: int = Field(default=1)
     use_vllm: bool = Field(default=False)
+    report_to: list[str] = Field(default_factory=lambda: ["tensorboard"])

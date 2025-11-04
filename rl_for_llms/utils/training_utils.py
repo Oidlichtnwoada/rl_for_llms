@@ -74,7 +74,7 @@ def get_grpo_config() -> GRPOConfig:
         per_device_train_batch_size=2,
         gradient_accumulation_steps=64,
         gradient_checkpointing=True,
-        report_to="all",
+        report_to=config.report_to,
         log_completions=True,
         run_name=config.hf_model_id,
         beta=0.0,
