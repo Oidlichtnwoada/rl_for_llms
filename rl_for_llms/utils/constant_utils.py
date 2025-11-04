@@ -23,7 +23,7 @@ def get_gitignore_file_name() -> str:
 
 def get_default_hf_model_id() -> str:
     """Return the default Hugging Face model ID."""
-    return "OctoThinker/OctoThinker-3B-Short-Base"
+    return "Qwen/Qwen2.5-0.5B-Instruct"
 
 
 def get_default_evaluation_file_name() -> str:

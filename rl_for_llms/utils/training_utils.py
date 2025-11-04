@@ -74,8 +74,6 @@ def get_grpo_config() -> GRPOConfig:
         per_device_train_batch_size=2,
         gradient_accumulation_steps=64,
         gradient_checkpointing=True,
-        fsdp="full_shard",
-        fsdp_config={"param_offload": False, "optimizer_offload": False},
         report_to="all",
         log_completions=True,
         run_name=config.hf_model_id,
