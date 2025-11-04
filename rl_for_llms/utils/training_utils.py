@@ -60,9 +60,9 @@ def get_grpo_config() -> GRPOConfig:
         num_generations=8,
         temperature=1.0,
         top_p=1.0,
-        use_vllm=True,
+        use_vllm=config.use_vllm,
         vllm_gpu_memory_utilization=0.6,
-        vllm_tensor_parallel_size=4,
+        vllm_tensor_parallel_size=1,
         vllm_mode="colocate",
         learning_rate=config.learning_rate,
         output_dir=str(

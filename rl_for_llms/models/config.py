@@ -9,3 +9,4 @@ class Config(BaseModel):
     hf_model_id: str = Field(default=get_default_hf_model_id())
     learning_rate: float = Field(default=1e-6)
     num_train_epochs: int = Field(default=1)
+    use_vllm: bool = Field(default=False)
