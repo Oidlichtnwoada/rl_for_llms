@@ -71,8 +71,8 @@ def get_grpo_config() -> GRPOConfig:
         num_train_epochs=config.num_train_epochs,
         save_steps=50,
         eval_steps=20,
-        per_device_train_batch_size=2,
-        gradient_accumulation_steps=64,
+        per_device_train_batch_size=8,
+        gradient_accumulation_steps=1,
         gradient_checkpointing=True,
         report_to=config.report_to,
         log_completions=True,
@@ -82,12 +82,13 @@ def get_grpo_config() -> GRPOConfig:
     return grpo_config
 
 
-def get_tokenizer(model_id: str, padding_side: str = "left") -> ProcessorMixin:
+def get_tokenizer(model_id: str, truncation_side: str = "left") -> ProcessorMixin:
     """Return the tokenizer for the specified model ID."""
-    tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)  # type: ignore[no-untyped-call]
+    tokenizer = AutoTokenizer.from_pretrained(
+        model_id, truncation_side=truncation_side, trust_remote_code=True
+    )  # type: ignore[no-untyped-call]
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
-    tokenizer.padding_side = padding_side
     return typing.cast("ProcessorMixin", tokenizer)
 
 
