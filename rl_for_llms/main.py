@@ -1,4 +1,4 @@
-from rl_for_llms.logging.logging import log_msg
+from rl_for_llms.utils.logging_utils import log_msg
 from rl_for_llms.utils.training_utils import (
     download_training_data,
 )
