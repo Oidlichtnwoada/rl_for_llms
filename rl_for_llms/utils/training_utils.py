@@ -1,6 +1,7 @@
 import typing
 
 from datasets import Dataset, load_dataset, load_from_disk
+from peft import LoraConfig, TaskType
 from transformers import AutoTokenizer, ProcessorMixin
 from trl.trainer.grpo_config import GRPOConfig
 from trl.trainer.grpo_trainer import GRPOTrainer
@@ -99,6 +100,14 @@ def get_grpo_trainer() -> GRPOTrainer:
     train_dataset = load_training_data_from_disk()
     eval_dataset = load_evaluation_data()
     tokenizer = get_tokenizer(config.hf_model_id)
+    peft_config = LoraConfig(
+        r=config.lora_rank,
+        lora_alpha=2 * config.lora_rank,
+        target_modules=config.target_modules,
+        lora_dropout=0.05,
+        bias="none",
+        task_type=TaskType.CAUSAL_LM
+    )
     grpo_trainer = GRPOTrainer(
         model=config.hf_model_id,
         args=grpo_config,
@@ -106,7 +115,7 @@ def get_grpo_trainer() -> GRPOTrainer:
         eval_dataset=eval_dataset,
         processing_class=tokenizer,
         reward_funcs=[default_reward_function],
-        peft_config=None,
+        peft_config=peft_config,
     )
     return grpo_trainer
 

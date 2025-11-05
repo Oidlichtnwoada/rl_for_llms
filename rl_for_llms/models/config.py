@@ -11,3 +11,5 @@ class Config(BaseModel):
     num_train_epochs: int = Field(default=1)
     use_vllm: bool = Field(default=False)
     report_to: list[str] = Field(default_factory=lambda: ["tensorboard"])
+    lora_rank: int = Field(default=16)
+    target_modules: list[str] = Field(default_factory=lambda: ["gate_proj", "up_proj", "down_proj"])
