@@ -106,7 +106,7 @@ def get_grpo_trainer() -> GRPOTrainer:
         target_modules=config.target_modules,
         lora_dropout=0.05,
         bias="none",
-        task_type=TaskType.CAUSAL_LM
+        task_type=TaskType.CAUSAL_LM,
     )
     grpo_trainer = GRPOTrainer(
         model=config.hf_model_id,
