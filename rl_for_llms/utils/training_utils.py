@@ -58,7 +58,7 @@ def get_grpo_config() -> GRPOConfig:
     grpo_config = GRPOConfig(
         max_prompt_length=2048,
         max_completion_length=8192,
-        num_generations=8,
+        num_generations=4,
         temperature=1.0,
         top_p=1.0,
         use_vllm=config.use_vllm,
@@ -72,7 +72,7 @@ def get_grpo_config() -> GRPOConfig:
         num_train_epochs=config.num_train_epochs,
         save_steps=50,
         eval_steps=20,
-        per_device_train_batch_size=8,
+        per_device_train_batch_size=4,
         gradient_accumulation_steps=1,
         gradient_checkpointing=True,
         report_to=config.report_to,
