@@ -14,7 +14,7 @@ def get_pipeline(model_id: str) -> Pipeline:
     pipe = pipeline(
         "text-generation",
         model=model_id,
-        torch_dtype=dtype,
+        dtype=dtype,
         device=get_device(),
     )
     return pipe
@@ -33,11 +33,11 @@ def get_assistant_message(content: str) -> dict[str, str]:
 def get_llm_output(
     message: str,
     model_id: str = get_default_hf_model_id(),
-    temperature: float = 0.0,
+    temperature: float = 1.0,
     top_p: float = 1.0,
     max_output_tokens: int = 512,
     *,
-    do_sampling: bool = True,
+    do_sampling: bool = False,
 ) -> str:
     """Return the LLM output for the given message and model ID."""
     pipe = get_pipeline(model_id)
