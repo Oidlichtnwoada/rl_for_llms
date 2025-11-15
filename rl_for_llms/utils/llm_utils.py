@@ -36,6 +36,7 @@ def get_llm_output(
     temperature: float = 1.0,
     top_p: float = 1.0,
     max_output_tokens: int = 512,
+    top_k: int | None = None,
     *,
     do_sampling: bool = False,
 ) -> str:
@@ -48,6 +49,7 @@ def get_llm_output(
         do_sample=do_sampling,
         temperature=temperature,
         top_p=top_p,
+        top_k=top_k,
         return_full_text=False,
     )
     output_message = str(outputs[0]["generated_text"]).strip()
