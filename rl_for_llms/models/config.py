@@ -15,3 +15,4 @@ class Config(BaseModel):
     target_modules: list[str] = Field(
         default_factory=lambda: ["gate_proj", "up_proj", "down_proj"]
     )
+    dataset_use_row_percentage: float = Field(default=0.1)

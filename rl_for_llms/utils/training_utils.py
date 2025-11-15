@@ -14,6 +14,7 @@ from rl_for_llms.utils.constant_utils import (
     get_relative_training_file_path,
     get_train_split,
 )
+from rl_for_llms.utils.dataset_utils import trim_dataset
 from rl_for_llms.utils.path_utils import (
     get_checkpoint_folder_for_model_id,
     get_evaluation_data_dir,
@@ -48,7 +49,8 @@ def load_training_data_from_disk() -> Dataset:
 def load_evaluation_data() -> Dataset:
     """Load evaluation data."""
     file_path = get_evaluation_data_dir() / get_default_evaluation_file_name()
-    dataset = load_dataset("json", data_files=[str(file_path.resolve())])
+    dataset_dict = load_dataset("json", data_files=[str(file_path.resolve())])
+    dataset = dataset_dict[str(get_train_split())]
     return dataset
 
 
@@ -97,8 +99,12 @@ def get_grpo_trainer() -> GRPOTrainer:
     """Get the GRPO trainer."""
     config = get_config()
     grpo_config = get_grpo_config()
-    train_dataset = load_training_data_from_disk()
-    eval_dataset = load_evaluation_data()
+    train_dataset = trim_dataset(
+        load_training_data_from_disk(), config.dataset_use_row_percentage
+    )
+    eval_dataset = trim_dataset(
+        load_evaluation_data(), config.dataset_use_row_percentage
+    )
     tokenizer = get_tokenizer(config.hf_model_id)
     peft_config = LoraConfig(
         r=config.lora_rank,
