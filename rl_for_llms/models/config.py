@@ -19,7 +19,7 @@ class Config(BaseModel):
         default_factory=lambda: ["gate_proj", "up_proj", "down_proj"]
     )
     dataset_use_row_percentage: float = Field(default=0.1)
-    max_prompt_length: int = Field(default=512, le=2048)
+    max_prompt_length: int = Field(default=2048, le=8192)
     max_completion_length: int = Field(default=256, le=8192)
     num_generations: int = Field(default=4, le=16)
     temperature: float = Field(default=1.0)
