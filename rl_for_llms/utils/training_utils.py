@@ -1,7 +1,7 @@
 import typing
 
 from datasets import Dataset, load_dataset, load_from_disk
-from peft import LoraConfig, TaskType
+from peft import LoraConfig
 from transformers import AutoTokenizer, ProcessorMixin
 from trl.trainer.grpo_config import GRPOConfig
 from trl.trainer.grpo_trainer import GRPOTrainer
@@ -58,29 +58,30 @@ def get_grpo_config() -> GRPOConfig:
     """Get the GRPO configuration."""
     config = get_config()
     grpo_config = GRPOConfig(
-        max_prompt_length=2048,
-        max_completion_length=8192,
-        num_generations=4,
-        temperature=1.0,
-        top_p=1.0,
+        max_prompt_length=config.max_prompt_length,
+        max_completion_length=config.max_completion_length,
+        num_generations=config.num_generations,
+        temperature=config.temperature,
+        top_p=config.top_p,
         use_vllm=config.use_vllm,
-        vllm_gpu_memory_utilization=0.6,
-        vllm_tensor_parallel_size=1,
-        vllm_mode="colocate",
+        vllm_gpu_memory_utilization=config.vllm_gpu_memory_utilization,
+        vllm_tensor_parallel_size=config.vllm_tensor_parallel_size,
+        vllm_mode=config.vllm_mode,
         learning_rate=config.learning_rate,
         output_dir=str(
             get_checkpoint_folder_for_model_id(config.hf_model_id).resolve()
         ),
         num_train_epochs=config.num_train_epochs,
-        save_steps=50,
-        eval_steps=20,
-        per_device_train_batch_size=4,
-        gradient_accumulation_steps=1,
-        gradient_checkpointing=True,
+        save_steps=config.save_steps,
+        eval_steps=config.eval_steps,
+        per_device_train_batch_size=config.per_device_rollouts_per_batch
+        * config.num_generations,
+        gradient_accumulation_steps=config.gradient_accumulation_steps,
+        gradient_checkpointing=config.gradient_checkpointing,
         report_to=config.report_to,
-        log_completions=True,
+        log_completions=config.log_completions,
         run_name=config.hf_model_id,
-        beta=0.0,
+        beta=config.beta,
     )
     return grpo_config
 
@@ -108,11 +109,11 @@ def get_grpo_trainer() -> GRPOTrainer:
     tokenizer = get_tokenizer(config.hf_model_id)
     peft_config = LoraConfig(
         r=config.lora_rank,
-        lora_alpha=2 * config.lora_rank,
+        lora_alpha=config.lora_alpha_factor_for_rank * config.lora_rank,
         target_modules=config.target_modules,
-        lora_dropout=0.05,
-        bias="none",
-        task_type=TaskType.CAUSAL_LM,
+        lora_dropout=config.lora_dropout,
+        bias=config.bias,
+        task_type=config.task_type,
     )
     grpo_trainer = GRPOTrainer(
         model=config.hf_model_id,
