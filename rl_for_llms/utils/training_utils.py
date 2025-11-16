@@ -1,9 +1,7 @@
-import typing
 from copy import deepcopy
 
 from datasets import Dataset, Value, concatenate_datasets, load_dataset, load_from_disk
 from peft import LoraConfig
-from transformers import AutoTokenizer, PreTrainedTokenizerBase
 from trl.trainer.grpo_config import GRPOConfig
 from trl.trainer.grpo_trainer import GRPOTrainer
 
@@ -16,7 +14,7 @@ from rl_for_llms.utils.constant_utils import (
     get_train_split,
 )
 from rl_for_llms.utils.dataset_utils import clean_dataset, trim_dataset
-from rl_for_llms.utils.llm_utils import get_user_message
+from rl_for_llms.utils.llm_utils import get_tokenizer, get_user_message
 from rl_for_llms.utils.path_utils import (
     get_checkpoint_folder_for_model_id,
     get_evaluation_data_dir,
@@ -120,18 +118,6 @@ def get_grpo_config() -> GRPOConfig:
         beta=config.beta,
     )
     return grpo_config
-
-
-def get_tokenizer(
-    model_id: str, truncation_side: str = "left"
-) -> PreTrainedTokenizerBase:
-    """Return the tokenizer for the specified model ID."""
-    tokenizer = AutoTokenizer.from_pretrained(
-        model_id, truncation_side=truncation_side, trust_remote_code=True
-    )  # type: ignore[no-untyped-call]
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
-    return typing.cast("PreTrainedTokenizerBase", tokenizer)
 
 
 def get_grpo_trainer() -> GRPOTrainer:
