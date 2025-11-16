@@ -3,14 +3,17 @@ from typing import Literal
 from peft import TaskType
 from pydantic import BaseModel, Field
 
-from rl_for_llms.utils.constant_utils import get_default_hf_model_id
 from rl_for_llms.utils.torch_utils import get_cuda_default_value
 
 
 class Config(BaseModel):
     """Configuration for the program."""
 
-    hf_model_id: str = Field(default=get_default_hf_model_id())
+    hf_model_id: str = Field(
+        default=get_cuda_default_value(
+            "Qwen/Qwen2.5-3B-Instruct", "Qwen/Qwen2.5-0.5B-Instruct"
+        )
+    )
     learning_rate: float = Field(default=1e-6)
     num_train_epochs: int = Field(default=get_cuda_default_value(3, 1))
     use_vllm: bool = Field(

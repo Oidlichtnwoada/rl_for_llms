@@ -1,6 +1,6 @@
 from datasets import Split
 
-from rl_for_llms.utils.torch_utils import get_cuda_default_value
+from rl_for_llms.utils.config_utils import get_config
 
 
 def get_hf_training_ds_path() -> str:
@@ -25,9 +25,7 @@ def get_gitignore_file_name() -> str:
 
 def get_default_hf_model_id() -> str:
     """Return the default Hugging Face model ID."""
-    return get_cuda_default_value(
-        "Qwen/Qwen2.5-3B-Instruct", "Qwen/Qwen2.5-0.5B-Instruct"
-    )
+    return get_config().hf_model_id
 
 
 def get_default_evaluation_file_names() -> tuple[str, ...]:
