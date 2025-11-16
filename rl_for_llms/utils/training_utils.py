@@ -110,10 +110,10 @@ def get_grpo_trainer() -> GRPOTrainer:
     peft_config = LoraConfig(
         r=config.lora_rank,
         lora_alpha=config.lora_alpha_factor_for_rank * config.lora_rank,
-        target_modules=config.target_modules,
+        target_modules=config.lora_target_modules,
         lora_dropout=config.lora_dropout,
-        bias=config.bias,
-        task_type=config.task_type,
+        bias=config.lora_bias,
+        task_type=config.lora_task_type,
     )
     grpo_trainer = GRPOTrainer(
         model=config.hf_model_id,
@@ -122,7 +122,7 @@ def get_grpo_trainer() -> GRPOTrainer:
         eval_dataset=eval_dataset,
         processing_class=tokenizer,
         reward_funcs=[default_reward_function],
-        peft_config=peft_config,
+        peft_config=peft_config if config.enable_lora else None,
     )
     return grpo_trainer
 
