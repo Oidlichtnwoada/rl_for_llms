@@ -12,12 +12,12 @@ class Config(BaseModel):
 
     hf_model_id: str = Field(default=get_default_hf_model_id())
     learning_rate: float = Field(default=1e-6)
-    num_train_epochs: int = Field(default=get_cuda_default_value(2, 1))
+    num_train_epochs: int = Field(default=get_cuda_default_value(3, 1))
     use_vllm: bool = Field(
         default=get_cuda_default_value(value_if_cuda=True, value_if_not_cuda=False)
     )
     vllm_gpu_memory_utilization: float = Field(default=0.6)
-    vllm_tensor_parallel_size: int = Field(default=1)
+    vllm_split_model_across_gpus: bool = Field(default=False)
     vllm_mode: str = Field(default="colocate")
     report_to: list[str] = Field(default_factory=lambda: ["tensorboard"])
     dataset_use_row_percentage: float = Field(default=get_cuda_default_value(1.0, 0.1))

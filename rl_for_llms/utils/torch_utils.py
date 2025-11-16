@@ -27,6 +27,14 @@ def get_cuda_default_value[T](value_if_cuda: T, value_if_not_cuda: T) -> T:
     return value_if_not_cuda
 
 
+def get_cuda_device_count() -> int:
+    """Return the appropriate value based on whether a CUDA device is used."""
+    device_string = str(get_device())
+    if device_string == "cuda":
+        return torch.cuda.device_count()
+    return 0
+
+
 def is_bf16_supported() -> bool:
     """Check if the current device supports bfloat16 precision."""
     device_string = str(get_device())

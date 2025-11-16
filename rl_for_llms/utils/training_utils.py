@@ -24,6 +24,7 @@ from rl_for_llms.utils.path_utils import (
     is_folder_empty,
 )
 from rl_for_llms.utils.reward_utils import default_reward_function
+from rl_for_llms.utils.torch_utils import get_cuda_device_count, is_cuda_device_used
 
 
 def download_training_data() -> None:
@@ -79,6 +80,7 @@ def load_evaluation_data() -> Dataset:
 def get_grpo_config() -> GRPOConfig:
     """Get the GRPO configuration."""
     config = get_config()
+    vllm_tensor_parallel_size = get_cuda_device_count() if is_cuda_device_used() else 1
     grpo_config = GRPOConfig(
         max_prompt_length=config.max_prompt_length,
         max_completion_length=config.max_completion_length,
@@ -87,7 +89,9 @@ def get_grpo_config() -> GRPOConfig:
         top_p=config.top_p,
         use_vllm=config.use_vllm,
         vllm_gpu_memory_utilization=config.vllm_gpu_memory_utilization,
-        vllm_tensor_parallel_size=config.vllm_tensor_parallel_size,
+        vllm_tensor_parallel_size=vllm_tensor_parallel_size
+        if config.vllm_split_model_across_gpus
+        else 1,
         vllm_mode=config.vllm_mode,
         learning_rate=config.learning_rate,
         output_dir=str(
