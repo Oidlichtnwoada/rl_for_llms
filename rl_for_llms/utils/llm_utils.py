@@ -1,7 +1,7 @@
 from functools import cache
 
 import torch
-from transformers import Pipeline, pipeline, AutoModelForCausalLM
+from transformers import AutoModelForCausalLM, Pipeline, pipeline
 
 from rl_for_llms.utils.constant_utils import get_default_hf_model_id
 from rl_for_llms.utils.torch_utils import get_device, is_bf16_supported
