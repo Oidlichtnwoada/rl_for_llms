@@ -37,7 +37,24 @@ def clean_dataset_value(value: dict[str, typing.Any]) -> dict[str, typing.Any]:
     return final_dict
 
 
+def filter_function(content: str, seen_content: set[str]) -> bool:
+    """Filter function to check for uniqueness of content."""
+    result = content not in seen_content
+    seen_content.add(content)
+    return result
+
+
 def clean_dataset(dataset: Dataset) -> Dataset:
     """Clean the dataset by removing whitespaces and checking uniqueness."""
     cleaned_dataset = dataset.map(clean_dataset_value)
+    if len(cleaned_dataset) != len(set(cleaned_dataset["id"])):
+        raise ValueError
+    seen_prompts: set[str] = set()
+    cleaned_dataset = cleaned_dataset.filter(
+        lambda x: filter_function(x["prompt"][0]["content"], seen_prompts)
+    )
+    if len(cleaned_dataset) != len(
+        {x[0]["content"] for x in cleaned_dataset["prompt"]}
+    ):
+        raise ValueError
     return cleaned_dataset
