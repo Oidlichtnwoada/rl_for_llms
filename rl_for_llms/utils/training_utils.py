@@ -15,6 +15,7 @@ from rl_for_llms.utils.constant_utils import (
     get_train_split,
 )
 from rl_for_llms.utils.dataset_utils import trim_dataset
+from rl_for_llms.utils.llm_utils import get_user_message
 from rl_for_llms.utils.path_utils import (
     get_checkpoint_folder_for_model_id,
     get_evaluation_data_dir,
@@ -51,6 +52,8 @@ def load_evaluation_data() -> Dataset:
     file_path = get_evaluation_data_dir() / get_default_evaluation_file_name()
     dataset_dict = load_dataset("json", data_files=[str(file_path.resolve())])
     dataset = dataset_dict[str(get_train_split())]
+    prompts = [[get_user_message(x)] for x in list(dataset["problem"])]
+    dataset = dataset.add_column("prompt", prompts)
     return dataset
 
 
