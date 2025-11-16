@@ -1,7 +1,7 @@
 from functools import cache
 
 import torch
-from transformers import Pipeline, pipeline
+from transformers import Pipeline, pipeline, AutoModelForCausalLM
 
 from rl_for_llms.utils.constant_utils import get_default_hf_model_id
 from rl_for_llms.utils.torch_utils import get_device, is_bf16_supported
@@ -54,3 +54,10 @@ def get_llm_output(
     )
     output_message = str(outputs[0]["generated_text"]).strip()
     return output_message
+
+
+def get_model_representation(model_id: str) -> str:
+    """Return a string representation of the model for the given model ID."""
+    model = AutoModelForCausalLM.from_pretrained(model_id)
+    model_representation = str(model)
+    return model_representation
