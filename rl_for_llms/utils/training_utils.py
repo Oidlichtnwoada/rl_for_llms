@@ -3,7 +3,7 @@ from copy import deepcopy
 
 from datasets import Dataset, Value, concatenate_datasets, load_dataset, load_from_disk
 from peft import LoraConfig
-from transformers import AutoTokenizer, ProcessorMixin
+from transformers import AutoTokenizer, PreTrainedTokenizerBase
 from trl.trainer.grpo_config import GRPOConfig
 from trl.trainer.grpo_trainer import GRPOTrainer
 
@@ -46,6 +46,13 @@ def load_training_data_from_disk() -> Dataset:
     """Load training data previously saved to disk."""
     training_data_dir = get_training_data_dir()
     dataset = load_from_disk(training_data_dir)
+    dataset = dataset.remove_columns(["ability", "data_source"])
+    ids = [str(x["index"]) for x in list(dataset["extra_info"])]
+    dataset = dataset.add_column("id", ids)
+    dataset = dataset.remove_columns(["extra_info"])
+    answers = [str(x["ground_truth"]) for x in list(dataset["reward_model"])]
+    dataset = dataset.add_column("answer", answers)
+    dataset = dataset.remove_columns(["reward_model"])
     return dataset
 
 
@@ -74,6 +81,7 @@ def load_evaluation_data() -> Dataset:
     merged_dataset = concatenate_datasets(datasets)
     prompts = [[get_user_message(x)] for x in list(merged_dataset["problem"])]
     merged_dataset = merged_dataset.add_column("prompt", prompts)
+    merged_dataset = merged_dataset.remove_columns(["problem"])
     return merged_dataset
 
 
@@ -112,27 +120,35 @@ def get_grpo_config() -> GRPOConfig:
     return grpo_config
 
 
-def get_tokenizer(model_id: str, truncation_side: str = "left") -> ProcessorMixin:
+def get_tokenizer(
+    model_id: str, truncation_side: str = "left"
+) -> PreTrainedTokenizerBase:
     """Return the tokenizer for the specified model ID."""
     tokenizer = AutoTokenizer.from_pretrained(
         model_id, truncation_side=truncation_side, trust_remote_code=True
     )  # type: ignore[no-untyped-call]
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
-    return typing.cast("ProcessorMixin", tokenizer)
+    return typing.cast("PreTrainedTokenizerBase", tokenizer)
 
 
 def get_grpo_trainer() -> GRPOTrainer:
     """Get the GRPO trainer."""
     config = get_config()
     grpo_config = get_grpo_config()
+    tokenizer = get_tokenizer(config.hf_model_id)
     train_dataset = trim_dataset(
-        load_training_data_from_disk(), config.dataset_use_row_percentage
+        load_training_data_from_disk(),
+        config.dataset_use_row_percentage,
+        tokenizer,
+        config.max_prompt_length,
     )
     eval_dataset = trim_dataset(
-        load_evaluation_data(), config.dataset_use_row_percentage
+        load_evaluation_data(),
+        config.dataset_use_row_percentage,
+        tokenizer,
+        config.max_prompt_length,
     )
-    tokenizer = get_tokenizer(config.hf_model_id)
     peft_config = LoraConfig(
         r=config.lora_rank,
         lora_alpha=config.lora_alpha_factor_for_rank * config.lora_rank,

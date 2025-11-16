@@ -1,7 +1,12 @@
 from functools import cache
 
 import torch
-from transformers import AutoModelForCausalLM, Pipeline, pipeline
+from transformers import (
+    AutoModelForCausalLM,
+    Pipeline,
+    PreTrainedTokenizerBase,
+    pipeline,
+)
 
 from rl_for_llms.utils.constant_utils import get_default_hf_model_id
 from rl_for_llms.utils.torch_utils import get_device, is_bf16_supported
@@ -61,3 +66,12 @@ def get_model_representation(model_id: str) -> str:
     model = AutoModelForCausalLM.from_pretrained(model_id)
     model_representation = str(model)
     return model_representation
+
+
+def tokenize_text(
+    text: str,
+    tokenizer: PreTrainedTokenizerBase,
+) -> list[int]:
+    """Return the tokenized representation of the given text."""
+    token_list = list(map(int, tokenizer.encode(text)))
+    return token_list
