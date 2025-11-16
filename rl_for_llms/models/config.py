@@ -34,7 +34,7 @@ class Config(BaseModel):
     temperature: float = Field(default=1.0)
     top_p: float = Field(default=1.0)
     save_steps: int = Field(default=512)
-    eval_steps: int = Field(default=512)
+    eval_steps: int = Field(default=4096)
     gradient_checkpointing: bool = Field(default=True)
     log_completions: bool = Field(default=True)
     beta: float = Field(default=0.0)

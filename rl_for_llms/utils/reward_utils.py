@@ -10,6 +10,10 @@ from math_verify import (
 )
 from transformers import TrainerState
 
+from rl_for_llms.utils.latex_utils import (
+    get_boxed_expression,
+    get_last_boxed_expression,
+)
 from rl_for_llms.utils.llm_utils import check_model_output_for_completion
 
 
@@ -59,9 +63,13 @@ def get_math_verification_reward(
     model_answer: str,
 ) -> float:
     """Return a reward based on the math verification of the model answer."""
-    parsed_correct_answer = parse_answer(correct_answer)
-    parsed_model_answer = parse_answer(model_answer)
-    verification_result = verify_answer(parsed_correct_answer, parsed_model_answer)
+    boxed_correct_answer = get_boxed_expression(correct_answer)
+    parsed_boxed_correct_answer = parse_answer(boxed_correct_answer)
+    boxed_model_answer = get_last_boxed_expression(model_answer)
+    parsed_boxed_model_answer = parse_answer(boxed_model_answer)
+    verification_result = verify_answer(
+        parsed_boxed_correct_answer, parsed_boxed_model_answer
+    )
     verification_reward = float(verification_result)
     return verification_reward
 
