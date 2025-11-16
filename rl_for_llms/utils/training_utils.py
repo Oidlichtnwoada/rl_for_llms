@@ -15,7 +15,7 @@ from rl_for_llms.utils.constant_utils import (
     get_relative_training_file_path,
     get_train_split,
 )
-from rl_for_llms.utils.dataset_utils import trim_dataset
+from rl_for_llms.utils.dataset_utils import clean_dataset, trim_dataset
 from rl_for_llms.utils.llm_utils import get_user_message
 from rl_for_llms.utils.path_utils import (
     get_checkpoint_folder_for_model_id,
@@ -53,7 +53,8 @@ def load_training_data_from_disk() -> Dataset:
     answers = [str(x["ground_truth"]) for x in list(dataset["reward_model"])]
     dataset = dataset.add_column("answer", answers)
     dataset = dataset.remove_columns(["reward_model"])
-    return dataset
+    cleaned_dataset = clean_dataset(dataset)
+    return cleaned_dataset
 
 
 def load_evaluation_data() -> Dataset:
@@ -82,7 +83,8 @@ def load_evaluation_data() -> Dataset:
     prompts = [[get_user_message(x)] for x in list(merged_dataset["problem"])]
     merged_dataset = merged_dataset.add_column("prompt", prompts)
     merged_dataset = merged_dataset.remove_columns(["problem"])
-    return merged_dataset
+    cleaned_dataset = clean_dataset(merged_dataset)
+    return cleaned_dataset
 
 
 def get_grpo_config() -> GRPOConfig:
