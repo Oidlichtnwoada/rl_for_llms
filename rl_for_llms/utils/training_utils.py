@@ -1,6 +1,7 @@
 import typing
+from copy import deepcopy
 
-from datasets import Dataset, load_dataset, load_from_disk
+from datasets import Dataset, Value, concatenate_datasets, load_dataset, load_from_disk
 from peft import LoraConfig
 from transformers import AutoTokenizer, ProcessorMixin
 from trl.trainer.grpo_config import GRPOConfig
@@ -8,7 +9,7 @@ from trl.trainer.grpo_trainer import GRPOTrainer
 
 from rl_for_llms.utils.config_utils import get_config
 from rl_for_llms.utils.constant_utils import (
-    get_default_evaluation_file_name,
+    get_default_evaluation_file_names,
     get_gitignore_file_name,
     get_hf_training_ds_path,
     get_relative_training_file_path,
@@ -49,12 +50,30 @@ def load_training_data_from_disk() -> Dataset:
 
 def load_evaluation_data() -> Dataset:
     """Load evaluation data."""
-    file_path = get_evaluation_data_dir() / get_default_evaluation_file_name()
-    dataset_dict = load_dataset("json", data_files=[str(file_path.resolve())])
-    dataset = dataset_dict[str(get_train_split())]
-    prompts = [[get_user_message(x)] for x in list(dataset["problem"])]
-    dataset = dataset.add_column("prompt", prompts)
-    return dataset
+    file_paths = [
+        get_evaluation_data_dir() / file_name
+        for file_name in get_default_evaluation_file_names()
+    ]
+    dataset_dicts = [
+        load_dataset("json", data_files=[str(file_path.resolve())])
+        for file_path in file_paths
+    ]
+    datasets = [dataset_dict[str(get_train_split())] for dataset_dict in dataset_dicts]
+    target_columns = {"problem", "answer", "id"}
+    for index, dataset in enumerate(datasets):
+        if "unique_id" in dataset.column_names:
+            new_dataset = dataset.rename_columns({"unique_id": "id"})
+        else:
+            new_dataset = deepcopy(dataset)
+        columns_to_drop = set(new_dataset.column_names) - target_columns
+        new_dataset = new_dataset.remove_columns(list(columns_to_drop))
+        for column in target_columns:
+            new_dataset = new_dataset.cast_column(column, Value("string"))
+        datasets[index] = new_dataset
+    merged_dataset = concatenate_datasets(datasets)
+    prompts = [[get_user_message(x)] for x in list(merged_dataset["problem"])]
+    merged_dataset = merged_dataset.add_column("prompt", prompts)
+    return merged_dataset
 
 
 def get_grpo_config() -> GRPOConfig:

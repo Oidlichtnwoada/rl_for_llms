@@ -30,6 +30,12 @@ def get_default_hf_model_id() -> str:
     )
 
 
-def get_default_evaluation_file_name() -> str:
+def get_default_evaluation_file_names() -> tuple[str, ...]:
     """Return the default evaluation file name."""
-    return "math-500-test.jsonl"
+    return (
+        "aime-2024-test.jsonl",
+        "aime-2025-test.jsonl",
+        "amc-2023-test.jsonl",
+        "math-500-test.jsonl",
+        "olympiad-bench-test.jsonl",
+    )
