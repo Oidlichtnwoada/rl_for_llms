@@ -1,3 +1,4 @@
+import logging
 import typing
 from functools import cache
 
@@ -10,7 +11,9 @@ from transformers import (
     pipeline,
 )
 
+from rl_for_llms.utils.config_utils import get_config
 from rl_for_llms.utils.constant_utils import get_default_hf_model_id
+from rl_for_llms.utils.logging_utils import log_msg
 from rl_for_llms.utils.torch_utils import get_device, is_bf16_supported
 
 
@@ -90,3 +93,23 @@ def get_tokenizer(
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     return typing.cast("PreTrainedTokenizerBase", tokenizer)
+
+
+def check_model_output_for_completion(
+    completion_ids: list[int],
+    prompt: str,
+    prompt_id: str,
+) -> None:
+    """Check if the model could finish its answer for the given prompt."""
+    config = get_config()
+    completion_length = len(completion_ids)
+    last_completion_token = completion_ids[-1]
+    eos_token_id = get_tokenizer(config.hf_model_id).eos_token_id
+    if (
+        completion_length >= config.max_completion_length
+        and last_completion_token != eos_token_id
+    ):
+        log_msg(
+            f'model could not finish its answer for prompt ("{prompt}") with ID ("{prompt_id}")',
+            level=logging.WARNING,
+        )

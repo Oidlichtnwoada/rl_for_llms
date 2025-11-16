@@ -2,17 +2,21 @@ import typing
 
 from transformers import TrainerState
 
+from rl_for_llms.utils.llm_utils import check_model_output_for_completion
+
 
 def default_reward_function(
-    prompt: str,  # noqa: ARG001
+    prompt: str,
     completion: str,
-    completion_ids: list[int],  # noqa: ARG001
-    prompt_id: str,  # noqa: ARG001
+    completion_ids: list[int],
+    prompt_id: str,
     answer: str,  # noqa: ARG001
     trainer_state: TrainerState,  # noqa: ARG001
 ) -> float:
     """Return a reward value that rewards completions with more unique letters."""
-    return float(len(set(completion)))
+    check_model_output_for_completion(completion_ids, prompt, prompt_id)
+    reward = float(len(set(completion)))
+    return reward
 
 
 def default_batch_reward_function(

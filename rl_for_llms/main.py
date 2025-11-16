@@ -6,9 +6,9 @@ from rl_for_llms.utils.training_utils import (
 
 def main() -> None:
     """Execute the main function of the module."""
-    log_msg("rl_for_llms is starting with the main function.")
+    log_msg("program is starting execution of the main function")
     start_training()
-    log_msg("rl_for_llms is finishing with the main function.")
+    log_msg("program has finishing executing the main function")
 
 
 if __name__ == "__main__":
