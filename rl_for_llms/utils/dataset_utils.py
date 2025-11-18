@@ -3,8 +3,9 @@ import typing
 from datasets import Dataset
 from transformers import PreTrainedTokenizerBase
 
+from rl_for_llms.utils.config_utils import get_config
 from rl_for_llms.utils.hash_utils import generate_deterministic_id
-from rl_for_llms.utils.llm_utils import get_user_message, tokenize_text
+from rl_for_llms.utils.llm_utils import get_user_message, tokenize_messages, get_system_message
 
 
 def trim_dataset(
@@ -17,7 +18,7 @@ def trim_dataset(
     total_rows = len(dataset)
     target_rows = int(total_rows * target_percentage)
     filtered_dataset = dataset.filter(
-        lambda x: len(tokenize_text(x["prompt"][0]["content"], tokenizer))
+        lambda x: len(tokenize_messages(x["prompt"], tokenizer))
         <= max_prompt_tokens
     )
     target_rows = min(target_rows, len(filtered_dataset))
@@ -44,8 +45,15 @@ def filter_function(content: str, seen_content: set[str]) -> bool:
     return result
 
 
+def add_system_message(sample: dict[str, typing.Any]) -> dict[str, typing.Any]:
+    """Add the system message to the sample's prompt."""
+    config = get_config()
+    sample["prompt"][0]["content"] = f"{config.system_message}\n{sample["prompt"][0]["content"]}"
+    return sample
+
+
 def clean_dataset(dataset: Dataset) -> Dataset:
-    """Clean the dataset by removing whitespaces and checking uniqueness."""
+    """Clean the dataset by removing duplicates and adding system messages."""
     cleaned_dataset = dataset.map(clean_dataset_value)
     if len(cleaned_dataset) != len(set(cleaned_dataset["id"])):
         raise ValueError
@@ -57,4 +65,5 @@ def clean_dataset(dataset: Dataset) -> Dataset:
         {x[0]["content"] for x in cleaned_dataset["prompt"]}
     ):
         raise ValueError
+    cleaned_dataset = cleaned_dataset.map(add_system_message)
     return cleaned_dataset

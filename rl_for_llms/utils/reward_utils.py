@@ -97,8 +97,8 @@ def default_batch_reward_function(
     batch_size = len(prompts)
     rewards = [
         default_reward_function(
-            prompt[0]["content"],
-            completion[0]["content"],
+            prompt[-1]["content"],
+            completion[-1]["content"],
             completion_ids,
             prompt_id,
             answer,

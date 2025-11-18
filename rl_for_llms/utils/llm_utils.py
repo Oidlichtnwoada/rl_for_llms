@@ -30,6 +30,11 @@ def get_pipeline(model_id: str) -> Pipeline:
     return pipe
 
 
+def get_system_message(content: str) -> dict[str, str]:
+    """Return the system message for the given content."""
+    return {"role": "system", "content": content.strip()}
+
+
 def get_user_message(content: str) -> dict[str, str]:
     """Return the user message for the given content."""
     return {"role": "user", "content": content.strip()}
@@ -73,12 +78,12 @@ def get_model_representation(model_id: str) -> str:
     return model_representation
 
 
-def tokenize_text(
-    text: str,
+def tokenize_messages(
+    messages: list[dict[str, typing.Any]],
     tokenizer: PreTrainedTokenizerBase,
 ) -> list[int]:
     """Return the tokenized representation of the given text."""
-    token_list = list(map(int, tokenizer.encode(text)))
+    token_list = list(map(int, tokenizer.apply_chat_template(messages)))
     return token_list
 
 
