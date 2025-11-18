@@ -1,10 +1,30 @@
-import re
+def find_all_boxed_expression_contents(text: str) -> list[str]:
+    """Find all contents of boxed expressions in the given text."""
+    out = []
+    search_text = "\\boxed{"
+    i = 0
+    while True:
+        i = text.find(search_text, i)
+        if i < 0:
+            break
+        i += len(search_text)
+        depth = 0
+        start = i
+        j = start
+        while j < len(text):
+            if text[j] == '{':
+                depth += 1
+            elif text[j] == '}':
+                if depth == 0:
+                    out.append(text[start:j])
+                    i = j + 1
+                    break
+                depth -= 1
+            j += 1
+        else:
+            break
+    return out
 
-
-def find_all_boxed_expression_contents(content: str) -> list[str]:
-    """Return a list of all boxed expression contents in the given content."""
-    boxed_expression_contents = re.findall("\\\\boxed\\{(.*?)\\}", content)
-    return boxed_expression_contents
 
 
 def get_boxed_expression(expression: str) -> str:
