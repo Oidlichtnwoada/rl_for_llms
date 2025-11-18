@@ -5,7 +5,10 @@ from transformers import PreTrainedTokenizerBase
 
 from rl_for_llms.utils.config_utils import get_config
 from rl_for_llms.utils.hash_utils import generate_deterministic_id
-from rl_for_llms.utils.llm_utils import get_user_message, tokenize_messages, get_system_message
+from rl_for_llms.utils.llm_utils import (
+    get_user_message,
+    tokenize_messages,
+)
 
 
 def trim_dataset(
@@ -18,8 +21,7 @@ def trim_dataset(
     total_rows = len(dataset)
     target_rows = int(total_rows * target_percentage)
     filtered_dataset = dataset.filter(
-        lambda x: len(tokenize_messages(x["prompt"], tokenizer))
-        <= max_prompt_tokens
+        lambda x: len(tokenize_messages(x["prompt"], tokenizer)) <= max_prompt_tokens
     )
     target_rows = min(target_rows, len(filtered_dataset))
     trimmed_dataset = filtered_dataset.shuffle().select(range(target_rows))
@@ -48,7 +50,9 @@ def filter_function(content: str, seen_content: set[str]) -> bool:
 def add_system_message(sample: dict[str, typing.Any]) -> dict[str, typing.Any]:
     """Add the system message to the sample's prompt."""
     config = get_config()
-    sample["prompt"][0]["content"] = f"{config.system_message}\n{sample["prompt"][0]["content"]}"
+    sample["prompt"][0]["content"] = (
+        f"{config.system_message}\n{sample['prompt'][0]['content']}"
+    )
     return sample
 
 
