@@ -12,9 +12,9 @@ def find_all_boxed_expression_contents(text: str) -> list[str]:
         start = i
         j = start
         while j < len(text):
-            if text[j] == '{':
+            if text[j] == "{":
                 depth += 1
-            elif text[j] == '}':
+            elif text[j] == "}":
                 if depth == 0:
                     out.append(text[start:j])
                     i = j + 1
@@ -24,7 +24,6 @@ def find_all_boxed_expression_contents(text: str) -> list[str]:
         else:
             break
     return out
-
 
 
 def get_boxed_expression(expression: str) -> str:
