@@ -15,6 +15,7 @@ from rl_for_llms.utils.constant_utils import (
 )
 from rl_for_llms.utils.dataset_utils import clean_dataset, trim_dataset
 from rl_for_llms.utils.llm_utils import get_tokenizer, get_user_message
+from rl_for_llms.utils.logging_utils import log_msg
 from rl_for_llms.utils.path_utils import (
     get_checkpoint_folder_for_model_id,
     get_evaluation_data_dir,
@@ -159,6 +160,9 @@ def get_grpo_trainer() -> GRPOTrainer:
 
 def start_training() -> None:
     """Start the training process."""
+    config = get_config()
     download_training_data()
     grpo_trainer = get_grpo_trainer()
+    log_msg(f"start training with the following configuration: {config.model_dump_json()}")
     grpo_trainer.train()
+    log_msg(f"finished training with the following configuration: {config.model_dump_json()}")
