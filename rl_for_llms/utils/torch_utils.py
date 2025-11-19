@@ -30,7 +30,7 @@ def get_cuda_default_value[T](value_if_cuda: T, value_if_not_cuda: T) -> T:
 def get_cuda_device_count() -> int:
     """Return the appropriate value based on whether a CUDA device is used."""
     if is_cuda_device_used():
-        return torch.cuda.device_count()
+        return int(torch.cuda.device_count())
     return 0
 
 
