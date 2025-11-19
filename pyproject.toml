@@ -34,7 +34,6 @@ dependencies = [
     "wandb==0.23.0",
     "math-verify==0.8.0",
     "tensorboard==2.20.0",
-    "mlx==0.29.3",
 ]
 
 [dependency-groups]
