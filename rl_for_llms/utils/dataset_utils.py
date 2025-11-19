@@ -6,6 +6,7 @@ from transformers import PreTrainedTokenizerBase
 from rl_for_llms.utils.config_utils import get_config
 from rl_for_llms.utils.hash_utils import generate_deterministic_id
 from rl_for_llms.utils.llm_utils import (
+    get_system_message,
     get_user_message,
     tokenize_messages,
 )
@@ -50,9 +51,7 @@ def filter_function(content: str, seen_content: set[str]) -> bool:
 def add_system_message(sample: dict[str, typing.Any]) -> dict[str, typing.Any]:
     """Add the system message to the sample's prompt."""
     config = get_config()
-    sample["prompt"][0]["content"] = (
-        f"{config.system_message}\n{sample['prompt'][0]['content']}"
-    )
+    sample["prompt"] = [get_system_message(config.system_message)] + sample["prompt"]
     return sample
 
 
@@ -69,5 +68,7 @@ def clean_dataset(dataset: Dataset) -> Dataset:
         {x[0]["content"] for x in cleaned_dataset["prompt"]}
     ):
         raise ValueError
-    cleaned_dataset = cleaned_dataset.map(add_system_message)
+    cleaned_dataset = cleaned_dataset.map(
+        add_system_message, load_from_cache_file=False
+    )
     return cleaned_dataset
