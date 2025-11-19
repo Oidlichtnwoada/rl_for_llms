@@ -163,6 +163,10 @@ def start_training() -> None:
     config = get_config()
     download_training_data()
     grpo_trainer = get_grpo_trainer()
-    log_msg(f"start training with the following configuration: {config.model_dump_json()}")
+    log_msg(
+        f"start training with the following configuration: {config.model_dump_json()}"
+    )
     grpo_trainer.train()
-    log_msg(f"finished training with the following configuration: {config.model_dump_json()}")
+    log_msg(
+        f"finished training with the following configuration: {config.model_dump_json()}"
+    )
