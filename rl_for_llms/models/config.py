@@ -19,7 +19,7 @@ class Config(BaseModel):
     use_vllm: bool = Field(
         default=get_cuda_default_value(value_if_cuda=True, value_if_not_cuda=False)
     )
-    vllm_gpu_memory_utilization: float = Field(default=0.6)
+    vllm_gpu_memory_utilization: float = Field(default=0.2)
     vllm_split_model_across_gpus: bool = Field(default=False)
     vllm_mode: str = Field(default="colocate")
     report_to: list[str] = Field(default_factory=lambda: ["tensorboard"])
