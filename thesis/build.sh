@@ -13,7 +13,7 @@ ENGINES_TO_RUN=("pdf") # Default engine
 SOURCES=()
 FORCE_CLEAN=false
 
-# ANSI Colors for nicer output
+# ANSI Colors
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
@@ -79,31 +79,33 @@ mkdir -p "$OUTPUT_DIR"
 
 echo -e "${BLUE}=== Running latexindent.pl ===${NC}"
 
-# Find files matching patterns
+# Enable nullglob so loop doesn't run on literal "*.sty" if no match exists
+shopt -s nullglob
+
 FILES_TO_FORMAT=()
 PATTERNS=("*.tex" "*.bbx" "*.bst" "*.cbx" "*.dbx" "*.sty" "*.bib")
 
 for pattern in "${PATTERNS[@]}"; do
-    # Expand the pattern; if no files match, it remains literally "*.tex"
-    # we use compgen or simple loop with nullglob to safely find files
     for file in $pattern; do
-        [[ -e "$file" ]] && FILES_TO_FORMAT+=("$file")
+        [[ -f "$file" ]] && FILES_TO_FORMAT+=("$file")
     done
 done
+
+# Disable nullglob to return to normal bash behavior
+shopt -u nullglob
 
 if [[ ${#FILES_TO_FORMAT[@]} -gt 0 ]]; then
     echo "Formatting ${#FILES_TO_FORMAT[@]} files..."
 
-    # Run Docker ONCE for all files (Much faster than looping)
-    # We pass the list of files to the container
+    # Run Docker ONCE for all files
     docker run --rm \
       -v "$(pwd):/work" \
       -w /work \
       -u "$(id -u):$(id -g)" \
       "$IMAGE" bash -c "latexindent -w -s ${FILES_TO_FORMAT[*]}"
 
-    # Remove backup files created by latexindent
-    rm -f *.bak0
+    # Remove backup and log files created by latexindent
+    rm -f *.bak0 indent.log
     echo -e "${GREEN}✓ Formatting complete.${NC}"
 else
     echo -e "${YELLOW}No matching files found to format.${NC}"
@@ -113,9 +115,22 @@ fi
 
 echo -e "\n${BLUE}=== Local LaTeX Build Script ===${NC}"
 
-for SRC in "${SOURCES[@]}"; do
-    # clear extension if user provided "file.tex" instead of "file"
-    SRC_NAME="${SRC%.*}"
+for INPUT_SRC in "${SOURCES[@]}"; do
+
+    # Handle extension: If user typed "main", treat as "main.tex"
+    if [[ "$INPUT_SRC" == *.tex ]]; then
+        SRC_FILE="$INPUT_SRC"
+        SRC_NAME="${INPUT_SRC%.*}"
+    else
+        SRC_FILE="${INPUT_SRC}.tex"
+        SRC_NAME="$INPUT_SRC"
+    fi
+
+    # Check existence before Docker
+    if [[ ! -f "$SRC_FILE" ]]; then
+        echo -e "${RED}Error: Source file '$SRC_FILE' not found. Skipping.${NC}"
+        continue
+    fi
 
     for ENG in "${ENGINES_TO_RUN[@]}"; do
 
@@ -123,7 +138,7 @@ for SRC in "${SOURCES[@]}"; do
         case "$ENG" in
             pdf)
                 LATEXMK_FLAG="-pdf"
-                SUFFIX="" # standard pdf usually doesn't need a suffix, or use "-pdf"
+                SUFFIX=""
                 ;;
             xe|xetex|pdfxe)
                 LATEXMK_FLAG="-pdfxe"
@@ -140,12 +155,13 @@ for SRC in "${SOURCES[@]}"; do
         esac
 
         JOBNAME="${SRC_NAME}${SUFFIX}"
-        OUTPUT_FILE="${JOBNAME}.pdf"
-        LOG_FILE="${JOBNAME}.log"
+        # Because we use -outdir, the file ends up in OUTPUT_DIR automatically
+        FINAL_PDF="${OUTPUT_DIR}/${JOBNAME}.pdf"
 
-        echo -e "\n>>> Building ${YELLOW}${SRC_NAME}.tex${NC} using ${YELLOW}${ENG}${NC}..."
+        echo -e "\n>>> Building ${YELLOW}${SRC_FILE}${NC} using ${YELLOW}${ENG}${NC}..."
 
-        CMD_OPTS="$LATEXMK_FLAG -bibtex -jobname=$JOBNAME"
+        # -outdir keeps root clean; -interaction=nonstopmode prevents hanging on errors
+        CMD_OPTS="$LATEXMK_FLAG -bibtex -outdir=$OUTPUT_DIR -jobname=$JOBNAME -interaction=nonstopmode"
 
         if $FORCE_CLEAN; then
             CMD_OPTS="$CMD_OPTS -gg"
@@ -157,16 +173,15 @@ for SRC in "${SOURCES[@]}"; do
           -w /work \
           -u "$(id -u):$(id -g)" \
           "$IMAGE" \
-            bash -c "latexmk ${CMD_OPTS} ${SRC_NAME}.tex"
+            bash -c "latexmk ${CMD_OPTS} \"${SRC_FILE}\""
 
-        # Check if build succeeded by checking for output PDF
-        if [[ -f "$OUTPUT_FILE" ]]; then
-            mv "$OUTPUT_FILE" "${OUTPUT_DIR}/"
-            [[ -f "$LOG_FILE" ]] && mv "$LOG_FILE" "${OUTPUT_DIR}/"
-            echo -e "${GREEN}✓ Built: ${OUTPUT_DIR}/${OUTPUT_FILE}${NC}"
+        EXIT_CODE=$?
+
+        # Check if build succeeded
+        if [[ $EXIT_CODE -eq 0 && -f "$FINAL_PDF" ]]; then
+            echo -e "${GREEN}✓ Built successfully: ${FINAL_PDF}${NC}"
         else
-            echo -e "${RED}✗ Build failed for ${SRC_NAME} ($ENG)${NC}"
-            # Don't exit immediately, try other engines/files
+            echo -e "${RED}✗ Build failed for ${SRC_FILE} ($ENG). Check logs in ${OUTPUT_DIR}/${JOBNAME}.log${NC}"
         fi
     done
 done
@@ -178,6 +193,6 @@ MINUTES=$(( DURATION / 60 ))
 SECONDS_REM=$(( DURATION % 60 ))
 
 echo -e "\n${BLUE}=======================================${NC}"
-echo -e "${GREEN}✅ All tasks completed.${NC}"
+echo -e "${GREEN}✅ Tasks completed.${NC}"
 echo -e "📂 Output directory: ${YELLOW}${OUTPUT_DIR}/${NC}"
 echo -e "⏱️  Total Duration:   ${YELLOW}${MINUTES}m ${SECONDS_REM}s${NC}"
