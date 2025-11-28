@@ -19,7 +19,7 @@ class Config(BaseModel):
     use_vllm: bool = Field(
         default=get_cuda_default_value(value_if_cuda=True, value_if_not_cuda=False)
     )
-    vllm_gpu_memory_utilization: float = Field(default=0.2)
+    vllm_gpu_memory_utilization: float = Field(default=0.6)
     vllm_split_model_across_gpus: bool = Field(default=False)
     vllm_mode: str = Field(default="colocate")
     report_to: list[str] = Field(default_factory=lambda: ["tensorboard"])
@@ -39,7 +39,7 @@ class Config(BaseModel):
     log_completions: bool = Field(default=True)
     beta: float = Field(default=0.0)
     enable_lora: bool = Field(
-        default=get_cuda_default_value(value_if_cuda=True, value_if_not_cuda=True)
+        default=get_cuda_default_value(value_if_cuda=False, value_if_not_cuda=True)
     )
     lora_target_modules: list[str] = Field(
         default_factory=lambda: ["gate_proj", "up_proj", "down_proj"]
