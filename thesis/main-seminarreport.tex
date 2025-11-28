@@ -1,7 +1,7 @@
 % !TeX program = xelatex
 % !TeX encoding = UTF-8
 % !TeX spellcheck = en_US
-% !BIB program = biber
+% !BIB program = bibtex
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%
@@ -47,11 +47,10 @@
 %% Load additional packages.
 %%
 
-\usepackage{csquotes}
-\usepackage[backend=biber,citestyle=numeric,sortcites=true,maxcitenames=2,style=ACM-Reference-Format]{biblatex}
-\setcounter{biburlnumpenalty}{100}
-\setcounter{biburllcpenalty}{100}
-\setcounter{biburlucpenalty}{100}
+% Replaced biblatex with natbib and specific style settings
+\usepackage{natbib}
+\setcitestyle{authoryear,round,citesep={;},aysep={,},yysep={;}}
+
 \usepackage{todonotes}
 \usepackage{import}
 \usepackage{amsfonts}
@@ -63,15 +62,6 @@
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%
-%% Bibliography data
-%%
-
-\addbibresource{references.bib}
-
-%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -87,7 +77,7 @@
 
 \submissiondepartment{Institute for Machine Learning}
 
-\abstract{This seminar report critically reviews the work "LaSeR: Reinforcement Learning with Last-Token Self-Rewarding" by Yang et al. (2025) [cite_start][cite: 1663, 1664]. The study addresses the inefficiency of current self-verification methods in Large Language Models (LLMs) by theoretically deriving that the optimal reasoning reward is equivalent to the model's last-token self-rewarding score. [cite_start]By augmenting standard Reinforcement Learning with Verifiable Rewards (RLVR) with a mean squared error loss on the last token's log-probability, LaSeR jointly optimizes reasoning and verification capabilities[cite: 1671, 1672]. [cite_start]The findings demonstrate that this approach achieves high reasoning accuracy and self-verification performance on mathematical benchmarks with negligible inference cost[cite: 1675]. Strengths of the paper include its elegant theoretical foundation and significant efficiency gains. [cite_start]However, limitations exist regarding its generalization to non-mathematical domains and reliance on specific prompt structures[cite: 2092]. This report is organized into four sections: a story summary, a paper summary, a critical quality analysis, and an overall conclusion.}
+\abstract{This seminar report critically reviews the work "LaSeR: Reinforcement Learning with Last-Token Self-Rewarding" by \citet{laser}. The study addresses the inefficiency of current self-verification methods in Large Language Models (LLMs) by theoretically deriving that the optimal reasoning reward is equivalent to the model's last-token self-rewarding score. By augmenting standard Reinforcement Learning with Verifiable Rewards (RLVR) with a mean squared error loss on the last token's log-probability, LaSeR jointly optimizes reasoning and verification capabilities \citep{laser}. The findings demonstrate that this approach achieves high reasoning accuracy and self-verification performance on mathematical benchmarks with negligible inference cost \citep{laser}. Strengths of the paper include its elegant theoretical foundation and significant efficiency gains. However, limitations exist regarding its generalization to non-mathematical domains and reliance on specific prompt structures \citep{laser}. This report is organized into four sections: a story summary, a paper summary, a critical quality analysis, and an overall conclusion.}
 
 \maketitle
 %%
@@ -115,34 +105,34 @@
 \label{sec:storysummary}
 
 \subsection*{1. What is the central question?}
-[cite_start]The paper addresses a critical efficiency bottleneck in Large Language Models (LLMs): How can we unify reasoning and self-verification capabilities within a single model to provide reliable signals at test time, without the high computational cost of external verifiers or sequential self-correction?[cite: 1668, 1670, 1686].
+The paper addresses a critical efficiency bottleneck in Large Language Models (LLMs): How can we unify reasoning and self-verification capabilities within a single model to provide reliable signals at test time, without the high computational cost of external verifiers or sequential self-correction? \citep{laser}.
 
 \subsection*{2. Why is this question important?}
-[cite_start]Reinforcement Learning with Verifiable Rewards (RLVR) relies on ground-truth answers which are unavailable during test-time inference[cite: 1682]. [cite_start]While existing solutions like external verifiers or self-correction prompts exist, they are inefficient: external verifiers require training separate models, and sequential self-verification doubles the inference cost[cite: 1684, 1685]. [cite_start]Solving this allows for efficient "test-time scaling" where models can self-select correct answers with minimal overhead[cite: 1732].
+Reinforcement Learning with Verifiable Rewards (RLVR) relies on ground-truth answers which are unavailable during test-time inference \citep{laser}. While existing solutions like external verifiers or self-correction prompts exist, they are inefficient: external verifiers require training separate models, and sequential self-verification doubles the inference cost \citep{laser}. Solving this allows for efficient "test-time scaling" where models can self-select correct answers with minimal overhead \citep{laser}.
 
 \subsection*{3. What evidence/data (variables) are needed to answer this question?}
-[cite_start]The authors need to measure reasoning accuracy (e.g., Pass@1), self-verification performance (F1 score), and computational cost (inference tokens)[cite: 1896, 1897, 1728]. [cite_start]Additionally, they must validate the theoretical correlation between the "last-token self-rewarding score" (a log-probability ratio) and the true verifier reward[cite: 1726].
+The authors need to measure reasoning accuracy (e.g., Pass@1), self-verification performance (F1 score), and computational cost (inference tokens) \citep{laser}. Additionally, they must validate the theoretical correlation between the "last-token self-rewarding score" (a log-probability ratio) and the true verifier reward \citep{laser}.
 
 \subsection*{4. What methods are used to get this evidence/data?}
-Yang et al. (2025) [cite_start]propose LaSeR, which adds a Mean Squared Error (MSE) loss to the standard RLVR objective, aligning the model's last-token log-probability for a specific token (e.g., \texttt{<vision\_start>}) with the true correctness of the solution[cite: 1672, 1720]. [cite_start]They compare this against baselines like GRPO and external Reward Models (PRMs/ORMs) using LLaMA-3.2 and Qwen-2.5 architectures[cite: 1881, 1916].
+\citet{laser} propose LaSeR, which adds a Mean Squared Error (MSE) loss to the standard RLVR objective, aligning the model's last-token log-probability for a specific token (e.g., \texttt{<vision\_start>}) with the true correctness of the solution \citep{laser}. They compare this against baselines like GRPO and external Reward Models (PRMs/ORMs) using LLaMA-3.2 and Qwen-2.5 architectures \citep{laser}.
 
 \subsection*{5. What analyses must be applied for the data to answer the central question?}
-[cite_start]To validate the method, the authors must demonstrate that the simplified theoretical assumption (that the partition function $Z(x,y) \approx 1$) holds empirically[cite: 1806]. [cite_start]They must also analyze the correlation between the learned self-rewarding scores and ground truth correctness across different mathematical benchmarks (MATH500, AIME, etc.)[cite: 1889].
+To validate the method, the authors must demonstrate that the simplified theoretical assumption (that the partition function $Z(x,y) \approx 1$) holds empirically \citep{laser}. They must also analyze the correlation between the learned self-rewarding scores and ground truth correctness across different mathematical benchmarks (MATH500, AIME, etc.) \citep{laser}.
 
 \subsection*{6. What evidence/data (values for the variables) were obtained?}
-[cite_start]LaSeR achieved reasoning accuracy comparable to or better than standard GRPO (e.g., 80.2\% vs 79.9\% on MATH500 for Qwen2.5-7B)[cite: 1885]. [cite_start]Crucially, it achieved high self-verification F1 scores (approx. 80\%) [cite: 1914][cite_start], matching the performance of a 72B external reward model while requiring only one additional token generation per solution[cite: 1917, 1728].
+LaSeR achieved reasoning accuracy comparable to or better than standard GRPO (e.g., 80.2\% vs 79.9\% on MATH500 for Qwen2.5-7B) \citep{laser}. Crucially, it achieved high self-verification F1 scores (approx. 80\%) \citep{laser}, matching the performance of a 72B external reward model while requiring only one additional token generation per solution \citep{laser}.
 
 \subsection*{7. What were the results of the analyses?}
-[cite_start]The analysis confirmed that the "last-token self-rewarding score" effectively captures solution correctness, allowing the model to act as its own verifier[cite: 1901]. [cite_start]The simplification of the reference model probability to a constant was empirically validated, further reducing computational overhead[cite: 1827]. [cite_start]However, generalization to general reasoning tasks (like MMLU-Pro) was less effective than in the math domain[cite: 2090].
+The analysis confirmed that the "last-token self-rewarding score" effectively captures solution correctness, allowing the model to act as its own verifier \citep{laser}. The simplification of the reference model probability to a constant was empirically validated, further reducing computational overhead \citep{laser}. However, generalization to general reasoning tasks (like MMLU-Pro) was less effective than in the math domain \citep{laser}.
 
 \subsection*{8. How did the analyses answer the central question?}
-[cite_start]The results proved that reasoning and verification can be jointly optimized without significant overhead[cite: 1672]. [cite_start]By encoding the verification signal into the last token's probability distribution, LaSeR eliminates the need for a second inference pass, successfully unifying the generator and verifier[cite: 1746].
+The results proved that reasoning and verification can be jointly optimized without significant overhead \citep{laser}. By encoding the verification signal into the last token's probability distribution, LaSeR eliminates the need for a second inference pass, successfully unifying the generator and verifier \citep{laser}.
 
 \subsection*{9. What does this answer tell us about the broader field?}
-[cite_start]This implies that LLMs possess latent self-evaluation capabilities that can be unlocked via specific RL objectives without complex architectural changes or massive external reward models[cite: 1675]. [cite_start]It suggests a path toward more efficient "System 2" reasoning where models inherently know when they are correct[cite: 1732].
+This implies that LLMs possess latent self-evaluation capabilities that can be unlocked via specific RL objectives without complex architectural changes or massive external reward models \citep{laser}. It suggests a path toward more efficient "System 2" reasoning where models inherently know when they are correct \citep{laser}.
 
 \subsection*{10. Did the paper answer the question satisfactorily? Why (not)?}
-[cite_start]Yes, the paper satisfactorily answered the question by providing a rigorous theoretical derivation and backing it with extensive empirical results on standard benchmarks[cite: 1671, 1885]. [cite_start]The method's efficiency (one extra token) directly addresses the central problem of computational cost in self-verification[cite: 1728].
+Yes, the paper satisfactorily answered the question by providing a rigorous theoretical derivation and backing it with extensive empirical results on standard benchmarks \citep{laser}. The method's efficiency (one extra token) directly addresses the central problem of computational cost in self-verification \citep{laser}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%
@@ -152,38 +142,38 @@ Yang et al. (2025) [cite_start]propose LaSeR, which adds a Mean Squared Error (M
 \section{Paper Summary}
 \label{sec:papersummary}
 
-This chapter summarizes the paper "LaSeR: Reinforcement Learning with Last-Token Self-Rewarding" by Yang et al. (2025) [cite_start]\cite{yang2025laser}[cite: 1663]. The summary is structured to reflect the logical flow of a machine learning research paper, covering the introduction, methodology, experimental setup, and results.
+This chapter summarizes the paper "LaSeR: Reinforcement Learning with Last-Token Self-Rewarding" by \citet{laser}. The summary is structured to reflect the logical flow of a machine learning research paper, covering the introduction, methodology, experimental setup, and results.
 
 \subsection{Introduction}
-[cite_start]Reinforcement Learning with Verifiable Rewards (RLVR) has become a cornerstone for improving the reasoning capabilities of Large Language Models (LLMs), as exemplified by systems like OpenAI o1 and DeepSeek-R1 \cite{guo2025deepseek}[cite: 1680]. By rewarding reasoning chains based on final answer correctness, RLVR encourages models to develop robust problem-solving strategies. [cite_start]However, a major limitation of standard RLVR is its reliance on ground-truth labels, which are unavailable during test-time inference[cite: 1682].
+Reinforcement Learning with Verifiable Rewards (RLVR) has become a cornerstone for improving the reasoning capabilities of Large Language Models (LLMs), as exemplified by systems like OpenAI o1 and DeepSeek-R1 \citep{r1}. By rewarding reasoning chains based on final answer correctness, RLVR encourages models to develop robust problem-solving strategies. However, a major limitation of standard RLVR is its reliance on ground-truth labels, which are unavailable during test-time inference \citep{laser}.
 
-[cite_start]To mitigate this, prior works have utilized external verifiers or joint optimization strategies where the model generates a solution and then a separate verification output \cite{lightman2023lets}[cite: 1683]. Yang et al. (2025) [cite_start]argue that these approaches are inefficient: external verifiers require training and hosting separate models, while sequential self-verification doubles the inference cost by requiring a second generation pass[cite: 1684, 1685]. [cite_start]The authors introduce LaSeR to unify reasoning and verification within a single model with minimal overhead[cite: 1686].
+To mitigate this, prior works have utilized external verifiers or joint optimization strategies where the model generates a solution and then a separate verification output \citep{verifystepbystep}. \citet{laser} argue that these approaches are inefficient: external verifiers require training and hosting separate models, while sequential self-verification doubles the inference cost by requiring a second generation pass \citep{laser}. The authors introduce LaSeR to unify reasoning and verification within a single model with minimal overhead \citep{laser}.
 
 \subsection{Methods}
-\textbf{Theoretical Framework.} The authors derive their method from the RL objective of verification. They theoretically demonstrate that the optimal verification reward $\hat{r}(x,y,z)$ has a closed-form solution. [cite_start]Specifically, the true reasoning reward $r_v(x,y)$ is equivalent to the log-probability ratio between the policy model $\pi_\theta$ and the reference model $\pi_{ref}$ for a specific token $z_c$ (e.g., "Yes" or a special token) at the end of the solution[cite: 1814]:
+\textbf{Theoretical Framework.} The authors derive their method from the RL objective of verification. They theoretically demonstrate that the optimal verification reward $\hat{r}(x,y,z)$ has a closed-form solution. Specifically, the true reasoning reward $r_v(x,y)$ is equivalent to the log-probability ratio between the policy model $\pi_\theta$ and the reference model $\pi_{ref}$ for a specific token $z_c$ (e.g., "Yes" or a special token) at the end of the solution \citep{laser}:
 \begin{equation}
-	r_v(x,y) = \beta_v \log \left[ \frac{\pi_\theta(z_c|x,y)}{\pi_{ref}(z_c|x,y)} \right]
+    r_v(x,y) = \beta_v \log \left[ \frac{\pi_\theta(z_c|x,y)}{\pi_{ref}(z_c|x,y)} \right]
 \end{equation}
-[cite_start]A key insight supporting this derivation is that the partition function $Z(x,y)$, usually a complex term in such derivations, approximates to 1 because the probability of the reference model predicting specific verification tokens is negligibly small[cite: 1808].
+A key insight supporting this derivation is that the partition function $Z(x,y)$, usually a complex term in such derivations, approximates to 1 because the probability of the reference model predicting specific verification tokens is negligibly small \citep{laser}.
 
-[cite_start]\textbf{LaSeR Algorithm.} Based on this insight, LaSeR augments the standard RLVR loss (optimized via algorithms like GRPO) with an additional Mean Squared Error (MSE) loss[cite: 1724]. [cite_start]This loss aligns the "last-token self-rewarding score" (the calculated log-probability difference) with the actual verifier reward derived from ground truth[cite: 1725].
-[cite_start]This forces the model to embed its confidence about the solution into the probability distribution of the final token[cite: 1687]. [cite_start]To handle class imbalance between correct and incorrect solutions during training, the authors apply a dynamic re-weighting strategy to the loss function[cite: 1833].
+\textbf{LaSeR Algorithm.} Based on this insight, LaSeR augments the standard RLVR loss (optimized via algorithms like GRPO) with an additional Mean Squared Error (MSE) loss \citep{laser}. This loss aligns the "last-token self-rewarding score" (the calculated log-probability difference) with the actual verifier reward derived from ground truth \citep{laser}.
+This forces the model to embed its confidence about the solution into the probability distribution of the final token \citep{laser}. To handle class imbalance between correct and incorrect solutions during training, the authors apply a dynamic re-weighting strategy to the loss function \citep{laser}.
 
-\textbf{Efficiency.} A crucial methodological contribution is the simplification of the reference model term. [cite_start]The authors observe that $\log \pi_{ref}(z_c|x,y)$ is effectively constant across inputs[cite: 1827]. [cite_start]By replacing it with a pre-calculated constant $c_{ref}$, LaSeR eliminates the need for a forward pass through the reference model during self-rewarding calculation, further enhancing efficiency[cite: 1828].
+\textbf{Efficiency.} A crucial methodological contribution is the simplification of the reference model term. The authors observe that $\log \pi_{ref}(z_c|x,y)$ is effectively constant across inputs \citep{laser}. By replacing it with a pre-calculated constant $c_{ref}$, LaSeR eliminates the need for a forward pass through the reference model during self-rewarding calculation, further enhancing efficiency \citep{laser}.
 
 \subsection{Experiments}
-[cite_start]\textbf{Setup.} The authors evaluated LaSeR using LLaMA-3.2 (3B) and Qwen-2.5 (7B) architectures[cite: 1881]. [cite_start]The models were trained on the DeepMath-103K dataset \cite{he2025deepmath}[cite: 1888]. [cite_start]Evaluation was conducted on five mathematical reasoning benchmarks: MATH500, AMC23, AIME24, AIME25, and OlympiadBench[cite: 1889].
+\textbf{Setup.} The authors evaluated LaSeR using LLaMA-3.2 (3B) and Qwen-2.5 (7B) architectures \citep{laser}. The models were trained on the DeepMath-103K dataset \citep{deepmath103k}. Evaluation was conducted on five mathematical reasoning benchmarks: MATH500, AMC23, AIME24, AIME25, and OlympiadBench \citep{laser}.
 
-[cite_start]\textbf{Baselines.} The method was compared against standard pre-trained base models, models trained with standard GRPO (without self-rewarding), and solutions using external Reward Models (ORMs and PRMs)[cite: 1881, 1916].
+\textbf{Baselines.} The method was compared against standard pre-trained base models, models trained with standard GRPO (without self-rewarding), and solutions using external Reward Models (ORMs and PRMs) \citep{laser}.
 
-[cite_start]\textbf{Metrics.} The primary metrics were Pass@1 accuracy for reasoning performance and F1 score for self-verification performance[cite: 1896, 1897].
+\textbf{Metrics.} The primary metrics were Pass@1 accuracy for reasoning performance and F1 score for self-verification performance \citep{laser}.
 
 \subsection{Results}
-\textbf{Reasoning Performance.} LaSeR consistently matched or outperformed the GRPO baseline across tested benchmarks. [cite_start]For instance, on the Qwen2.5-7B architecture, LaSeR achieved an average accuracy of 53.5\% compared to GRPO's 49.2\% across the five benchmarks[cite: 1885]. [cite_start]This suggests that jointly optimizing for self-verification does not degrade, and can even enhance, reasoning capabilities[cite: 1902].
+\textbf{Reasoning Performance.} LaSeR consistently matched or outperformed the GRPO baseline across tested benchmarks. For instance, on the Qwen2.5-7B architecture, LaSeR achieved an average accuracy of 53.5\% compared to GRPO's 49.2\% across the five benchmarks \citep{laser}. This suggests that jointly optimizing for self-verification does not degrade, and can even enhance, reasoning capabilities \citep{laser}.
 
-\textbf{Self-Verification Capability.} The most significant result was the model's ability to verify its own answers. [cite_start]LaSeR models achieved self-verification F1 scores around 80\%, comparable to large-scale external verifiers (e.g., Qwen2.5-Math-RM-72B)[cite: 1917]. [cite_start]This capability allows for effective "inference-time scaling" via weighted majority voting, where the model's self-score is used to rank solutions[cite: 1921].
+\textbf{Self-Verification Capability.} The most significant result was the model's ability to verify its own answers. LaSeR models achieved self-verification F1 scores around 80\%, comparable to large-scale external verifiers (e.g., Qwen2.5-Math-RM-72B) \citep{laser}. This capability allows for effective "inference-time scaling" via weighted majority voting, where the model's self-score is used to rank solutions \citep{laser}.
 
-\textbf{Efficiency Verification.} The experiments confirmed that LaSeR incurs negligible cost. [cite_start]By deriving the score from the next-token probability of the final token, it requires only one additional token inference, whereas previous self-correction methods required generating entire new sequences[cite: 1728].
+\textbf{Efficiency Verification.} The experiments confirmed that LaSeR incurs negligible cost. By deriving the score from the next-token probability of the final token, it requires only one additional token inference, whereas previous self-correction methods required generating entire new sequences \citep{laser}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%
@@ -193,30 +183,30 @@ This chapter summarizes the paper "LaSeR: Reinforcement Learning with Last-Token
 \section{Paper Analysis}
 \label{sec:paperanalysis}
 
-This section provides a critical analysis of the work by Yang et al. (2025) \cite{yang2025laser}, evaluating the quality of its content, methodology, and scientific presentation.
+This section provides a critical analysis of the work by \citet{laser}, evaluating the quality of its content, methodology, and scientific presentation.
 
 \subsection{Content Analysis}
-[cite_start]\textbf{Research Motivation and Novelty.} The research question is highly relevant to the current trajectory of Large Language Model development, specifically the move towards "System 2" reasoning and test-time compute scaling[cite: 1680]. While the concept of self-verification is not new, the authors' approach to solving the *efficiency* bottleneck is novel. [cite_start]The theoretical derivation linking the verifier reward to the last-token log-probability ratio is elegant and provides a strong mathematical justification for what might otherwise be an ad-hoc engineering trick[cite: 1671].
+\textbf{Research Motivation and Novelty.} The research question is highly relevant to the current trajectory of Large Language Model development, specifically the move towards "System 2" reasoning and test-time compute scaling \citep{r1}. While the concept of self-verification is not new, the authors' approach to solving the *efficiency* bottleneck is novel. The theoretical derivation linking the verifier reward to the last-token log-probability ratio is elegant and provides a strong mathematical justification for what might otherwise be an ad-hoc engineering trick \citep{laser}.
 
-\textbf{Methodological Soundness.} The methodology is robust. [cite_start]The authors carefully isolate variables by comparing LaSeR against a clean GRPO baseline using the same datasets and base models[cite: 1881]. [cite_start]The inclusion of a re-weighting strategy for class imbalance addresses a common pitfall in training verifiers, where negative samples often vastly outnumber positives[cite: 1833]. [cite_start]Furthermore, the empirical validation of the "constant reference probability" assumption (Figure 5 in the paper) is a strong piece of evidence that justifies their simplification for computational efficiency[cite: 1827].
+\textbf{Methodological Soundness.} The methodology is robust. The authors carefully isolate variables by comparing LaSeR against a clean GRPO baseline using the same datasets and base models \citep{laser}. The inclusion of a re-weighting strategy for class imbalance addresses a common pitfall in training verifiers, where negative samples often vastly outnumber positives \citep{laser}. Furthermore, the empirical validation of the "constant reference probability" assumption (Figure 5 in the paper) is a strong piece of evidence that justifies their simplification for computational efficiency \citep{laser}.
 
-\textbf{Interpretation of Results.} The interpretation that the last token's probability distribution can effectively compress the "confidence" of the entire reasoning chain is compelling. [cite_start]However, the authors note a limitation: this method performed significantly better on mathematical tasks than on general reasoning tasks like MMLU-Pro[cite: 2090]. [cite_start]The authors transparently attribute this to the inherently weaker reasoning ability of the base models in general domains and the noise in model-based verifiers used for training[cite: 2093]. This honesty strengthens the scientific integrity of the report.
+\textbf{Interpretation of Results.} The interpretation that the last token's probability distribution can effectively compress the "confidence" of the entire reasoning chain is compelling. However, the authors note a limitation: this method performed significantly better on mathematical tasks than on general reasoning tasks like MMLU-Pro \citep{laser}. The authors transparently attribute this to the inherently weaker reasoning ability of the base models in general domains and the noise in model-based verifiers used for training \citep{laser}. This honesty strengthens the scientific integrity of the report.
 
-\textbf{Critique of the "Last Token" Assumption.} While effective, the reliance on the last token assumes that the model aggregates all uncertainty into that final step. [cite_start]In scenarios with "reward hacking" or length bias—where incorrect solutions are often longer—the implicit reward can be unreliable[cite: 1782]. Although LaSeR mitigates length bias by using a specific token probability rather than the cumulative implicit reward, it remains to be seen if this holds for highly complex, multi-step reasoning tasks outside of mathematics where the "final token" might be less indicative of the overall process structure.
+\textbf{Critique of the "Last Token" Assumption.} While effective, the reliance on the last token assumes that the model aggregates all uncertainty into that final step. In scenarios with "reward hacking" or length bias—where incorrect solutions are often longer—the implicit reward can be unreliable \citep{laser}. Although LaSeR mitigates length bias by using a specific token probability rather than the cumulative implicit reward, it remains to be seen if this holds for highly complex, multi-step reasoning tasks outside of mathematics where the "final token" might be less indicative of the overall process structure.
 
 \subsection{Scientific Writing \& Layout Analysis}
-\textbf{Structure and Clarity.} The paper is well-structured, following a standard logical progression. [cite_start]The distinction between the theoretical derivation (Section 3) and the practical implementation (Algorithm 1) is clear[cite: 1850]. [cite_start]The authors effectively use figures to illustrate the workflow (Figure 1), making the simultaneous training and verification process easy to grasp[cite: 1718].
+\textbf{Structure and Clarity.} The paper is well-structured, following a standard logical progression. The distinction between the theoretical derivation (Section 3) and the practical implementation (Algorithm 1) is clear \citep{laser}. The authors effectively use figures to illustrate the workflow (Figure 1), making the simultaneous training and verification process easy to grasp \citep{laser}.
 
-[cite_start]\textbf{Reproducibility.} The paper provides detailed hyperparameters in the Appendix (e.g., learning rates, batch sizes, KL coefficients), which supports reproducibility[cite: 2291]. [cite_start]They also explicitly state the prompt templates used, which is crucial as RLVR performance is often sensitive to prompting strategies[cite: 2432].
+\textbf{Reproducibility.} The paper provides detailed hyperparameters in the Appendix (e.g., learning rates, batch sizes, KL coefficients), which supports reproducibility \citep{laser}. They also explicitly state the prompt templates used, which is crucial as RLVR performance is often sensitive to prompting strategies \citep{laser}.
 
-\textbf{Visualizations.} The visualizations are informative. [cite_start]Specifically, the comparison of self-rewarding score distributions (Figure 3) clearly highlights the difference in separability between Math tasks (high separation) and General Reasoning tasks (significant overlap), providing visual evidence for the method's current limitations[cite: 2088].
+\textbf{Visualizations.} The visualizations are informative. Specifically, the comparison of self-rewarding score distributions (Figure 3) clearly highlights the difference in separability between Math tasks (high separation) and General Reasoning tasks (significant overlap), providing visual evidence for the method's current limitations \citep{laser}.
 
 \section{Conclusion}
 \label{sec:conclusion}
 
-Yang et al. (2025) \cite{yang2025laser} present LaSeR, a compelling framework that addresses the efficiency gap in LLM self-verification. [cite_start]By mathematically equating the optimal verifier reward to the last-token self-rewarding score, the authors enable models to learn reasoning and verification jointly without the heavy computational tax of external verifiers or iterative self-correction[cite: 2112].
+\citet{laser} present LaSeR, a compelling framework that addresses the efficiency gap in LLM self-verification. By mathematically equating the optimal verifier reward to the last-token self-rewarding score, the authors enable models to learn reasoning and verification jointly without the heavy computational tax of external verifiers or iterative self-correction \citep{laser}.
 
-[cite_start]The study's findings reveal that this lightweight approach can match the performance of significantly larger external reward models on mathematical benchmarks[cite: 1917]. Strengths of the work include its rigorous theoretical grounding and the practical "zero-cost" nature of the resulting self-verification signal. [cite_start]However, limitations regarding generalization to non-mathematical domains and reliance on specific token probabilities suggest that further research is needed to make this a universal solution for LLM reasoning[cite: 2094]. Overall, LaSeR represents a significant step forward in making test-time scaling and self-correction computationally feasible for widespread deployment.
+The study's findings reveal that this lightweight approach can match the performance of significantly larger external reward models on mathematical benchmarks \citep{laser}. Strengths of the work include its rigorous theoretical grounding and the practical "zero-cost" nature of the resulting self-verification signal. However, limitations regarding generalization to non-mathematical domains and reliance on specific token probabilities suggest that further research is needed to make this a universal solution for LLM reasoning \citep{laser}. Overall, LaSeR represents a significant step forward in making test-time scaling and self-correction computationally feasible for widespread deployment.
 
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -226,7 +216,8 @@ Yang et al. (2025) \cite{yang2025laser} present LaSeR, a compelling framework th
 %% Print the bibliography
 %%
 \cleardoubleoddpage
-\printbibliography
+\bibliographystyle{plainnat}
+\bibliography{references}
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
