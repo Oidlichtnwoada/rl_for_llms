@@ -2,89 +2,182 @@
 
 set -e
 
-echo "=== Running latexindent.pl on source files ==="
+# Start the timer
+START_TIME=$SECONDS
 
-# List of file patterns to format
-FILES_TO_FORMAT=( *.tex *.bbx *.bst *.cbx *.dbx *.sty *.bib )
+# --- Configuration ---
+IMAGE="texlive/texlive:latest"
+OUTPUT_DIR="build"
+DEFAULT_SOURCE="main-seminarreport"
+ENGINES_TO_RUN=("pdf") # Default engine
+SOURCES=()
+FORCE_CLEAN=false
 
-for FILE in "${FILES_TO_FORMAT[@]}"; do
-  # Check file exists (avoid errors if pattern matches nothing)
-  if [[ -f "$FILE" ]]; then
-    echo "Formatting $FILE ..."
-    docker run --rm \
-      -v "$(pwd):/work" \
-      -w /work \
-      texlive/texlive:latest bash -c "latexindent -w \"${FILE}\""
-  fi
+# ANSI Colors for nicer output
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
+# --- Helper Functions ---
+
+print_usage() {
+    echo "Usage: $0 [options] [source_files...]"
+    echo ""
+    echo "Options:"
+    echo "  --clean           Force a full rebuild (latexmk -gg)"
+    echo "  --engine=TYPE     Select engine(s) to run (comma separated)."
+    echo "                    Available: pdf (default), xe, lua"
+    echo "                    Example: --engine=pdf,xe"
+    echo "  --help            Show this help message"
+    echo ""
+    echo "If no source files are provided, defaults to: $DEFAULT_SOURCE"
+}
+
+# --- Argument Parsing ---
+
+while [[ "$#" -gt 0 ]]; do
+    case $1 in
+        --clean)
+            FORCE_CLEAN=true
+            shift
+            ;;
+        --engine=*)
+            IFS=',' read -ra INPUT_ENGINES <<< "${1#*=}"
+            ENGINES_TO_RUN=() # Clear default
+            for eng in "${INPUT_ENGINES[@]}"; do
+                ENGINES_TO_RUN+=("$eng")
+            done
+            shift
+            ;;
+        --help)
+            print_usage
+            exit 0
+            ;;
+        -*)
+            echo -e "${RED}Unknown option: $1${NC}"
+            print_usage
+            exit 1
+            ;;
+        *)
+            SOURCES+=("$1")
+            shift
+            ;;
+    esac
 done
 
-# Remove backup files
-rm *.bak0
-
-# Optional --clean flag to force full rebuild
-FORCE_CLEAN=false
-if [[ "$1" == "--clean" ]]; then
-  FORCE_CLEAN=true
-  echo "⚠️  Clean rebuild requested (-gg enabled)"
+# Set default source if none provided
+if [[ ${#SOURCES[@]} -eq 0 ]]; then
+    SOURCES=("$DEFAULT_SOURCE")
 fi
 
-# Sources and engines
-SOURCES=("main-thesis" "main-report" "main-seminarreport")
-ENGINES=("pdf" "pdfxe" "pdflua")
+# Create build directory
+mkdir -p "$OUTPUT_DIR"
 
-OUTPUT_DIR="build"
+# --- Step 1: Formatting ---
 
-echo "=== Local LaTeX Build Script ==="
+echo -e "${BLUE}=== Running latexindent.pl ===${NC}"
 
-map_engine_to_command() {
-  case "$1" in
-    pdf) echo "pdflatex" ;;
-    pdfxe) echo "xelatex" ;;
-    pdflua) echo "lualatex" ;;
-  esac
-}
+# Find files matching patterns
+FILES_TO_FORMAT=()
+PATTERNS=("*.tex" "*.bbx" "*.bst" "*.cbx" "*.dbx" "*.sty" "*.bib")
 
-map_engine_to_suffix() {
-  case "$1" in
-    pdflatex) echo "-pdflatex" ;;
-    xelatex) echo "-xelatex" ;;
-    lualatex) echo "-lualatex" ;;
-  esac
-}
+for pattern in "${PATTERNS[@]}"; do
+    # Expand the pattern; if no files match, it remains literally "*.tex"
+    # we use compgen or simple loop with nullglob to safely find files
+    for file in $pattern; do
+        [[ -e "$file" ]] && FILES_TO_FORMAT+=("$file")
+    done
+done
 
-for SRC in "${SOURCES[@]}"; do
-  for ENG in "${ENGINES[@]}"; do
+if [[ ${#FILES_TO_FORMAT[@]} -gt 0 ]]; then
+    echo "Formatting ${#FILES_TO_FORMAT[@]} files..."
 
-    ENGINE_CMD=$(map_engine_to_command "$ENG")
-    SUFFIX=$(map_engine_to_suffix "$ENGINE_CMD")
-
-    OUTPUT="${SRC}${SUFFIX}.pdf"
-    LOG="${SRC}${SUFFIX}.log"
-
-    echo ""
-    echo ">>> Building $SRC.tex using $ENGINE_CMD …"
-
-    LATEXMK_OPTS="-${ENG} -bibtex"
-
-    # Add -gg only on clean builds
-    if $FORCE_CLEAN; then
-      LATEXMK_OPTS="$LATEXMK_OPTS -gg"
-    fi
-
+    # Run Docker ONCE for all files (Much faster than looping)
+    # We pass the list of files to the container
     docker run --rm \
       -v "$(pwd):/work" \
       -w /work \
-      texlive/texlive:latest \
-        bash -c "latexmk ${LATEXMK_OPTS} -jobname=%A${SUFFIX} ${SRC}.tex"
+      -u "$(id -u):$(id -g)" \
+      "$IMAGE" bash -c "latexindent -w -s ${FILES_TO_FORMAT[*]}"
 
-    mv "${SRC}${SUFFIX}.pdf" "${OUTPUT_DIR}/"
-    if [[ -f "${SRC}${SUFFIX}.log" ]]; then
-      mv "${SRC}${SUFFIX}.log" "${OUTPUT_DIR}/"
-    fi
+    # Remove backup files created by latexindent
+    rm -f *.bak0
+    echo -e "${GREEN}✓ Formatting complete.${NC}"
+else
+    echo -e "${YELLOW}No matching files found to format.${NC}"
+fi
 
-    echo "✓ Built: ${OUTPUT_DIR}/${OUTPUT}"
-  done
+# --- Step 2: Building ---
+
+echo -e "\n${BLUE}=== Local LaTeX Build Script ===${NC}"
+
+for SRC in "${SOURCES[@]}"; do
+    # clear extension if user provided "file.tex" instead of "file"
+    SRC_NAME="${SRC%.*}"
+
+    for ENG in "${ENGINES_TO_RUN[@]}"; do
+
+        # Map user input to latexmk flags and suffixes
+        case "$ENG" in
+            pdf)
+                LATEXMK_FLAG="-pdf"
+                SUFFIX="" # standard pdf usually doesn't need a suffix, or use "-pdf"
+                ;;
+            xe|xetex|pdfxe)
+                LATEXMK_FLAG="-pdfxe"
+                SUFFIX="-xelatex"
+                ;;
+            lua|lualatex|pdflua)
+                LATEXMK_FLAG="-pdflua"
+                SUFFIX="-lualatex"
+                ;;
+            *)
+                echo -e "${RED}Error: Unknown engine '$ENG'. Skipping.${NC}"
+                continue
+                ;;
+        esac
+
+        JOBNAME="${SRC_NAME}${SUFFIX}"
+        OUTPUT_FILE="${JOBNAME}.pdf"
+        LOG_FILE="${JOBNAME}.log"
+
+        echo -e "\n>>> Building ${YELLOW}${SRC_NAME}.tex${NC} using ${YELLOW}${ENG}${NC}..."
+
+        CMD_OPTS="$LATEXMK_FLAG -bibtex -jobname=$JOBNAME"
+
+        if $FORCE_CLEAN; then
+            CMD_OPTS="$CMD_OPTS -gg"
+        fi
+
+        # Run compilation
+        docker run --rm \
+          -v "$(pwd):/work" \
+          -w /work \
+          -u "$(id -u):$(id -g)" \
+          "$IMAGE" \
+            bash -c "latexmk ${CMD_OPTS} ${SRC_NAME}.tex"
+
+        # Check if build succeeded by checking for output PDF
+        if [[ -f "$OUTPUT_FILE" ]]; then
+            mv "$OUTPUT_FILE" "${OUTPUT_DIR}/"
+            [[ -f "$LOG_FILE" ]] && mv "$LOG_FILE" "${OUTPUT_DIR}/"
+            echo -e "${GREEN}✓ Built: ${OUTPUT_DIR}/${OUTPUT_FILE}${NC}"
+        else
+            echo -e "${RED}✗ Build failed for ${SRC_NAME} ($ENG)${NC}"
+            # Don't exit immediately, try other engines/files
+        fi
+    done
 done
 
-echo ""
-echo "✅ All builds completed. Output is in the '${OUTPUT_DIR}/' directory."
+# --- Step 3: Summary ---
+
+DURATION=$(( SECONDS - START_TIME ))
+MINUTES=$(( DURATION / 60 ))
+SECONDS_REM=$(( DURATION % 60 ))
+
+echo -e "\n${BLUE}=======================================${NC}"
+echo -e "${GREEN}✅ All tasks completed.${NC}"
+echo -e "📂 Output directory: ${YELLOW}${OUTPUT_DIR}/${NC}"
+echo -e "⏱️  Total Duration:   ${YELLOW}${MINUTES}m ${SECONDS_REM}s${NC}"

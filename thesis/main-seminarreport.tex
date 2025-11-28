@@ -2,365 +2,232 @@
 % !TeX encoding = UTF-8
 % !TeX spellcheck = en_US
 % !BIB program = biber
-%% 
-%% The above lines help editors like TeXstudio to automatically choose the right tools
-%% to compile your LaTeX source file. If your tool does not support these magic comments,
-%% you will need to make appropriate manual choices.
-%% 
-%% You can safely use "pdflatex" instead of "xelatex" if you prefer the pdfLaTeX toolchain.
-%% However, pdfLaTeX will not be able to deliver the professional font experience that you
-%% will get with XeLaTeX. You can also safely use "lualatex" instead of "xelatex" while
-%% preserving the professional font experience if you prefer the LuaLaTeX toolchain.
-%% 
-%% _Important_: These magic comments should be on the first lines of your source file.
-%% 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% 
-%%            JJJJ   K                         K   UUUU         UUUU  
-%%            JJJJ   KKKK                   KKKK   UUUU         UUUU  
-%%            JJJJ   KKKKKK               KKKKKK   UUUU         UUUU  
-%%            JJJJ      KKKKKK         KKKKKK      UUUU         UUUU  
-%%            JJJJ         KKKKKK   KKKKKK         UUUU         UUUU  
-%%            JJJJ            KKKKKKKKK            UUUU         UUUU  
-%%    JJ     JJJJJ               KKK               UUUUU       UUUUU  
-%%  JJJJJJJJJJJJJ    KKKKKKKKKKKKKKKKKKKKKKKKKKK    UUUUUUUUUUUUUUU   
-%%    JJJJJJJJJ      KKKKKKKKKKKKKKKKKKKKKKKKKKK      UUUUUUUUUUU     
-%% 
+%%
+%%            JJJJ   K                         K   UUUU         UUUU
+%%            JJJJ   KKKK                   KKKK   UUUU         UUUU
+%%            JJJJ   KKKKKK               KKKKKK   UUUU         UUUU
+%%            JJJJ      KKKKKK         KKKKKK      UUUU         UUUU
+%%            JJJJ         KKKKKK   KKKKKK         UUUU         UUUU
+%%            JJJJ            KKKKKKKKK            UUUU         UUUU
+%%    JJ     JJJJJ               KKK               UUUUU       UUUUU
+%%  JJJJJJJJJJJJJ    KKKKKKKKKKKKKKKKKKKKKKKKKKK    UUUUUUUUUUUUUUU
+%%    JJJJJJJJJ      KKKKKKKKKKKKKKKKKKKKKKKKKKK      UUUUUUUUUUU
+%%
 %% This is an example file for using the JKU LaTeX technical report template
 %% for your seminar report.
-%% 
+%%
 %% Template created by Michael Roland (2023)
-%% 
+%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% 
+%%
 %% Document class: This is a koma-script article.
-%% 
+%%
 \documentclass[a4paper,oneside,10pt,ngerman,english]{scrartcl}
-%% 
-%% The comma-separated list in square brackets are class options.
-%% Useful options that you might want to use:
-%% 
-%% Paper size:
-%%  * a4paper ... A4 paper size
-%% 
-%% Optimize for single-sided or double-sided printing:
-%%  * oneside ... single-sided
-%%  * twoside ... double-sided
-%% 
-%% Base font size:
-%%  * 10pt ... 10-pt font is used for normal text
-%%  * 11pt ... 11-pt font is used for normal text
-%% 
-%% Define document languages (the last specified language becomes the document default
-%% language):
-%%  * ngerman ... German
-%%  * english ... English
-%%  * ...
-%% 
-%% Alternate document classes: The JKU report template supports the koma-script classes
-%% `scrartcl', `scrreprt' and `scrbook'. The article class `scrartcl' is well-suited
-%% for a typical seminar report. However, `scrbook' or `scrreprt' may be better
-%% suited for longer reports since they permit structuring your work in chapters.
-%%  
-%% _Important_: The document class should be the first line of LaTeX code in your main
-%% source file. Do not place anything but comments / magic comments above that line (unless
-%% you really know what you are doing).
-%% 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% 
-%% Treat input files as UTF-8 encoded. Make sure to always load this when you use pdfLaTeX
-%% so that pdfLaTeX knows how to read and interpret characters in this source file.
-%% 
+%%
+%% Treat input files as UTF-8 encoded.
+%%
 \usepackage[utf8]{inputenc}
-%% 
+%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% 
+%%
 %% Use the JKU LaTeX technical report template for this document.
-%% 
+%%
 \usepackage[seminarreport,fancyfonts]{jkureport}
-%% 
-%% The comma-separated list in square brackets are theme options. Useful options that you
-%% might want to use:
-%% 
-%% Document type:
-%%  * phdthesis     ... PhD thesis.
-%%  * mathesis      ... Master's thesis.
-%%  * diplomathesis ... Diploma thesis.
-%%  * bathesis      ... Bachelor's thesis.
-%%  * seminarreport ... Seminar report.
-%%  * techreport    ... Technical report.
-%% 
-%% Color scheme selection options:
-%%  * JKU  ... Use JKU (gray) color scheme (this is the default if no scheme is selected).
-%%  * BUS  ... Use Business School color scheme.
-%%  * LIT  ... Use Linz Institute of Technology color scheme.
-%%  * MED  ... Use MED faculty color scheme.
-%%  * RE   ... Use RE faculty color scheme.
-%%  * SOE  ... Use School of Education color scheme.
-%%  * SOWI ... Use SOWI faculty color scheme.
-%%  * TNF  ... Use TNF faculty color scheme.
-%% 
-%% Space-efficient monospace font options (requires XeTeX/LuaTeX):
-%%  * compactmono   ... Use condensed fixed-width font everywhere.
-%%  * nocompactverb ... Do not use condensed fixed-width font for verbatim and listings.
-%% 
-%% Style-breaking options:
-%%  * noimprint      ... Do not insert imprint on title pages.
-%%  * nojkulogo      ... Do not insert JKU & K logos on title pages.
-%%  * capstitle      ... Set document title in capital letters.
-%%  * nofancyfonts   ... Do not use custom TTF fonts with XeTeX/LuaTeX / supress pdfLaTeX warning.
-%%  * equalmargins   ... Decrease the outer page margin to have both page margins of equal size
-%%                       (the additional outer margin is intentional and to be used for
-%%                       anotations; equalmargins also causes the text width to be
-%%                       significantly larger than optimal for reading).
-%% 
-%% Experimental options:
-%%  * mathastext ... Use standard document fonts (enhanced with symbols from Fira Math font
-%%                   when using XeTeX/LuaTeX) in math mode.
-%% 
-%% Advanced options:
-%%  * noautopdfinfo     ... Do not automatically try to add pdfinfo with hyperref from document
-%%                          metadata fields.
-%%  * logopath={<path>} ... Set the path where the theme can find its own logo resources. This
-%%                          should typically be a relative path and the default is `./logos'.
-%%  * fontpath={<path>} ... Set the path where the theme can find its own font resources. This
-%%                          should typically be a relative path and the default is `./fonts'.
-%% 
-%% Hint: Boolean options can be used in the forms `option' or `option=true' the enable the
-%% option and `nooption' or `option=false' to disable the option.
-%% 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% 
-%% This is the place where you can load additional packages. If you want to load
-%% a package `biblatex', you would use the command `\usepackage{biblatex}'.
-%% 
+%%
+%% Load additional packages.
+%%
 
 \usepackage{csquotes}
 \usepackage[backend=biber,citestyle=numeric,sortcites=true,maxcitenames=2,style=ACM-Reference-Format]{biblatex}
-\setcounter{biburlnumpenalty}{100} %% reducing biburl* penalties typically improves URL placement in bibliography
+\setcounter{biburlnumpenalty}{100}
 \setcounter{biburllcpenalty}{100}
 \setcounter{biburlucpenalty}{100}
 \usepackage{todonotes}
 \usepackage{import}
 \usepackage{amsfonts}
+\usepackage{amsmath}
 \usepackage{subfigure}
-%\usepackage{acronym}
+\usepackage{booktabs}
+\usepackage{graphicx}
 
-%% 
+%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% 
-%% Bibliography data files.
-%% 
+%%
+%% Bibliography data
+%%
 
 \addbibresource{references.bib}
 
-%% 
+%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% 
+%%
 %% Report information and title page
-%% 
+%%
 
-%% Command \title{title}: sets the title of your report
-\title{Space for your report title}
+\title{Seminar in AI - Efficient Self-Verification: Understanding LaSeR for LLM Reasoning}
 
-%% Command \titleshort{short title}: sets an abbreviated version of the report title for page heads
-%\titleshort{Optional space for your abbreviated title}
-
-%% Command \subtitle{subtitle}: sets the subtitle for seminar/technical reports (not used for theses)
 \subtitle{Seminar Report}
 
-%% Command \author{name}: sets the author's name; use \prefix{} and \suffix{} to add academic titles
-%%   and suffixes, use \matno{} to add the immatriculation number
-\author{\prefix{DI} Firstname~Lastname \suffix{BSc}\matno{12345678}}
+\author{\prefix{} Hannes Brantner \suffix{}\matno{K1614466}}
 
-%% Command \supervisor[number,gender]{name}: sets the name of the supervisor (where number optionally
-%%   defines the rank of the supervisor (1-3) and gender specifies if the supervisor is male or female
-%%   to adapt gener-specific terms in German)
-%\supervisor[1]{\prefix{Prof. Dr.} Firstname~Lastname}
-%\supervisor[2]{\prefix{Prof. Dr.} Firstname~Lastname}
+\submissiondepartment{Institute for Machine Learning}
 
-%% Command \submissiondepartment{institute or department}: set the course or department that the thesis
-%%   is submitted at
-\submissiondepartment{Special Topics: Smart~Cards \&~NFC (353.039)}
+\abstract{This seminar report critically reviews the work "LaSeR: Reinforcement Learning with Last-Token Self-Rewarding" by Yang et al. (2025) [cite_start][cite: 1663, 1664]. The study addresses the inefficiency of current self-verification methods in Large Language Models (LLMs) by theoretically deriving that the optimal reasoning reward is equivalent to the model's last-token self-rewarding score. [cite_start]By augmenting standard Reinforcement Learning with Verifiable Rewards (RLVR) with a mean squared error loss on the last token's log-probability, LaSeR jointly optimizes reasoning and verification capabilities[cite: 1671, 1672]. [cite_start]The findings demonstrate that this approach achieves high reasoning accuracy and self-verification performance on mathematical benchmarks with negligible inference cost[cite: 1675]. Strengths of the paper include its elegant theoretical foundation and significant efficiency gains. [cite_start]However, limitations exist regarding its generalization to non-mathematical domains and reliance on specific prompt structures[cite: 2092]. This report is organized into four sections: a story summary, a paper summary, a critical quality analysis, and an overall conclusion.}
 
-%% Command \date{YYYY-MM-DD}: set the day of submission (defaults to today)
-%\date{2020-04-09}
-
-%% Command \abstract{text}: set the document abstract on the title page
-\abstract{Space for your (short) abstract.}
-
-%% Command \keywords{text}: set the document keywords
-%\keywords{Space for your comma-separated keywords}
-
-
-%% Finally, print the title page using the above information:
 \maketitle
-%% 
+%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% 
+%%
 %% Add a table of contents
-%% 
+%%
 
-%% Make sure to start the table of contents on a new odd page (odd is only relevant in twoside layout)
 \cleardoubleoddpage
-%% Print the table of contents
 \tableofcontents
 
-%% Make sure to start the list of acronyms on a new odd page (odd is only relevant in twoside layout)
-%\cleardoubleoddpage
-%% Include list of acronyms (optional and often not necessary)
-%\import{./}{acronyms}
-
-%% 
+%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% 
-%% Abstract: Instead of an abstract on the title page (see \abstract{...}), you
-%% sometimes want to add an abstract as its own unnumbered section.
-%% 
+%%
+%% Story Summary
+%%
 
-%% (Optionally) let the abstract start on a new odd page (odd is only relevant in twoside layout)
 \cleardoubleoddpage
 
-\addsec{Abstract}
+\section{Story summary}
+\label{sec:storysummary}
 
-Space for your abstract.
+\subsection*{1. What is the central question?}
+[cite_start]The paper addresses a critical efficiency bottleneck in Large Language Models (LLMs): How can we unify reasoning and self-verification capabilities within a single model to provide reliable signals at test time, without the high computational cost of external verifiers or sequential self-correction?[cite: 1668, 1670, 1686].
 
+\subsection*{2. Why is this question important?}
+[cite_start]Reinforcement Learning with Verifiable Rewards (RLVR) relies on ground-truth answers which are unavailable during test-time inference[cite: 1682]. [cite_start]While existing solutions like external verifiers or self-correction prompts exist, they are inefficient: external verifiers require training separate models, and sequential self-verification doubles the inference cost[cite: 1684, 1685]. [cite_start]Solving this allows for efficient "test-time scaling" where models can self-select correct answers with minimal overhead[cite: 1732].
 
-%% 
+\subsection*{3. What evidence/data (variables) are needed to answer this question?}
+[cite_start]The authors need to measure reasoning accuracy (e.g., Pass@1), self-verification performance (F1 score), and computational cost (inference tokens)[cite: 1896, 1897, 1728]. [cite_start]Additionally, they must validate the theoretical correlation between the "last-token self-rewarding score" (a log-probability ratio) and the true verifier reward[cite: 1726].
+
+\subsection*{4. What methods are used to get this evidence/data?}
+Yang et al. (2025) [cite_start]propose LaSeR, which adds a Mean Squared Error (MSE) loss to the standard RLVR objective, aligning the model's last-token log-probability for a specific token (e.g., \texttt{<vision\_start>}) with the true correctness of the solution[cite: 1672, 1720]. [cite_start]They compare this against baselines like GRPO and external Reward Models (PRMs/ORMs) using LLaMA-3.2 and Qwen-2.5 architectures[cite: 1881, 1916].
+
+\subsection*{5. What analyses must be applied for the data to answer the central question?}
+[cite_start]To validate the method, the authors must demonstrate that the simplified theoretical assumption (that the partition function $Z(x,y) \approx 1$) holds empirically[cite: 1806]. [cite_start]They must also analyze the correlation between the learned self-rewarding scores and ground truth correctness across different mathematical benchmarks (MATH500, AIME, etc.)[cite: 1889].
+
+\subsection*{6. What evidence/data (values for the variables) were obtained?}
+[cite_start]LaSeR achieved reasoning accuracy comparable to or better than standard GRPO (e.g., 80.2\% vs 79.9\% on MATH500 for Qwen2.5-7B)[cite: 1885]. [cite_start]Crucially, it achieved high self-verification F1 scores (approx. 80\%) [cite: 1914][cite_start], matching the performance of a 72B external reward model while requiring only one additional token generation per solution[cite: 1917, 1728].
+
+\subsection*{7. What were the results of the analyses?}
+[cite_start]The analysis confirmed that the "last-token self-rewarding score" effectively captures solution correctness, allowing the model to act as its own verifier[cite: 1901]. [cite_start]The simplification of the reference model probability to a constant was empirically validated, further reducing computational overhead[cite: 1827]. [cite_start]However, generalization to general reasoning tasks (like MMLU-Pro) was less effective than in the math domain[cite: 2090].
+
+\subsection*{8. How did the analyses answer the central question?}
+[cite_start]The results proved that reasoning and verification can be jointly optimized without significant overhead[cite: 1672]. [cite_start]By encoding the verification signal into the last token's probability distribution, LaSeR eliminates the need for a second inference pass, successfully unifying the generator and verifier[cite: 1746].
+
+\subsection*{9. What does this answer tell us about the broader field?}
+[cite_start]This implies that LLMs possess latent self-evaluation capabilities that can be unlocked via specific RL objectives without complex architectural changes or massive external reward models[cite: 1675]. [cite_start]It suggests a path toward more efficient "System 2" reasoning where models inherently know when they are correct[cite: 1732].
+
+\subsection*{10. Did the paper answer the question satisfactorily? Why (not)?}
+[cite_start]Yes, the paper satisfactorily answered the question by providing a rigorous theoretical derivation and backing it with extensive empirical results on standard benchmarks[cite: 1671, 1885]. [cite_start]The method's efficiency (one extra token) directly addresses the central problem of computational cost in self-verification[cite: 1728].
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% Paper Summary
+%%
+
+\section{Paper Summary}
+\label{sec:papersummary}
+
+This chapter summarizes the paper "LaSeR: Reinforcement Learning with Last-Token Self-Rewarding" by Yang et al. (2025) [cite_start]\cite{yang2025laser}[cite: 1663]. The summary is structured to reflect the logical flow of a machine learning research paper, covering the introduction, methodology, experimental setup, and results.
+
+\subsection{Introduction}
+[cite_start]Reinforcement Learning with Verifiable Rewards (RLVR) has become a cornerstone for improving the reasoning capabilities of Large Language Models (LLMs), as exemplified by systems like OpenAI o1 and DeepSeek-R1 \cite{guo2025deepseek}[cite: 1680]. By rewarding reasoning chains based on final answer correctness, RLVR encourages models to develop robust problem-solving strategies. [cite_start]However, a major limitation of standard RLVR is its reliance on ground-truth labels, which are unavailable during test-time inference[cite: 1682].
+
+[cite_start]To mitigate this, prior works have utilized external verifiers or joint optimization strategies where the model generates a solution and then a separate verification output \cite{lightman2023lets}[cite: 1683]. Yang et al. (2025) [cite_start]argue that these approaches are inefficient: external verifiers require training and hosting separate models, while sequential self-verification doubles the inference cost by requiring a second generation pass[cite: 1684, 1685]. [cite_start]The authors introduce LaSeR to unify reasoning and verification within a single model with minimal overhead[cite: 1686].
+
+\subsection{Methods}
+\textbf{Theoretical Framework.} The authors derive their method from the RL objective of verification. They theoretically demonstrate that the optimal verification reward $\hat{r}(x,y,z)$ has a closed-form solution. [cite_start]Specifically, the true reasoning reward $r_v(x,y)$ is equivalent to the log-probability ratio between the policy model $\pi_\theta$ and the reference model $\pi_{ref}$ for a specific token $z_c$ (e.g., "Yes" or a special token) at the end of the solution[cite: 1814]:
+\begin{equation}
+	r_v(x,y) = \beta_v \log \left[ \frac{\pi_\theta(z_c|x,y)}{\pi_{ref}(z_c|x,y)} \right]
+\end{equation}
+[cite_start]A key insight supporting this derivation is that the partition function $Z(x,y)$, usually a complex term in such derivations, approximates to 1 because the probability of the reference model predicting specific verification tokens is negligibly small[cite: 1808].
+
+[cite_start]\textbf{LaSeR Algorithm.} Based on this insight, LaSeR augments the standard RLVR loss (optimized via algorithms like GRPO) with an additional Mean Squared Error (MSE) loss[cite: 1724]. [cite_start]This loss aligns the "last-token self-rewarding score" (the calculated log-probability difference) with the actual verifier reward derived from ground truth[cite: 1725].
+[cite_start]This forces the model to embed its confidence about the solution into the probability distribution of the final token[cite: 1687]. [cite_start]To handle class imbalance between correct and incorrect solutions during training, the authors apply a dynamic re-weighting strategy to the loss function[cite: 1833].
+
+\textbf{Efficiency.} A crucial methodological contribution is the simplification of the reference model term. [cite_start]The authors observe that $\log \pi_{ref}(z_c|x,y)$ is effectively constant across inputs[cite: 1827]. [cite_start]By replacing it with a pre-calculated constant $c_{ref}$, LaSeR eliminates the need for a forward pass through the reference model during self-rewarding calculation, further enhancing efficiency[cite: 1828].
+
+\subsection{Experiments}
+[cite_start]\textbf{Setup.} The authors evaluated LaSeR using LLaMA-3.2 (3B) and Qwen-2.5 (7B) architectures[cite: 1881]. [cite_start]The models were trained on the DeepMath-103K dataset \cite{he2025deepmath}[cite: 1888]. [cite_start]Evaluation was conducted on five mathematical reasoning benchmarks: MATH500, AMC23, AIME24, AIME25, and OlympiadBench[cite: 1889].
+
+[cite_start]\textbf{Baselines.} The method was compared against standard pre-trained base models, models trained with standard GRPO (without self-rewarding), and solutions using external Reward Models (ORMs and PRMs)[cite: 1881, 1916].
+
+[cite_start]\textbf{Metrics.} The primary metrics were Pass@1 accuracy for reasoning performance and F1 score for self-verification performance[cite: 1896, 1897].
+
+\subsection{Results}
+\textbf{Reasoning Performance.} LaSeR consistently matched or outperformed the GRPO baseline across tested benchmarks. [cite_start]For instance, on the Qwen2.5-7B architecture, LaSeR achieved an average accuracy of 53.5\% compared to GRPO's 49.2\% across the five benchmarks[cite: 1885]. [cite_start]This suggests that jointly optimizing for self-verification does not degrade, and can even enhance, reasoning capabilities[cite: 1902].
+
+\textbf{Self-Verification Capability.} The most significant result was the model's ability to verify its own answers. [cite_start]LaSeR models achieved self-verification F1 scores around 80\%, comparable to large-scale external verifiers (e.g., Qwen2.5-Math-RM-72B)[cite: 1917]. [cite_start]This capability allows for effective "inference-time scaling" via weighted majority voting, where the model's self-score is used to rank solutions[cite: 1921].
+
+\textbf{Efficiency Verification.} The experiments confirmed that LaSeR incurs negligible cost. [cite_start]By deriving the score from the next-token probability of the final token, it requires only one additional token inference, whereas previous self-correction methods required generating entire new sequences[cite: 1728].
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% 
-%% Add your report sections ...
-%% 
+%%
+%% Paper Analysis
+%%
 
-%% (Optionally) let the main sections start on a new odd page (odd is only relevant in twoside layout)
-\cleardoubleoddpage
+\section{Paper Analysis}
+\label{sec:paperanalysis}
 
-\section{Introduction}
-\label{sec:introduction}
+This section provides a critical analysis of the work by Yang et al. (2025) \cite{yang2025laser}, evaluating the quality of its content, methodology, and scientific presentation.
 
-Space for your introduction.
+\subsection{Content Analysis}
+[cite_start]\textbf{Research Motivation and Novelty.} The research question is highly relevant to the current trajectory of Large Language Model development, specifically the move towards "System 2" reasoning and test-time compute scaling[cite: 1680]. While the concept of self-verification is not new, the authors' approach to solving the *efficiency* bottleneck is novel. [cite_start]The theoretical derivation linking the verifier reward to the last-token log-probability ratio is elegant and provides a strong mathematical justification for what might otherwise be an ad-hoc engineering trick[cite: 1671].
 
+\textbf{Methodological Soundness.} The methodology is robust. [cite_start]The authors carefully isolate variables by comparing LaSeR against a clean GRPO baseline using the same datasets and base models[cite: 1881]. [cite_start]The inclusion of a re-weighting strategy for class imbalance addresses a common pitfall in training verifiers, where negative samples often vastly outnumber positives[cite: 1833]. [cite_start]Furthermore, the empirical validation of the "constant reference probability" assumption (Figure 5 in the paper) is a strong piece of evidence that justifies their simplification for computational efficiency[cite: 1827].
 
-\section{Example}
-\label{sec:example}
+\textbf{Interpretation of Results.} The interpretation that the last token's probability distribution can effectively compress the "confidence" of the entire reasoning chain is compelling. [cite_start]However, the authors note a limitation: this method performed significantly better on mathematical tasks than on general reasoning tasks like MMLU-Pro[cite: 2090]. [cite_start]The authors transparently attribute this to the inherently weaker reasoning ability of the base models in general domains and the noise in model-based verifiers used for training[cite: 2093]. This honesty strengthens the scientific integrity of the report.
 
-This is an example for another section in your thesis.
-It should primarily show you some basic \LaTeX\ tricks.
-For instance, \autoref{sec:introduction} references to your introduction.
-You can also embed figures, tables, etc.\ in your work.
-\autoref{fig:learningcenter} is an example for a figure (i.e.\ photos, diagrams, and other artwork).
-Note that figures (just like tables, see \autoref{tab:nicetable}) are floating elements.
-They are either placed at the top or bottom of a page (or sometimes stand on their own page), but not in between your text.
-You can influence their placement with the placement modifiers ``t'', ``b'', and ``p''.
-Bottom placement (``b'') is sometimes more tricky, as \LaTeX\ does not consider this nice in some situations.
-You can convince \LaTeX\ to honor your placement expectation with ``!b'' then.
-Since you do not place figures/tables in between your running text, you always need to reference them by their label (e.g.\ \autoref{fig:learningcenter} or \autoref{tab:nicetable}).
-\begin{figure}[!b]
-	\centering
-	\includegraphics[width=\linewidth]{images/jku_learningcenter}
-	\caption{
-		A figure. Be aware that figures have their caption below the artwork
-	}\label{fig:learningcenter}
-\end{figure}
-\begin{table}[t]
-	\centering
-	\caption{
-		A table. Be aware that tables have their caption above the table
-	}\label{tab:nicetable}
-	\begin{tabularx}{\linewidth}{l>{\raggedright\arraybackslash}X}
-		\toprule
-		\textbf{Option}        & \textbf{Description} \\
-		\midrule
-		\texttt{phdthesis}     & PhD thesis           \\
-		\texttt{mathesis}      & Master's thesis      \\
-		\texttt{diplomathesis} & Diploma thesis       \\
-		\texttt{bathesis}      & Bachelor's thesis    \\
-		\texttt{seminarreport} & Seminar report       \\
-		\texttt{techreport}    & Technical report     \\
-		\bottomrule
-	\end{tabularx}
-\end{table}
+\textbf{Critique of the "Last Token" Assumption.} While effective, the reliance on the last token assumes that the model aggregates all uncertainty into that final step. [cite_start]In scenarios with "reward hacking" or length bias—where incorrect solutions are often longer—the implicit reward can be unreliable[cite: 1782]. Although LaSeR mitigates length bias by using a specific token probability rather than the cumulative implicit reward, it remains to be seen if this holds for highly complex, multi-step reasoning tasks outside of mathematics where the "final token" might be less indicative of the overall process structure.
 
-You will often reference and quote other works.
-The source of these citations needs to be marked with the \string\cite\{\}\ command.
-There are different ways to cite the work of others.
-These are a few examples:
-\begin{itemize}
-	\item The Tor directory authority moria1 shows a voting behavior for the HSDir flag that significantly deviates from that of other directory authorities~\cite{bib:2021-hoeller-iiwas}. Be aware that the \string\cite\ command is part of the sentence and, hence, comes before the period.
-	\item \citeauthor{bib:2015-roland-thesis-book}~\cite{bib:2015-roland-thesis-book} proposes a novel attack concept against NFC secure elements in mobile phones.
-	\item \citeauthor{bib:2013-roland-woot}~\cite{bib:2013-roland-woot} uncovered a flaw in legacy-support of the MasterCard contactless payment protocols that allows an attacker to clone certain credit cards.
-	\item \citeauthor{bib:2021-hoeller-foci}~\cite{bib:2021-hoeller-foci} designed an experiment to measure the usage of Tor V3 onion services in a privacy-conscious way. Here we used ``et al.'' because the cited work has more than two authors (\string\citeauthor\ will automatically take care of this).
-	\item \citeauthor{bib:2021-hoeller-iiwas}~\cite{bib:2021-hoeller-iiwas} conclude:
-	      \begin{quote}
-		      \emph{Ultimately, the high fluctuations in the hidden service directory were caused by a mixture of several issues. First the changed voting behavior of three directory authorities reduced the amount of obtainable votes to six. If any of the remaining six relays went offline -- which tends to happen during ongoing DOS attacks -- relays needed to obtain five out of five available votes. So any individual measurement failure regarding either bandwidth or uptime led to a withdrawn HSDir flag.}
-	      \end{quote}
-	\item You sometimes also paraphrase from multiple sources. For that purpose, the \string\cite\ command accepts a list of multiple comma-separated references. Do not add spaces inbetween them. Various analyses of the Tor network have been performed recently~\cite{bib:2021-hoeller-foci,bib:2021-hoeller-iiwas}.
-\end{itemize}
+\subsection{Scientific Writing \& Layout Analysis}
+\textbf{Structure and Clarity.} The paper is well-structured, following a standard logical progression. [cite_start]The distinction between the theoretical derivation (Section 3) and the practical implementation (Algorithm 1) is clear[cite: 1850]. [cite_start]The authors effectively use figures to illustrate the workflow (Figure 1), making the simultaneous training and verification process easy to grasp[cite: 1718].
 
+[cite_start]\textbf{Reproducibility.} The paper provides detailed hyperparameters in the Appendix (e.g., learning rates, batch sizes, KL coefficients), which supports reproducibility[cite: 2291]. [cite_start]They also explicitly state the prompt templates used, which is crucial as RLVR performance is often sensitive to prompting strategies[cite: 2432].
 
+\textbf{Visualizations.} The visualizations are informative. [cite_start]Specifically, the comparison of self-rewarding score distributions (Figure 3) clearly highlights the difference in separability between Math tasks (high separation) and General Reasoning tasks (significant overlap), providing visual evidence for the method's current limitations[cite: 2088].
 
 \section{Conclusion}
 \label{sec:conclusion}
 
-Space for your summary, central conclusions, and an outlook on potential future work.
+Yang et al. (2025) \cite{yang2025laser} present LaSeR, a compelling framework that addresses the efficiency gap in LLM self-verification. [cite_start]By mathematically equating the optimal verifier reward to the last-token self-rewarding score, the authors enable models to learn reasoning and verification jointly without the heavy computational tax of external verifiers or iterative self-correction[cite: 2112].
 
+[cite_start]The study's findings reveal that this lightweight approach can match the performance of significantly larger external reward models on mathematical benchmarks[cite: 1917]. Strengths of the work include its rigorous theoretical grounding and the practical "zero-cost" nature of the resulting self-verification signal. [cite_start]However, limitations regarding generalization to non-mathematical domains and reliance on specific token probabilities suggest that further research is needed to make this a universal solution for LLM reasoning[cite: 2094]. Overall, LaSeR represents a significant step forward in making test-time scaling and self-correction computationally feasible for widespread deployment.
 
-%% 
+%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% 
+%%
 %% Print the bibliography
-%% 
-%% (Optionally) let the bibliography start on a new odd page (odd is only relevant in twoside layout)
-%\cleardoubleoddpage
-\printbibliography
-%% 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-%% Begin with the appendix part (all further sections will be appendices)
-\appendix
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% 
-%% Add your appendix sections ...
-%% 
-
-%% Make sure to start the appendix on a new odd page (odd is only relevant in twoside layout)
-%\cleardoubleoddpage
-\section{An Appendix}
-\label{app:an-appendix}
-
-Space for an appendix.
-You can have more than one appendix section.
-Appendices are, of course, optional.
-
-
-%% 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+%%
 \cleardoubleoddpage
+\printbibliography
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \end{document}
-\endinput
