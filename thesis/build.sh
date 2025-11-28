@@ -2,6 +2,13 @@
 
 set -e
 
+# Optional --clean flag to force full rebuild
+FORCE_CLEAN=false
+if [[ "$1" == "--clean" ]]; then
+  FORCE_CLEAN=true
+  echo "⚠️  Clean rebuild requested (-gg enabled)"
+fi
+
 # Sources and engines
 SOURCES=("main-thesis" "main-report" "main-seminarreport")
 ENGINES=("pdf" "pdfxe" "pdflua")
@@ -39,7 +46,18 @@ for SRC in "${SOURCES[@]}"; do
     echo ""
     echo ">>> Building $SRC.tex using $ENGINE_CMD …"
 
-    docker run --rm -v "$(pwd):/work" -w /work texlive/texlive:latest bash -c "latexmk -${ENG} -bibtex -gg -jobname=%A${SUFFIX} ${SRC}.tex"
+    LATEXMK_OPTS="-${ENG} -bibtex"
+
+    # Add -gg only on clean builds
+    if $FORCE_CLEAN; then
+      LATEXMK_OPTS="$LATEXMK_OPTS -gg"
+    fi
+
+    docker run --rm \
+      -v "$(pwd):/work" \
+      -w /work \
+      texlive/texlive:latest \
+        bash -c "latexmk ${LATEXMK_OPTS} -jobname=%A${SUFFIX} ${SRC}.tex"
 
     mv "${SRC}${SUFFIX}.pdf" "${OUTPUT_DIR}/"
     mv "${SRC}${SUFFIX}.log" "${OUTPUT_DIR}/"
