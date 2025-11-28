@@ -60,7 +60,9 @@ for SRC in "${SOURCES[@]}"; do
         bash -c "latexmk ${LATEXMK_OPTS} -jobname=%A${SUFFIX} ${SRC}.tex"
 
     mv "${SRC}${SUFFIX}.pdf" "${OUTPUT_DIR}/"
-    mv "${SRC}${SUFFIX}.log" "${OUTPUT_DIR}/"
+    if [[ -f "${SRC}${SUFFIX}.log" ]]; then
+      mv "${SRC}${SUFFIX}.log" "${OUTPUT_DIR}/"
+    fi
 
     echo "✓ Built: ${OUTPUT_DIR}/${OUTPUT}"
   done
