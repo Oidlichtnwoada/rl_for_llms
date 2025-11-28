@@ -2,6 +2,25 @@
 
 set -e
 
+echo "=== Running latexindent.pl on source files ==="
+
+# List of file patterns to format
+FILES_TO_FORMAT=( *.tex *.bbx *.bst *.cbx *.dbx *.sty *.bib )
+
+for FILE in "${FILES_TO_FORMAT[@]}"; do
+  # Check file exists (avoid errors if pattern matches nothing)
+  if [[ -f "$FILE" ]]; then
+    echo "Formatting $FILE ..."
+    docker run --rm \
+      -v "$(pwd):/work" \
+      -w /work \
+      texlive/texlive:latest bash -c "latexindent -w \"${FILE}\""
+  fi
+done
+
+# Remove backup files
+rm *.bak0
+
 # Optional --clean flag to force full rebuild
 FORCE_CLEAN=false
 if [[ "$1" == "--clean" ]]; then
@@ -14,7 +33,6 @@ SOURCES=("main-thesis" "main-report" "main-seminarreport")
 ENGINES=("pdf" "pdfxe" "pdflua")
 
 OUTPUT_DIR="build"
-mkdir -p "${OUTPUT_DIR}"
 
 echo "=== Local LaTeX Build Script ==="
 
