@@ -1,5 +1,7 @@
 import torch
 
+from rl_for_llms.utils.environment_utils import is_local_mode_enforced
+
 
 def get_device() -> torch.device:
     """Return the best available device for PyTorch computations."""
@@ -22,7 +24,7 @@ def is_cuda_device_used() -> bool:
 
 def get_cuda_default_value[T](value_if_cuda: T, value_if_not_cuda: T) -> T:
     """Return the appropriate value based on whether a CUDA device is used."""
-    if is_cuda_device_used():
+    if is_cuda_device_used() and not is_local_mode_enforced():
         return value_if_cuda
     return value_if_not_cuda
 
