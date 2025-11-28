@@ -193,6 +193,6 @@ MINUTES=$(( DURATION / 60 ))
 SECONDS_REM=$(( DURATION % 60 ))
 
 echo -e "\n${BLUE}=======================================${NC}"
-echo -e "${GREEN}✅ Tasks completed.${NC}"
-echo -e "📂 Output directory: ${YELLOW}${OUTPUT_DIR}/${NC}"
-echo -e "⏱️  Total Duration:   ${YELLOW}${MINUTES}m ${SECONDS_REM}s${NC}"
+echo -e " ${GREEN}✅ Tasks completed.${NC}"
+echo -e " 📂  Output directory: ${YELLOW}${OUTPUT_DIR}/${NC}"
+echo -e " ⏱️  Total Duration:   ${YELLOW}${MINUTES}m ${SECONDS_REM}s${NC}"
