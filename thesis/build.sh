@@ -28,7 +28,7 @@ print_usage() {
     echo "Options:"
     echo "  --clean           Force a full rebuild (latexmk -gg)"
     echo "  --engine=TYPE     Select engine(s) to run (comma separated)."
-    echo "                    Available: pdf (default), xe, lua"
+    echo "                    Available: pdf (default), xe"
     echo "                    Example: --engine=pdf,xe"
     echo "  --help            Show this help message"
     echo ""
@@ -144,12 +144,8 @@ for INPUT_SRC in "${SOURCES[@]}"; do
                 LATEXMK_FLAG="-pdfxe"
                 SUFFIX="-xelatex"
                 ;;
-            lua|lualatex|pdflua)
-                LATEXMK_FLAG="-pdflua"
-                SUFFIX="-lualatex"
-                ;;
             *)
-                echo -e "${RED}Error: Unknown engine '$ENG'. Skipping.${NC}"
+                echo -e "${RED}Error: Unknown or unsupported engine '$ENG'. Skipping.${NC}"
                 continue
                 ;;
         esac
