@@ -52,5 +52,8 @@ def get_logging_integrations() -> list[str]:
     if is_wandb_enabled():
         integrations.append("wandb")
     else:
-        log_msg(text="no wandb api key was provided, so wandb logging is disabled", level=logging.WARNING)
+        log_msg(
+            text="no wandb api key was provided, so wandb logging is disabled",
+            level=logging.WARNING,
+        )
     return integrations
