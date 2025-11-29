@@ -1,6 +1,6 @@
 import torch
 
-from rl_for_llms.utils.environment_utils import is_local_mode_enforced
+from rl_for_llms.utils.environment_utils import is_local_mode_enforced, is_wandb_enabled
 
 
 def get_device() -> torch.device:
@@ -41,3 +41,11 @@ def is_bf16_supported() -> bool:
     if is_cuda_device_used():
         return bool(torch.cuda.is_bf16_supported())
     return False
+
+
+def get_logging_integrations() -> list[str]:
+    """Get the logging integrations."""
+    integrations = ["tensorboard"]
+    if is_wandb_enabled():
+        integrations.append("wandb")
+    return integrations
