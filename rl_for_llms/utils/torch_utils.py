@@ -1,6 +1,9 @@
+import logging
+
 import torch
 
 from rl_for_llms.utils.environment_utils import is_local_mode_enforced, is_wandb_enabled
+from rl_for_llms.utils.logging_utils import log_msg
 
 
 def get_device() -> torch.device:
@@ -48,4 +51,6 @@ def get_logging_integrations() -> list[str]:
     integrations = ["tensorboard"]
     if is_wandb_enabled():
         integrations.append("wandb")
+    else:
+        log_msg(text="no wandb api key was provided, so wandb logging is disabled", level=logging.WARNING)
     return integrations
