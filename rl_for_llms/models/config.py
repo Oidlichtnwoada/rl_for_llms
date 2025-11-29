@@ -24,7 +24,7 @@ class Config(BaseModel):
     vllm_mode: str = Field(default="colocate")
     report_to: list[str] = Field(default_factory=lambda: ["tensorboard"])
     dataset_use_row_percentage: float = Field(default=get_cuda_default_value(1.0, 0.1))
-    max_prompt_length: int = Field(default=get_cuda_default_value(2048, 32), le=8192)
+    max_prompt_length: int = Field(default=get_cuda_default_value(2048, 64), le=8192)
     max_completion_length: int = Field(
         default=get_cuda_default_value(8192, 1024), le=8192
     )
