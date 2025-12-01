@@ -15,6 +15,7 @@ def is_wandb_enabled() -> bool:
     """Check if Weights & Biases is enabled via API key."""
     return get_wandb_api_key() is not None
 
+
 def set_environment_variables() -> None:
     """Set important environment variables for optimal performance."""
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
