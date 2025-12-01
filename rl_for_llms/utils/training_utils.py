@@ -14,7 +14,7 @@ from rl_for_llms.utils.constant_utils import (
     get_train_split,
 )
 from rl_for_llms.utils.dataset_utils import clean_dataset, trim_dataset
-from rl_for_llms.utils.environment_utils import set_environment_variables
+from rl_for_llms.utils.environment_utils import setup_environment
 from rl_for_llms.utils.llm_utils import get_tokenizer, get_user_message
 from rl_for_llms.utils.logging_utils import log_msg
 from rl_for_llms.utils.path_utils import (
@@ -118,6 +118,7 @@ def get_grpo_config() -> GRPOConfig:
         log_completions=config.log_completions,
         run_name=config.hf_model_id,
         beta=config.beta,
+        dataloader_pin_memory=config.dataloader_pin_memory,
     )
     return grpo_config
 
@@ -161,7 +162,7 @@ def get_grpo_trainer() -> GRPOTrainer:
 
 def start_training() -> None:
     """Start the training process."""
-    set_environment_variables()
+    setup_environment()
     config = get_config()
     download_training_data()
     grpo_trainer = get_grpo_trainer()

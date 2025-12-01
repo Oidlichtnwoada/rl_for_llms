@@ -1,4 +1,7 @@
 import os
+import sys
+
+from rl_for_llms.utils.constant_utils import get_python_debug_modules
 
 
 def is_local_mode_enforced() -> bool:
@@ -16,6 +19,15 @@ def is_wandb_enabled() -> bool:
     return get_wandb_api_key() is not None
 
 
-def set_environment_variables() -> None:
-    """Set important environment variables for optimal performance."""
+def is_debug_mode() -> bool:
+    """Check if the code is running in debug mode."""
+    first_check = sys.gettrace() is not None
+    second_check = any(x in sys.modules for x in get_python_debug_modules())
+    return first_check or second_check
+
+
+def setup_environment() -> None:
+    """Set up the environment for training."""
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
+    if is_debug_mode():
+        os.environ["TORCHDYNAMO_DISABLE"] = "1"

@@ -19,9 +19,7 @@ class Config(BaseModel):
     )
     learning_rate: float = Field(default=1e-6)
     num_train_epochs: int = Field(default=get_cuda_default_value(3, 1))
-    use_vllm: bool = Field(
-        default=get_cuda_default_value(value_if_cuda=True, value_if_not_cuda=False)
-    )
+    use_vllm: bool = Field(default=True)
     vllm_gpu_memory_utilization: float = Field(default=0.6)
     vllm_split_model_across_gpus: bool = Field(default=False)
     vllm_mode: str = Field(default="colocate")
@@ -54,4 +52,7 @@ class Config(BaseModel):
     lora_task_type: str = Field(default=TaskType.CAUSAL_LM)
     system_message: str = Field(
         default="Reason step by step, then provide the final answer within the last \\boxed{} command of your output."
+    )
+    dataloader_pin_memory: bool = Field(
+        default=get_cuda_default_value(value_if_cuda=True, value_if_not_cuda=False)
     )

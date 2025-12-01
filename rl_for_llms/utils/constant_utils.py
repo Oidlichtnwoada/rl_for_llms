@@ -1,7 +1,5 @@
 from datasets import Split
 
-from rl_for_llms.utils.config_utils import get_config
-
 
 def get_hf_training_ds_path() -> str:
     """Return the Hugging Face dataset path for training data."""
@@ -23,11 +21,6 @@ def get_gitignore_file_name() -> str:
     return ".gitignore"
 
 
-def get_default_hf_model_id() -> str:
-    """Return the default Hugging Face model ID."""
-    return get_config().hf_model_id
-
-
 def get_default_evaluation_file_names() -> tuple[str, ...]:
     """Return the default evaluation file name."""
     return (
@@ -37,3 +30,8 @@ def get_default_evaluation_file_names() -> tuple[str, ...]:
         "math-500-test.jsonl",
         "olympiad-bench-test.jsonl",
     )
+
+
+def get_python_debug_modules() -> list[str]:
+    """Return the list of Python modules used for debugging."""
+    return ["debugpy", "pydevd"]

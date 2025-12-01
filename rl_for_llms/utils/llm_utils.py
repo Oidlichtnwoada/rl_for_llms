@@ -12,7 +12,6 @@ from transformers import (
 )
 
 from rl_for_llms.utils.config_utils import get_config
-from rl_for_llms.utils.constant_utils import get_default_hf_model_id
 from rl_for_llms.utils.logging_utils import log_msg
 from rl_for_llms.utils.torch_utils import get_device, is_bf16_supported
 
@@ -47,7 +46,7 @@ def get_assistant_message(content: str) -> dict[str, str]:
 
 def get_llm_output(
     message: str,
-    model_id: str = get_default_hf_model_id(),
+    model_id: str | None = None,
     temperature: float = 1.0,
     top_p: float = 1.0,
     max_output_tokens: int = 512,
@@ -56,6 +55,8 @@ def get_llm_output(
     do_sampling: bool = False,
 ) -> str:
     """Return the LLM output for the given message and model ID."""
+    if model_id is None:
+        model_id = get_config().hf_model_id
     pipe = get_pipeline(model_id)
     messages = [get_user_message(message)]
     outputs = pipe(
