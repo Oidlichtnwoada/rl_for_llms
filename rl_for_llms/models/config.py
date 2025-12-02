@@ -20,11 +20,15 @@ class Config(BaseModel):
     learning_rate: float = Field(default=1e-6)
     num_train_epochs: int = Field(default=get_cuda_default_value(3, 1))
     use_vllm: bool = Field(default=True)
-    vllm_gpu_memory_utilization: float = Field(default=0.6)
+    vllm_gpu_memory_utilization: float = Field(default=0.3)
     vllm_split_model_across_gpus: bool = Field(default=False)
     vllm_mode: str = Field(default="colocate")
-    vllm_enable_sleep_mode: bool = Field(default=False)
-    enable_llm_weight_reloading: bool = Field(default=True)
+    vllm_enable_sleep_mode: bool = Field(
+        default=get_cuda_default_value(value_if_cuda=True, value_if_not_cuda=False)
+    )
+    enable_llm_weight_reloading: bool = Field(
+        default=get_cuda_default_value(value_if_cuda=False, value_if_not_cuda=True)
+    )
     report_to: list[str] = Field(default_factory=lambda: get_logging_integrations())
     dataset_use_row_percentage: float = Field(default=get_cuda_default_value(1.0, 0.1))
     max_prompt_length: int = Field(default=get_cuda_default_value(2048, 64), le=8192)
@@ -38,12 +42,10 @@ class Config(BaseModel):
     top_p: float = Field(default=1.0)
     save_steps: int = Field(default=512)
     eval_steps: int = Field(default=4096)
-    gradient_checkpointing: bool = Field(default=True)
+    gradient_checkpointing: bool = Field(default=False)
     log_completions: bool = Field(default=True)
     beta: float = Field(default=0.0)
-    enable_lora: bool = Field(
-        default=get_cuda_default_value(value_if_cuda=False, value_if_not_cuda=True)
-    )
+    enable_lora: bool = Field(default=True)
     lora_target_modules: list[str] = Field(
         default_factory=lambda: ["gate_proj", "up_proj", "down_proj"]
     )
