@@ -20,7 +20,7 @@ class Config(BaseModel):
     learning_rate: float = Field(default=1e-6)
     num_train_epochs: int = Field(default=get_cuda_default_value(3, 1))
     use_vllm: bool = Field(default=True)
-    vllm_gpu_memory_utilization: float = Field(default=0.3)
+    vllm_gpu_memory_utilization: float = Field(default=0.4)
     vllm_split_model_across_gpus: bool = Field(default=False)
     vllm_mode: str = Field(default="colocate")
     vllm_enable_sleep_mode: bool = Field(
@@ -42,7 +42,7 @@ class Config(BaseModel):
     top_p: float = Field(default=1.0)
     save_steps: int = Field(default=512)
     eval_steps: int = Field(default=4096)
-    gradient_checkpointing: bool = Field(default=False)
+    gradient_checkpointing: bool = Field(default=True)
     log_completions: bool = Field(default=True)
     beta: float = Field(default=0.0)
     enable_lora: bool = Field(default=True)
