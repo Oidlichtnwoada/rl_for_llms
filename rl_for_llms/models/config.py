@@ -23,6 +23,8 @@ class Config(BaseModel):
     vllm_gpu_memory_utilization: float = Field(default=0.6)
     vllm_split_model_across_gpus: bool = Field(default=False)
     vllm_mode: str = Field(default="colocate")
+    vllm_enable_sleep_mode: bool = Field(default=False)
+    enable_llm_weight_reloading: bool = Field(default=True)
     report_to: list[str] = Field(default_factory=lambda: get_logging_integrations())
     dataset_use_row_percentage: float = Field(default=get_cuda_default_value(1.0, 0.1))
     max_prompt_length: int = Field(default=get_cuda_default_value(2048, 64), le=8192)
