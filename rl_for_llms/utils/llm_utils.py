@@ -7,6 +7,8 @@ from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
     Pipeline,
+    PreTrainedModel,
+    PreTrainedTokenizer,
     PreTrainedTokenizerBase,
     pipeline,
 )
@@ -44,8 +46,9 @@ def get_assistant_message(content: str) -> dict[str, str]:
     return {"role": "assistant", "content": content.strip()}
 
 
-def get_llm_output(
+def get_llm_output_with_logits(
     message: str,
+    target_token_ids: tuple[int, ...] = (),
     model_id: str | None = None,
     temperature: float = 1.0,
     top_p: float = 1.0,
@@ -53,23 +56,40 @@ def get_llm_output(
     top_k: int | None = None,
     *,
     do_sampling: bool = False,
-) -> str:
-    """Return the LLM output for the given message and model ID."""
+) -> tuple[str, list[dict[int, float]]]:
+    """Generate output from the LLM along with logits for specified target tokens."""
     if model_id is None:
         model_id = get_config().hf_model_id
     pipe = get_pipeline(model_id)
+    model = typing.cast("PreTrainedModel", pipe.model)
+    tokenizer = typing.cast("PreTrainedTokenizer", pipe.tokenizer)
     messages = [get_user_message(message)]
-    outputs = pipe(
-        messages,
+    prompt = tokenizer.apply_chat_template(
+        messages, tokenize=False, add_generation_prompt=True
+    )
+    inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+    outputs = model.generate(  # type: ignore[operator]
+        **inputs,
         max_new_tokens=max_output_tokens,
         do_sample=do_sampling,
         temperature=temperature,
         top_p=top_p,
         top_k=top_k,
-        return_full_text=False,
+        output_logits=True,
+        return_dict_in_generate=True,
+        pad_token_id=tokenizer.pad_token_id,
+        eos_token_id=tokenizer.eos_token_id,
     )
-    output_message = str(outputs[0]["generated_text"]).strip()
-    return output_message
+    generated_ids = outputs.sequences[0][len(inputs["input_ids"][0]) :]
+    output_message = tokenizer.decode(generated_ids, skip_special_tokens=True).strip()
+    step_logits = []
+    for step_tensor in outputs.logits:
+        step_log_vals = {}
+        for tid in target_token_ids:
+            val = step_tensor[0, tid].item()
+            step_log_vals[tid] = val
+        step_logits.append(step_log_vals)
+    return output_message, step_logits
 
 
 def get_model_representation(model_id: str) -> str:
