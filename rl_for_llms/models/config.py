@@ -17,6 +17,7 @@ class Config(BaseModel):
             "Qwen/Qwen2.5-3B-Instruct", "Qwen/Qwen2.5-0.5B-Instruct"
         )
     )
+    confidence_token: str = Field(default="<|vision_pad|>")
     learning_rate: float = Field(default=1e-6)
     num_train_epochs: int = Field(default=get_cuda_default_value(3, 1))
     use_vllm: bool = Field(default=True)

@@ -79,6 +79,23 @@ def get_model_representation(model_id: str) -> str:
     return model_representation
 
 
+def get_id_to_token_mapping(model_id: str) -> dict[int, str]:
+    """Generate a mapping from token IDs to token texts for the specified model ID."""
+    tokenizer = get_tokenizer(model_id)
+    vocab_map = tokenizer.get_vocab()
+    id_to_token = {token_id: token_text for token_text, token_id in vocab_map.items()}
+    sorted_vocab = dict(sorted(id_to_token.items()))
+    return sorted_vocab
+
+
+def get_token_to_id_mapping(model_id: str) -> dict[str, int]:
+    """Generate a mapping from token texts to token IDs for the specified model ID."""
+    tokenizer = get_tokenizer(model_id)
+    vocab_map = tokenizer.get_vocab()
+    sorted_vocab = dict(sorted(vocab_map.items()))
+    return sorted_vocab
+
+
 def tokenize_messages(
     messages: list[dict[str, typing.Any]],
     tokenizer: PreTrainedTokenizerBase,
