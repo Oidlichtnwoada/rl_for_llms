@@ -1,5 +1,7 @@
 import typing
+from collections import Counter
 
+import numpy as np
 import torch
 from trl.trainer.grpo_trainer import GRPOTrainer
 
@@ -26,12 +28,34 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         reward_func_name = self.reward_func_names[0]
         return reward_func_name
 
-    def get_last_rewards(self) -> tuple[float, ...]:
+    def get_last_rewards(
+        self,
+        inputs: dict[str, torch.Tensor],
+    ) -> list[float]:
         """Return the last computed rewards."""
-        last_rewards = tuple(
+        last_rewards = list(
             dict(self._logs["rewards"])[self.get_reward_function_name()]
         )
-        return last_rewards
+        advantages = inputs["advantages"].detach().cpu()
+        inputs_length = advantages.shape[0]
+        if len(last_rewards) != inputs_length:
+            raise ValueError
+        sorted_last_rewards = sorted(last_rewards)
+        advantages_np = advantages.numpy()
+        indices = np.argsort(advantages_np)
+        rewards_for_advantages_np = np.array(sorted_last_rewards)[indices]
+        rewards_for_advantages_list = list(rewards_for_advantages_np.tolist())
+        rewards_counter = Counter(rewards_for_advantages_np)
+        reward_sorted_counts = [
+            rewards_counter[key] for key in sorted(rewards_counter.keys())
+        ]
+        advantages_counter = Counter(advantages_np)
+        advantage_sorted_counts = [
+            advantages_counter[key] for key in sorted(advantages_counter.keys())
+        ]
+        if reward_sorted_counts != advantage_sorted_counts:
+            raise ValueError
+        return rewards_for_advantages_list
 
     def compute_loss(
         self,
@@ -41,10 +65,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         num_items_in_batch: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Compute the combined GRPO loss and confidence loss."""
-        rewards = self.get_last_rewards()
-        inputs_length = inputs["advantages"].shape[0]
-        if len(rewards) != inputs_length:
-            raise ValueError
+        _ = self.get_last_rewards(inputs)
         grpo_loss = super().compute_loss(
             model,
             inputs,
