@@ -64,7 +64,7 @@ def get_logging_integrations() -> list[str]:
 def get_confidence_token_logit_sigmoid(
     confidence_token_logit: torch.Tensor,
 ) -> torch.Tensor:
-    """Get the logging integrations."""
+    """Return the sigmoid of the confidence token logit."""
     config = get_config()
     scale = math.pi / (config.confidence_token_logit_std * math.sqrt(3))
     return torch.sigmoid(

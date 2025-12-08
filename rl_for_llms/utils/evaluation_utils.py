@@ -13,7 +13,7 @@ from rl_for_llms.utils.llm_utils import (
 def get_mean_and_std_of_confidence_token_logit(
     sample_size: int = 16,
 ) -> tuple[float, float]:
-    """Return the mean and standard deviation of the confidence token."""
+    """Return the mean and standard deviation of the confidence token logit."""
     config = get_config()
     confidence_token_id = get_token_to_id_mapping(config.hf_model_id)[
         config.confidence_token
