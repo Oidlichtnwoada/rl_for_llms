@@ -18,6 +18,8 @@ class Config(BaseModel):
         )
     )
     confidence_token: str = Field(default="<|vision_pad|>")
+    confidence_token_logit_mean: float = Field(default=-4.0)
+    confidence_token_logit_std: float = Field(default=1.5)
     learning_rate: float = Field(default=1e-6)
     num_train_epochs: int = Field(default=get_cuda_default_value(3, 1))
     use_vllm: bool = Field(default=True)

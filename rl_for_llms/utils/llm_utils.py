@@ -46,18 +46,18 @@ def get_assistant_message(content: str) -> dict[str, str]:
     return {"role": "assistant", "content": content.strip()}
 
 
-def get_llm_output_with_logits(
+def get_llm_output_with_step_data(
     message: str,
     target_token_ids: tuple[int, ...] = (),
     model_id: str | None = None,
     temperature: float = 1.0,
     top_p: float = 1.0,
-    max_output_tokens: int = 512,
+    max_output_tokens: int = 8192,
     top_k: int | None = None,
     *,
     do_sampling: bool = False,
-) -> tuple[str, list[dict[int, float]]]:
-    """Generate output from the LLM along with logits for specified target tokens."""
+) -> tuple[str, list[dict[int, dict[str, float]]]]:
+    """Return the LLM output along with step data for the specified target token IDs."""
     if model_id is None:
         model_id = get_config().hf_model_id
     pipe = get_pipeline(model_id)
@@ -82,14 +82,16 @@ def get_llm_output_with_logits(
     )
     generated_ids = outputs.sequences[0][len(inputs["input_ids"][0]) :]
     output_message = tokenizer.decode(generated_ids, skip_special_tokens=True).strip()
-    step_logits = []
+    step_data = []
     for step_tensor in outputs.logits:
-        step_log_vals = {}
+        step_probs = torch.softmax(step_tensor / temperature, dim=-1)
+        step_vals = {}
         for tid in target_token_ids:
-            val = step_tensor[0, tid].item()
-            step_log_vals[tid] = val
-        step_logits.append(step_log_vals)
-    return output_message, step_logits
+            logit_val = step_tensor[0, tid].item()
+            prob_val = step_probs[0, tid].item()
+            step_vals[tid] = {"logit": logit_val, "prob": prob_val}
+        step_data.append(step_vals)
+    return output_message, step_data
 
 
 def get_model_representation(model_id: str) -> str:
