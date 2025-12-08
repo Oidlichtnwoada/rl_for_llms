@@ -6,6 +6,7 @@ from trl.experimental.openenv import generate_rollout_completions
 from trl.trainer.grpo_config import GRPOConfig
 from trl.trainer.grpo_trainer import GRPOTrainer
 
+from rl_for_llms.utils.confidence_grpo_trainer_utils import ConfidenceGRPOTrainer
 from rl_for_llms.utils.config_utils import get_config
 from rl_for_llms.utils.constant_utils import (
     get_gitignore_file_name,
@@ -97,8 +98,8 @@ def rollout_func(
     }
 
 
-def get_grpo_trainer() -> GRPOTrainer:
-    """Get the GRPO trainer."""
+def get_confidence_grpo_trainer() -> ConfidenceGRPOTrainer:
+    """Get the confidence GRPO trainer."""
     config = get_config()
     grpo_config = get_grpo_config()
     tokenizer = get_tokenizer(config.hf_model_id)
@@ -122,7 +123,8 @@ def get_grpo_trainer() -> GRPOTrainer:
         bias=config.lora_bias,
         task_type=config.lora_task_type,
     )
-    grpo_trainer = GRPOTrainer(
+    confidence_grpo_trainer = ConfidenceGRPOTrainer(
+        config=config,
         model=config.hf_model_id,
         args=grpo_config,
         train_dataset=train_dataset,
@@ -132,7 +134,7 @@ def get_grpo_trainer() -> GRPOTrainer:
         peft_config=peft_config if config.enable_lora else None,
         rollout_func=rollout_func,
     )
-    return grpo_trainer
+    return confidence_grpo_trainer
 
 
 def start_training() -> None:
@@ -140,11 +142,11 @@ def start_training() -> None:
     setup_environment()
     config = get_config()
     download_training_data()
-    grpo_trainer = get_grpo_trainer()
+    confidence_grpo_trainer = get_confidence_grpo_trainer()
     log_msg(
         f"start training with the following configuration: {config.model_dump_json()}"
     )
-    grpo_trainer.train()
+    confidence_grpo_trainer.train()
     log_msg(
         f"finished training with the following configuration: {config.model_dump_json()}"
     )
