@@ -25,6 +25,20 @@ def is_cuda_device_used() -> bool:
     return is_cuda_device
 
 
+def is_mps_device_used() -> bool:
+    """Check if the current device is an MPS device."""
+    device_string = str(get_device())
+    is_mps_device = device_string == "mps"
+    return is_mps_device
+
+
+def is_cpu_device_used() -> bool:
+    """Check if the current device is a CPU device."""
+    device_string = str(get_device())
+    is_cpu_device = device_string == "cpu"
+    return is_cpu_device
+
+
 def get_cuda_default_value[T](value_if_cuda: T, value_if_not_cuda: T) -> T:
     """Return the appropriate value based on whether a CUDA device is used."""
     if is_cuda_device_used() and not is_local_mode_enforced():
