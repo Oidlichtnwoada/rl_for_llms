@@ -57,3 +57,9 @@ def get_logging_integrations() -> list[str]:
             level=logging.WARNING,
         )
     return integrations
+
+
+def get_mode(model: torch.nn.Module) -> str:
+    """Return the current mode of the model."""
+    mode = "train" if model.training else "eval"
+    return mode

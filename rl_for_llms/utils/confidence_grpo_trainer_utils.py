@@ -5,6 +5,7 @@ from trl.trainer.grpo_trainer import GRPOTrainer
 
 from rl_for_llms.models.config import Config
 from rl_for_llms.utils.llm_utils import get_token_to_id_mapping
+from rl_for_llms.utils.torch_utils import get_mode
 
 
 class ConfidenceGRPOTrainer(GRPOTrainer):
@@ -50,8 +51,10 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             return_outputs=return_outputs,
             num_items_in_batch=num_items_in_batch,
         )
-        confidence_loss = 0
-        total_loss = typing.cast(
-            "torch.Tensor", grpo_loss + self.confidence_loss_factor * confidence_loss
-        )
+        confidence_loss = self.confidence_loss_factor * torch.tensor(0.0)
+        total_loss = typing.cast("torch.Tensor", grpo_loss + confidence_loss)
+        mode = get_mode(model)
+        self._metrics[mode]["grpo_loss"].append(grpo_loss.item())
+        self._metrics[mode]["confidence_loss"].append(confidence_loss.item())
+        self._metrics[mode]["total_loss"].append(total_loss.item())
         return total_loss
