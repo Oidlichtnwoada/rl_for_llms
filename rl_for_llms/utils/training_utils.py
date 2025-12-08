@@ -19,7 +19,6 @@ from rl_for_llms.utils.dataset_utils import (
     load_training_data_from_disk,
     trim_dataset,
 )
-from rl_for_llms.utils.environment_utils import setup_environment
 from rl_for_llms.utils.llm_utils import get_tokenizer
 from rl_for_llms.utils.logging_utils import log_msg
 from rl_for_llms.utils.path_utils import (
@@ -28,7 +27,11 @@ from rl_for_llms.utils.path_utils import (
     is_folder_empty,
 )
 from rl_for_llms.utils.reward_utils import default_batch_reward_function
-from rl_for_llms.utils.torch_utils import get_cuda_device_count, is_cuda_device_used
+from rl_for_llms.utils.torch_utils import (
+    get_cuda_device_count,
+    is_cuda_device_used,
+    setup_environment,
+)
 
 
 def download_training_data() -> None:

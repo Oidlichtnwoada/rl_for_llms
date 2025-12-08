@@ -1,8 +1,13 @@
 import logging
+import os
 
 import torch
 
-from rl_for_llms.utils.environment_utils import is_local_mode_enforced, is_wandb_enabled
+from rl_for_llms.utils.environment_utils import (
+    is_debug_mode,
+    is_local_mode_enforced,
+    is_wandb_enabled,
+)
 from rl_for_llms.utils.logging_utils import log_msg
 
 
@@ -77,3 +82,13 @@ def get_mode(model: torch.nn.Module) -> str:
     """Return the current mode of the model."""
     mode = "train" if model.training else "eval"
     return mode
+
+
+def setup_environment() -> None:
+    """Set up the environment for training."""
+    os.environ["TOKENIZERS_PARALLELISM"] = "false"
+    if is_mps_device_used():
+        os.environ["PYTORCH_MPS_HIGH_WATERMARK_RATIO"] = "0.0"
+    if is_debug_mode():
+        os.environ["TORCHDYNAMO_DISABLE"] = "1"
+        torch.autograd.set_detect_anomaly(True)
