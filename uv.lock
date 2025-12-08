@@ -2549,7 +2549,7 @@ requires-dist = [
     { name = "torchdata", specifier = "==0.11.0" },
     { name = "torchvision", specifier = "==0.23.0" },
     { name = "transformers", extras = ["hf-xet"], specifier = "==4.57.1" },
-    { name = "trl", git = "https://github.com/huggingface/trl.git?rev=07b4a84e0a3c8f37a2508fe177615af019782946" },
+    { name = "trl", git = "https://github.com/huggingface/trl.git?rev=fda5a7fcde8431122a1d9fbc23b774ca89442063" },
     { name = "vllm", specifier = "==0.10.2" },
     { name = "wandb", specifier = "==0.23.0" },
     { name = "xgrammar", specifier = "==0.1.23" },
@@ -3118,7 +3118,7 @@ wheels = [
 [[package]]
 name = "trl"
 version = "0.26.0.dev0"
-source = { git = "https://github.com/huggingface/trl.git?rev=07b4a84e0a3c8f37a2508fe177615af019782946#07b4a84e0a3c8f37a2508fe177615af019782946" }
+source = { git = "https://github.com/huggingface/trl.git?rev=fda5a7fcde8431122a1d9fbc23b774ca89442063#fda5a7fcde8431122a1d9fbc23b774ca89442063" }
 dependencies = [
     { name = "accelerate" },
     { name = "datasets" },
