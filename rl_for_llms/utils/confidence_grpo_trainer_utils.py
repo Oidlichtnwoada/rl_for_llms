@@ -18,6 +18,20 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         ]
         self.confidence_loss_factor = config.confidence_loss_factor
 
+    def get_reward_function_name(self) -> str:
+        """Return the name of the reward function."""
+        if len(self.reward_func_names) != 1:
+            raise ValueError
+        reward_func_name = self.reward_func_names[0]
+        return reward_func_name
+
+    def get_last_rewards(self) -> tuple[float, ...]:
+        """Return the last computed rewards."""
+        last_rewards = tuple(
+            dict(self._logs["rewards"])[self.get_reward_function_name()]
+        )
+        return last_rewards
+
     def compute_loss(
         self,
         model: torch.nn.Module,
@@ -26,6 +40,10 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         num_items_in_batch: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Compute the combined GRPO loss and confidence loss."""
+        rewards = self.get_last_rewards()
+        inputs_length = inputs["advantages"].shape[0]
+        if len(rewards) != inputs_length:
+            raise ValueError
         grpo_loss = super().compute_loss(
             model,
             inputs,
