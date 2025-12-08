@@ -30,6 +30,7 @@ class Config(BaseModel):
     vllm_enable_sleep_mode: bool = Field(
         default=get_cuda_default_value(value_if_cuda=True, value_if_not_cuda=False)
     )
+    vllm_importance_sampling_correction: bool = Field(default=False)
     enable_llm_weight_reloading: bool = Field(
         default=get_cuda_default_value(value_if_cuda=False, value_if_not_cuda=True)
     )

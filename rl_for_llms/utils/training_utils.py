@@ -66,6 +66,7 @@ def get_grpo_config() -> GRPOConfig:
         else 1,
         vllm_mode=config.vllm_mode,
         vllm_enable_sleep_mode=config.vllm_enable_sleep_mode,
+        vllm_importance_sampling_correction=config.vllm_importance_sampling_correction,
         learning_rate=config.learning_rate,
         output_dir=str(
             get_checkpoint_folder_for_model_id(config.hf_model_id).resolve()
