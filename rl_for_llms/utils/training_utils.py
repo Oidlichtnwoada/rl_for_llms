@@ -50,7 +50,6 @@ def get_grpo_config() -> GRPOConfig:
     config = get_config()
     vllm_tensor_parallel_size = get_cuda_device_count() if is_cuda_device_used() else 1
     grpo_config = GRPOConfig(
-        max_prompt_length=config.max_prompt_length,
         max_completion_length=config.max_completion_length,
         num_generations=config.num_generations,
         temperature=config.temperature,
