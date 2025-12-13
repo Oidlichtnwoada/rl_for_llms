@@ -85,5 +85,6 @@ def get_mode(model: torch.nn.Module) -> str:
 
 def setup_environment() -> None:
     """Set up the environment for training."""
+    os.environ["TOKENIZERS_PARALLELISM"] = "false"
     if is_mps_device_used():
         os.environ["PYTORCH_MPS_HIGH_WATERMARK_RATIO"] = "0.0"
