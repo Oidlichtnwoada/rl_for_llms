@@ -17,6 +17,7 @@ class Config(BaseModel):
             "Qwen/Qwen2.5-3B-Instruct", "Qwen/Qwen2.5-0.5B-Instruct"
         )
     )
+    lm_head_attribute_name: str = Field(default="lm_head")
     confidence_token: str = Field(default="<|vision_pad|>")
     confidence_token_logit_mean: float = Field(default=-4.0)
     confidence_token_logit_std: float = Field(default=1.5)

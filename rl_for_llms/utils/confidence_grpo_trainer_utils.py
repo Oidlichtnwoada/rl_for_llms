@@ -3,6 +3,9 @@ from collections import Counter
 
 import numpy as np
 import torch
+from torch import Tensor
+from torch.nn import Module
+from torch.utils.hooks import RemovableHandle
 from trl.trainer.grpo_trainer import GRPOTrainer
 
 from rl_for_llms.models.config import Config
@@ -20,6 +23,9 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             config.confidence_token
         ]
         self.confidence_loss_factor = config.confidence_loss_factor
+        self.lm_head_attribute_name = config.lm_head_attribute_name
+        self.hook_handle: RemovableHandle | None = None
+        self.confidence_logits: Tensor | None = None
 
     def get_reward_function_name(self) -> str:
         """Return the name of the reward function."""
@@ -57,6 +63,32 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             raise ValueError
         return rewards_for_advantages_list
 
+    def register_hook(self) -> None:
+        """Register a hook to capture confidence logits."""
+        lm_head = getattr(self.model, self.lm_head_attribute_name, None)
+        if lm_head is None:
+            raise ValueError
+        self.hook_handle = lm_head.register_forward_hook(self.logits_hook)
+
+    def remove_hook(self) -> None:
+        """Remove the registered hook."""
+        if self.hook_handle is not None:
+            self.hook_handle.remove()
+            self.hook_handle = None
+
+    def logits_hook(
+        self,
+        module: Module,  # noqa: ARG002
+        inputs: tuple[Tensor, ...],  # noqa: ARG002
+        output: torch.Tensor,
+    ) -> None:
+        """Capture the logits for the confidence token."""
+        logits = output
+        if logits.dim() != 3:  # noqa: PLR2004
+            raise ValueError
+        confidence_logits = logits[:, :, self.confidence_token_id]
+        self.confidence_logits = confidence_logits
+
     def compute_loss(
         self,
         model: torch.nn.Module,
@@ -66,6 +98,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
     ) -> torch.Tensor:
         """Compute the combined GRPO loss and confidence loss."""
         _ = self.get_last_rewards(inputs)
+        self.register_hook()
         grpo_loss = typing.cast(
             "torch.Tensor",
             super().compute_loss(
@@ -75,6 +108,8 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
                 num_items_in_batch=num_items_in_batch,
             ),
         )
+        self.remove_hook()
+        self.confidence_logits = None
         confidence_loss = self.confidence_loss_factor * torch.tensor(0.0)
         total_loss = grpo_loss + confidence_loss
         mode = get_mode(model)
