@@ -88,7 +88,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         logits = output
         if logits.dim() != 3:  # noqa: PLR2004
             raise ValueError
-        confidence_logits = logits[:, :, self.confidence_token_id]
+        confidence_logits = logits[:, :-1, self.confidence_token_id]
         self.confidence_logits = confidence_logits
 
     def get_confidence_loss(self, inputs: dict[str, torch.Tensor]) -> torch.Tensor:
