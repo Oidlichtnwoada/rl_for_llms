@@ -1,10 +1,6 @@
-import typing
-
 from datasets import load_dataset
 from peft import LoraConfig
-from trl.experimental.openenv import generate_rollout_completions
 from trl.trainer.grpo_config import GRPOConfig
-from trl.trainer.grpo_trainer import GRPOTrainer
 
 from rl_for_llms.utils.confidence_grpo_trainer_utils import ConfidenceGRPOTrainer
 from rl_for_llms.utils.config_utils import get_config
@@ -87,21 +83,6 @@ def get_grpo_config() -> GRPOConfig:
     return grpo_config
 
 
-def rollout_func(
-    prompts: list[str], trainer: GRPOTrainer
-) -> dict[str, list[typing.Any]]:
-    """Generate rollouts for the given prompts using the trainer."""
-    config = get_config()
-    if config.enable_llm_weight_reloading:
-        trainer.llm.collective_rpc("reload_weights")
-    outputs = generate_rollout_completions(trainer, prompts)
-    return {
-        "prompt_ids": [out["prompt_ids"] for out in outputs],
-        "completion_ids": [out["completion_ids"] for out in outputs],
-        "logprobs": [out["logprobs"] for out in outputs],
-    }
-
-
 def get_confidence_grpo_trainer() -> ConfidenceGRPOTrainer:
     """Get the confidence GRPO trainer."""
     config = get_config()
@@ -136,7 +117,6 @@ def get_confidence_grpo_trainer() -> ConfidenceGRPOTrainer:
         processing_class=tokenizer,
         reward_funcs=[default_batch_reward_function],
         peft_config=peft_config if config.enable_lora else None,
-        rollout_func=rollout_func,
     )
     return confidence_grpo_trainer
 

@@ -67,7 +67,7 @@ def is_bf16_supported() -> bool:
 
 def get_logging_integrations() -> list[str]:
     """Get the logging integrations."""
-    integrations = ["tensorboard"]
+    integrations = []
     if is_wandb_enabled():
         integrations.append("wandb")
     else:
