@@ -66,14 +66,17 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
     ) -> torch.Tensor:
         """Compute the combined GRPO loss and confidence loss."""
         _ = self.get_last_rewards(inputs)
-        grpo_loss = super().compute_loss(
-            model,
-            inputs,
-            return_outputs=return_outputs,
-            num_items_in_batch=num_items_in_batch,
+        grpo_loss = typing.cast(
+            "torch.Tensor",
+            super().compute_loss(
+                model,
+                inputs,
+                return_outputs=return_outputs,
+                num_items_in_batch=num_items_in_batch,
+            ),
         )
         confidence_loss = self.confidence_loss_factor * torch.tensor(0.0)
-        total_loss = typing.cast("torch.Tensor", grpo_loss + confidence_loss)
+        total_loss = grpo_loss + confidence_loss
         mode = get_mode(model)
         self._metrics[mode]["grpo_loss"].append(grpo_loss.item())
         self._metrics[mode]["confidence_loss"].append(confidence_loss.item())

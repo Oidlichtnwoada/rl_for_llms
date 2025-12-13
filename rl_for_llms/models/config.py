@@ -37,7 +37,7 @@ class Config(BaseModel):
     max_completion_length: int = Field(
         default=get_cuda_default_value(8192, 1024), le=8192
     )
-    num_generations: int = Field(default=get_cuda_default_value(8, 2), le=16)
+    num_generations: int = Field(default=get_cuda_default_value(8, 4), le=16)
     per_device_rollouts_per_batch: int = Field(default=get_cuda_default_value(2, 1))
     gradient_accumulation_steps: int = Field(default=1)
     temperature: float = Field(default=1.0)
