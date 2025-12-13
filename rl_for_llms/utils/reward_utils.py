@@ -115,3 +115,19 @@ def default_batch_reward_function(
         )
     ]
     return rewards
+
+
+def get_class_weights_for_rewards(
+    rewards: list[float], correct_class_reward_value: float = 1.0
+) -> tuple[float, float]:
+    """Get class weights for imbalanced rewards."""
+    total_samples = len(rewards)
+    correct_samples = len([x for x in rewards if x == correct_class_reward_value])
+    incorrect_samples = total_samples - correct_samples
+    incorrect_sample_weight = (
+        total_samples / (2 * incorrect_samples) if incorrect_samples > 0 else 0.0
+    )
+    correct_sample_weight = (
+        total_samples / (2 * correct_samples) if correct_samples > 0 else 0.0
+    )
+    return incorrect_sample_weight, correct_sample_weight

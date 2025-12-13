@@ -4,13 +4,14 @@ from collections import Counter
 import numpy as np
 import torch
 from torch import Tensor
-from torch.nn import Module
+from torch.nn import Module, functional
 from torch.utils.hooks import RemovableHandle
 from trl.trainer.grpo_trainer import GRPOTrainer
 
 from rl_for_llms.models.config import Config
 from rl_for_llms.utils.confidence_utils import get_confidence_token_logit_sigmoid
 from rl_for_llms.utils.llm_utils import get_token_to_id_mapping
+from rl_for_llms.utils.reward_utils import get_class_weights_for_rewards
 from rl_for_llms.utils.torch_utils import get_mode
 
 
@@ -27,7 +28,6 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         self.lm_head_attribute_name = config.lm_head_attribute_name
         self.hook_handle: RemovableHandle | None = None
         self.confidence_logits: Tensor | None = None
-        self.loss_criterion = torch.nn.BCELoss()
 
     def get_reward_function_name(self) -> str:
         """Return the name of the reward function."""
@@ -99,21 +99,31 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             self.confidence_logits
         ).float()
         sequence_length = estimated_rewards.shape[-1]
+        last_rewards = self.get_last_rewards(inputs)
         real_rewards = (
-            torch.tensor(self.get_last_rewards(inputs))
+            torch.tensor(last_rewards)
             .unsqueeze(-1)
             .expand(-1, sequence_length)
             .to(estimated_rewards.device)
             .float()
         )
+        incorrect_sample_weight, correct_sample_weight = get_class_weights_for_rewards(
+            last_rewards
+        )
         mask = inputs["completion_mask"].bool()
         if mask.sum().item() == 0:
             raise ValueError
-        loss = typing.cast(
-            "torch.Tensor",
-            self.loss_criterion(estimated_rewards[mask], real_rewards[mask]),
+        real_rewards_masked = real_rewards[mask]
+        estimated_rewards_masked = estimated_rewards[mask]
+        sample_weights = torch.empty_like(real_rewards_masked)
+        sample_weights[real_rewards_masked == 1.0] = correct_sample_weight
+        sample_weights[real_rewards_masked == 0.0] = incorrect_sample_weight
+        per_sample_loss = functional.binary_cross_entropy(
+            estimated_rewards_masked, real_rewards_masked, reduction="none"
         )
-        return loss
+        weighted_per_sample_loss = per_sample_loss * sample_weights
+        mean_weighted_per_sample_loss = weighted_per_sample_loss.mean()
+        return mean_weighted_per_sample_loss
 
     def compute_loss(
         self,
