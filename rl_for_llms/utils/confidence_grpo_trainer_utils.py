@@ -106,8 +106,12 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             .to(estimated_rewards.device)
             .float()
         )
+        mask = inputs["completion_mask"].bool()
+        if mask.sum().item() == 0:
+            raise ValueError
         loss = typing.cast(
-            "torch.Tensor", self.loss_criterion(estimated_rewards, real_rewards)
+            "torch.Tensor",
+            self.loss_criterion(estimated_rewards[mask], real_rewards[mask]),
         )
         return loss
 
