@@ -7,4 +7,4 @@ export PYTHONUNBUFFERED=1
 export TRL_EXPERIMENTAL_SILENCE=1
 
 # run the project (output is visible in terminal and appended to a log file)
-uv run -m rl_for_llms.main 2>&1 | tee -a logs/rl_for_llms.main.log
+uv run accelerate launch --num_processes=0 --num_machines=1 --mixed_precision=no --dynamo_backend=no -m rl_for_llms.main 2>&1 | tee -a logs/rl_for_llms.main.log
