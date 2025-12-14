@@ -23,7 +23,7 @@ class Config(BaseModel):
     confidence_token_logit_std: float = Field(default=1.5)
     confidence_loss_factor: float = Field(default=0.1)
     learning_rate: float = Field(default=1e-5)
-    num_train_epochs: int = Field(default=get_cuda_default_value(3, 1))
+    num_train_epochs: int = Field(default=get_cuda_default_value(2, 1))
     use_vllm: bool = Field(default=False)
     vllm_gpu_memory_utilization: float = Field(default=0.4)
     vllm_split_model_across_gpus: bool = Field(default=False)
