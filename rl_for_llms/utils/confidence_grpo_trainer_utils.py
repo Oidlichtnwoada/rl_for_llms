@@ -98,32 +98,40 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         estimated_rewards = get_confidence_token_logit_sigmoid(
             self.confidence_logits
         ).float()
-        sequence_length = estimated_rewards.shape[-1]
+        maximum_sequence_length = estimated_rewards.shape[-1]
         last_rewards = self.get_last_rewards(inputs)
         real_rewards = (
             torch.tensor(last_rewards)
             .unsqueeze(-1)
-            .expand(-1, sequence_length)
+            .expand(-1, maximum_sequence_length)
             .to(estimated_rewards.device)
             .float()
-        )
-        incorrect_sample_weight, correct_sample_weight = get_class_weights_for_rewards(
-            last_rewards
         )
         mask = inputs["completion_mask"].bool()
         if mask.sum().item() == 0:
             raise ValueError
-        real_rewards_masked = real_rewards[mask]
-        estimated_rewards_masked = estimated_rewards[mask]
-        sample_weights = torch.empty_like(real_rewards_masked)
-        sample_weights[real_rewards_masked == 1.0] = correct_sample_weight
-        sample_weights[real_rewards_masked == 0.0] = incorrect_sample_weight
-        per_sample_loss = functional.binary_cross_entropy(
-            estimated_rewards_masked, real_rewards_masked, reduction="none"
+        per_sample_loss_masked = (
+            functional.binary_cross_entropy(
+                estimated_rewards, real_rewards, reduction="none"
+            )
+            * mask
         )
-        weighted_per_sample_loss = per_sample_loss * sample_weights
-        mean_weighted_per_sample_loss = weighted_per_sample_loss.mean()
-        return mean_weighted_per_sample_loss
+        sequence_lengths = mask.sum(dim=-1)
+        incorrect_sample_weight, correct_sample_weight = get_class_weights_for_rewards(
+            last_rewards
+        )
+        sample_weights = torch.tensor(
+            [
+                correct_sample_weight if reward == 1.0 else incorrect_sample_weight
+                for reward in last_rewards
+            ],
+            device=estimated_rewards.device,
+        )
+        per_rollout_loss_weighted = (
+            per_sample_loss_masked.sum(dim=-1) / sequence_lengths
+        ) * sample_weights
+        mean_rollout_loss = per_rollout_loss_weighted.mean()
+        return mean_rollout_loss
 
     def compute_loss(
         self,
