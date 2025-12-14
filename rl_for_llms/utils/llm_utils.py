@@ -129,11 +129,16 @@ def tokenize_messages(
 
 @cache
 def get_tokenizer(
-    model_id: str, truncation_side: str = "left"
+    model_id: str,
+    truncation_side: str = "left",
+    padding_side: str = "left",
 ) -> PreTrainedTokenizerBase:
     """Return the tokenizer for the specified model ID."""
     tokenizer = AutoTokenizer.from_pretrained(
-        model_id, truncation_side=truncation_side, trust_remote_code=True
+        model_id,
+        truncation_side=truncation_side,
+        padding_side=padding_side,
+        trust_remote_code=True,
     )  # type: ignore[no-untyped-call]
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
