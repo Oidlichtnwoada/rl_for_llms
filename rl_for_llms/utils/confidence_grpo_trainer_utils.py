@@ -50,7 +50,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             raise ValueError
         sorted_last_rewards = sorted(last_rewards)
         advantages_np = advantages.numpy()
-        indices = np.argsort(advantages_np)
+        indices = np.argsort(np.argsort(advantages_np))
         rewards_for_advantages_np = np.array(sorted_last_rewards)[indices]
         rewards_for_advantages_list = list(rewards_for_advantages_np.tolist())
         rewards_counter = Counter(rewards_for_advantages_np)
