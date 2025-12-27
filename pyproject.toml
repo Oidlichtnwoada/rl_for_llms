@@ -13,6 +13,7 @@ dependencies = [
     "wandb==0.23.1",
     "math-verify==0.8.0",
     "trl==0.26.1",
+    "scikit-learn==1.8.0",
 ]
 
 [dependency-groups]

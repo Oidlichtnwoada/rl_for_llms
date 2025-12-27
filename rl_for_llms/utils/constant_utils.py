@@ -35,3 +35,8 @@ def get_default_evaluation_file_names() -> tuple[str, ...]:
 def get_python_debug_modules() -> list[str]:
     """Return the list of Python modules used for debugging."""
     return ["debugpy", "pydevd"]
+
+
+def get_boolean_classification_threshold() -> float:
+    """Return the threshold for boolean classification tasks."""
+    return 0.5

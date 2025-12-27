@@ -9,6 +9,7 @@ from torch.utils.hooks import RemovableHandle
 from trl.trainer.grpo_trainer import GRPOTrainer
 
 from rl_for_llms.models.config import Config
+from rl_for_llms.utils.classification_utils import compute_binary_classification_metrics
 from rl_for_llms.utils.confidence_utils import get_confidence_token_logit_sigmoid
 from rl_for_llms.utils.llm_utils import get_token_to_id_mapping
 from rl_for_llms.utils.reward_utils import get_class_weights_for_rewards
@@ -98,6 +99,11 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         estimated_rewards = get_confidence_token_logit_sigmoid(
             self.confidence_logits
         ).float()
+        mask = inputs["completion_mask"].bool()
+        sequence_lengths = mask.sum(dim=-1)
+        masked_estimated_rewards = estimated_rewards * mask
+        sum_estimated_rewards = masked_estimated_rewards.sum(dim=-1)
+        mean_estimated_rewards = sum_estimated_rewards / sequence_lengths
         maximum_sequence_length = estimated_rewards.shape[-1]
         last_rewards = self.get_last_rewards(inputs)
         real_rewards = (
@@ -107,7 +113,6 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             .to(estimated_rewards.device)
             .float()
         )
-        mask = inputs["completion_mask"].bool()
         if mask.sum().item() == 0:
             raise ValueError
         per_sample_loss_masked = (
@@ -116,7 +121,6 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             )
             * mask
         )
-        sequence_lengths = mask.sum(dim=-1)
         incorrect_sample_weight, correct_sample_weight = get_class_weights_for_rewards(
             last_rewards
         )
@@ -131,6 +135,10 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             per_sample_loss_masked.sum(dim=-1) / sequence_lengths
         ) * sample_weights
         mean_rollout_loss = per_rollout_loss_weighted.mean()
+        binary_classification_metrics = compute_binary_classification_metrics(
+            last_rewards, mean_estimated_rewards.detach().cpu().tolist()
+        )
+        self.add_metrics("confidence", binary_classification_metrics)
         return mean_rollout_loss
 
     def compute_loss(
@@ -155,8 +163,15 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         confidence_loss = self.confidence_loss_factor * self.get_confidence_loss(inputs)
         self.confidence_logits = None
         total_loss = grpo_loss + confidence_loss
-        mode = get_mode(model)
-        self._metrics[mode]["grpo_loss"].append(grpo_loss.item())
-        self._metrics[mode]["confidence_loss"].append(confidence_loss.item())
-        self._metrics[mode]["total_loss"].append(total_loss.item())
+        self.add_metrics("grpo", {("loss",): grpo_loss.item()})
+        self.add_metrics("confidence", {("loss",): confidence_loss.item()})
+        self.add_metrics("total", {("loss",): total_loss.item()})
         return total_loss
+
+    def add_metrics(
+        self, namespace: str, metrics: dict[tuple[str, ...], float], sep: str = "/"
+    ) -> None:
+        """Add metrics with the appropriate mode and namespace prefix."""
+        mode = get_mode(typing.cast("torch.nn.Module", self.model))
+        for key, value in metrics.items():
+            self._metrics[mode][sep.join((namespace, *key))].append(value)
