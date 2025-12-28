@@ -25,7 +25,9 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         self.confidence_token_id = get_token_to_id_mapping(config.hf_model_id)[
             config.confidence_token
         ]
-        self.confidence_loss_factor = config.confidence_loss_factor
+        self.confidence_loss_factor = (
+            config.confidence_loss_factor if config.use_confidence_loss else 0.0
+        )
         self.lm_head_attribute_name = config.lm_head_attribute_name
         self.hook_handle: RemovableHandle | None = None
         self.confidence_logits: Tensor | None = None
