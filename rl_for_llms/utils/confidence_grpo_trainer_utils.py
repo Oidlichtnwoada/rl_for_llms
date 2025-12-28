@@ -1,5 +1,6 @@
 import typing
 from collections import Counter
+from functools import partial, update_wrapper
 
 import numpy as np
 import torch
@@ -8,6 +9,7 @@ from torch.nn import Module, functional
 from torch.utils.hooks import RemovableHandle
 from trl.trainer.grpo_trainer import GRPOTrainer
 
+from rl_for_llms.models.answer import Answer
 from rl_for_llms.models.config import Config
 from rl_for_llms.utils.classification_utils import compute_binary_classification_metrics
 from rl_for_llms.utils.confidence_utils import get_confidence_token_logit_sigmoid
@@ -21,6 +23,12 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
 
     def __init__(self, config: Config, **kwargs: typing.Any) -> None:  # noqa: ANN401
         """Initialize the class with confidence loss parameters."""
+        if len(kwargs["reward_funcs"]) != 1:
+            raise ValueError
+        reward_func = kwargs["reward_funcs"][0]
+        wrapped_reward_func = partial(reward_func, trainer=self)
+        update_wrapper(wrapped_reward_func, reward_func)
+        kwargs["reward_funcs"] = [wrapped_reward_func]
         super().__init__(**kwargs)
         self.confidence_token_id = get_token_to_id_mapping(config.hf_model_id)[
             config.confidence_token
@@ -28,25 +36,17 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         self.confidence_loss_factor = (
             config.confidence_loss_factor if config.use_confidence_loss else 0.0
         )
+        self.answers: list[Answer] = []
         self.lm_head_attribute_name = config.lm_head_attribute_name
         self.hook_handle: RemovableHandle | None = None
         self.confidence_logits: Tensor | None = None
-
-    def get_reward_function_name(self) -> str:
-        """Return the name of the reward function."""
-        if len(self.reward_func_names) != 1:
-            raise ValueError
-        reward_func_name = self.reward_func_names[0]
-        return reward_func_name
 
     def get_last_rewards(
         self,
         inputs: dict[str, torch.Tensor],
     ) -> list[float]:
         """Return the last computed rewards."""
-        last_rewards = list(
-            dict(self._logs["rewards"])[self.get_reward_function_name()]
-        )
+        last_rewards = [answer.reward for answer in self.answers]
         advantages = inputs["advantages"].detach().cpu()
         inputs_length = advantages.shape[0]
         if len(last_rewards) != inputs_length:

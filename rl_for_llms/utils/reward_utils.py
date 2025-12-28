@@ -10,6 +10,7 @@ from math_verify import (
 )
 from transformers import TrainerState
 
+from rl_for_llms.models.answer import Answer
 from rl_for_llms.utils.latex_utils import (
     get_boxed_expression,
     get_last_boxed_expression,
@@ -58,11 +59,11 @@ def verify_answer(
     return verification_result
 
 
-def get_math_verification_reward(
+def get_math_verification_answer(
     correct_answer: str,
     model_answer: str,
-) -> float:
-    """Return a reward based on the math verification of the model answer."""
+) -> Answer:
+    """Return the math verification answer."""
     boxed_correct_answer = get_boxed_expression(correct_answer)
     parsed_boxed_correct_answer = parse_answer(boxed_correct_answer)
     boxed_model_answer = get_last_boxed_expression(model_answer)
@@ -71,7 +72,12 @@ def get_math_verification_reward(
         parsed_boxed_correct_answer, parsed_boxed_model_answer
     )
     verification_reward = float(verification_result)
-    return verification_reward
+    answer = Answer(
+        reward=verification_reward,
+        correct_answer=boxed_correct_answer,
+        model_answer=boxed_model_answer,
+    )
+    return answer
 
 
 def default_reward_function(
@@ -81,21 +87,21 @@ def default_reward_function(
     prompt_id: str,
     answer: str,
     trainer_state: TrainerState,  # noqa: ARG001
-) -> float:
-    """Return a reward value that rewards completions with more unique letters."""
+) -> Answer:
+    """Return a reward based on the math verification of the model answer."""
     check_model_output_for_completion(completion_ids, prompt, prompt_id)
-    reward = get_math_verification_reward(answer, completion)
-    return reward
+    verification_answer = get_math_verification_answer(answer, completion)
+    return verification_answer
 
 
 def default_batch_reward_function(
     prompts: list[typing.Any],
     completions: list[typing.Any],
-    **kwargs: dict[str, typing.Any],
+    **kwargs: typing.Any,  # noqa: ANN401
 ) -> list[float]:
     """Return a list of reward values for a batch of prompts and completions."""
     batch_size = len(prompts)
-    rewards = [
+    answers = [
         default_reward_function(
             prompt[-1]["content"],
             completion[-1]["content"],
@@ -114,6 +120,8 @@ def default_batch_reward_function(
             strict=True,
         )
     ]
+    kwargs["trainer"].answers = answers
+    rewards = [answer.reward for answer in answers]
     return rewards
 
 
