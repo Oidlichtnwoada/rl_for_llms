@@ -1,6 +1,7 @@
 import itertools
 import statistics
 
+from rl_for_llms.models.answer import AnswerWithConfidence
 from rl_for_llms.utils.config_utils import get_config
 from rl_for_llms.utils.dataset_utils import load_training_data_from_disk, trim_dataset
 from rl_for_llms.utils.llm_utils import (
@@ -42,3 +43,10 @@ def get_mean_and_std_of_confidence_token_logit(
     mean_value = statistics.mean(flattened_logit_values)
     std_value = statistics.stdev(flattened_logit_values)
     return mean_value, std_value
+
+
+def compute_answer_metrics(
+    answers_with_confidence: list[AnswerWithConfidence],  # noqa: ARG001
+) -> dict[tuple[str, ...], float]:
+    """Compute binary classification metrics."""
+    return {}

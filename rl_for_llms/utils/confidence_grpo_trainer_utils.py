@@ -9,10 +9,12 @@ from torch.nn import Module, functional
 from torch.utils.hooks import RemovableHandle
 from trl.trainer.grpo_trainer import GRPOTrainer
 
-from rl_for_llms.models.answer import Answer
+from rl_for_llms.models.answer import Answer, get_answers_with_confidence
 from rl_for_llms.models.config import Config
 from rl_for_llms.utils.classification_utils import compute_binary_classification_metrics
 from rl_for_llms.utils.confidence_utils import get_confidence_token_logit_sigmoid
+from rl_for_llms.utils.constant_utils import get_default_confidence_score
+from rl_for_llms.utils.evaluation_utils import compute_answer_metrics
 from rl_for_llms.utils.llm_utils import get_token_to_id_mapping
 from rl_for_llms.utils.reward_utils import get_class_weights_for_rewards
 from rl_for_llms.utils.torch_utils import get_mode
@@ -137,10 +139,19 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             per_sample_loss_masked.sum(dim=-1) / sequence_lengths
         ) * sample_weights
         mean_rollout_loss = per_rollout_loss_weighted.mean()
+        mean_estimated_rewards_list = mean_estimated_rewards.detach().cpu().tolist()
         binary_classification_metrics = compute_binary_classification_metrics(
-            last_rewards, mean_estimated_rewards.detach().cpu().tolist()
+            last_rewards, mean_estimated_rewards_list
         )
         self.add_metrics("confidence", binary_classification_metrics)
+        answers_with_confidence = get_answers_with_confidence(
+            self.answers,
+            mean_estimated_rewards_list
+            if self.confidence_loss_factor > 0
+            else [get_default_confidence_score()] * len(self.answers),
+        )
+        answer_metrics = compute_answer_metrics(answers_with_confidence)
+        self.add_metrics("answer", answer_metrics)
         return mean_rollout_loss
 
     def compute_loss(

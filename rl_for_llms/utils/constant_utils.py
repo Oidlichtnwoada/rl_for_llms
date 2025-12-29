@@ -40,3 +40,8 @@ def get_python_debug_modules() -> list[str]:
 def get_boolean_classification_threshold() -> float:
     """Return the threshold for boolean classification tasks."""
     return 0.5
+
+
+def get_default_confidence_score() -> float:
+    """Return the default confidence score."""
+    return 1.0

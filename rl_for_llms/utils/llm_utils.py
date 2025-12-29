@@ -149,7 +149,7 @@ def check_model_output_for_completion(
     completion_ids: list[int],
     prompt: str,
     prompt_id: str,
-) -> None:
+) -> bool:
     """Check if the model could finish its answer for the given prompt."""
     config = get_config()
     completion_length = len(completion_ids)
@@ -163,3 +163,5 @@ def check_model_output_for_completion(
             f'model could not finish its answer for prompt ("{prompt}") with ID ("{prompt_id}")',
             level=logging.WARNING,
         )
+        return False
+    return True

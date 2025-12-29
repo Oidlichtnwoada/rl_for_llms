@@ -62,6 +62,8 @@ def verify_answer(
 def get_math_verification_answer(
     correct_answer: str,
     model_answer: str,
+    *,
+    is_truncated: bool,
 ) -> Answer:
     """Return the math verification answer."""
     boxed_correct_answer = get_boxed_expression(correct_answer)
@@ -76,6 +78,8 @@ def get_math_verification_answer(
         reward=verification_reward,
         correct_answer=boxed_correct_answer,
         model_answer=boxed_model_answer,
+        is_correct=verification_result,
+        is_truncated=is_truncated,
     )
     return answer
 
@@ -89,8 +93,12 @@ def default_reward_function(
     trainer_state: TrainerState,  # noqa: ARG001
 ) -> Answer:
     """Return a reward based on the math verification of the model answer."""
-    check_model_output_for_completion(completion_ids, prompt, prompt_id)
-    verification_answer = get_math_verification_answer(answer, completion)
+    is_truncated = not check_model_output_for_completion(
+        completion_ids, prompt, prompt_id
+    )
+    verification_answer = get_math_verification_answer(
+        answer, completion, is_truncated=is_truncated
+    )
     return verification_answer
 
 
