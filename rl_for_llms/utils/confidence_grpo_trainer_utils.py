@@ -32,14 +32,17 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         update_wrapper(wrapped_reward_func, reward_func)
         kwargs["reward_funcs"] = [wrapped_reward_func]
         super().__init__(**kwargs)
-        self.confidence_token_id = get_token_to_id_mapping(config.hf_model_id)[
-            config.confidence_token
+        self.config = config
+        self.confidence_token_id = get_token_to_id_mapping(self.config.hf_model_id)[
+            self.config.confidence_token
         ]
         self.confidence_loss_factor = (
-            config.confidence_loss_factor if config.use_confidence_loss else 0.0
+            self.config.confidence_loss_factor
+            if self.config.use_confidence_loss
+            else 0.0
         )
         self.answers: list[Answer] = []
-        self.lm_head_attribute_name = config.lm_head_attribute_name
+        self.lm_head_attribute_name = self.config.lm_head_attribute_name
         self.hook_handle: RemovableHandle | None = None
         self.confidence_logits: Tensor | None = None
 
@@ -150,7 +153,9 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             if self.confidence_loss_factor > 0
             else [get_default_confidence_score()] * len(self.answers),
         )
-        answer_metrics = compute_answer_metrics(answers_with_confidence)
+        answer_metrics = compute_answer_metrics(
+            answers_with_confidence, self.config.temperature
+        )
         self.add_metrics("answer", answer_metrics)
         return mean_rollout_loss
 
