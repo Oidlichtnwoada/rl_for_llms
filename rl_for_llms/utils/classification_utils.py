@@ -18,7 +18,9 @@ def compute_binary_classification_metrics(  # noqa: C901, PLR0912
         raise ValueError
     true_labels_np = np.array(true_labels).astype(bool)
     predicted_labels_np = np.array(predicted_labels) >= threshold
-    tn, fp, fn, tp = confusion_matrix(true_labels_np, predicted_labels_np).ravel()
+    tn, fp, fn, tp = confusion_matrix(
+        true_labels_np, predicted_labels_np, labels=[False, True]
+    ).ravel()
     metrics: dict[tuple[str, ...], float] = {}
     if (denominator := (tp + fn)) > 0:
         tpr = tp / denominator

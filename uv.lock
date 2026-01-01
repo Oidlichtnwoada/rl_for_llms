@@ -1085,6 +1085,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "datasets" },
     { name = "math-verify" },
+    { name = "pandas" },
     { name = "peft" },
     { name = "pydantic" },
     { name = "scikit-learn" },
@@ -1104,6 +1105,7 @@ dev = [
 requires-dist = [
     { name = "datasets", specifier = "==4.4.1" },
     { name = "math-verify", specifier = "==0.8.0" },
+    { name = "pandas", specifier = "==2.3.3" },
     { name = "peft", specifier = "==0.18.0" },
     { name = "pydantic", specifier = "==2.12.5" },
     { name = "scikit-learn", specifier = "==1.8.0" },

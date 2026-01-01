@@ -52,6 +52,7 @@ def get_grpo_config() -> GRPOConfig:
     grpo_config = GRPOConfig(
         max_completion_length=config.max_completion_length,
         num_generations=config.num_generations,
+        num_generations_eval=config.num_generations,
         temperature=config.temperature,
         top_p=config.top_p,
         use_vllm=config.use_vllm,
@@ -70,6 +71,8 @@ def get_grpo_config() -> GRPOConfig:
         save_steps=config.save_steps,
         eval_steps=config.eval_steps,
         per_device_train_batch_size=config.per_device_rollouts_per_batch
+        * config.num_generations,
+        per_device_eval_batch_size=config.per_device_rollouts_per_batch
         * config.num_generations,
         gradient_accumulation_steps=config.gradient_accumulation_steps,
         gradient_checkpointing=config.gradient_checkpointing,
@@ -129,7 +132,9 @@ def start_training() -> None:
     log_msg(
         f"start training with the following configuration: {config.model_dump_json()}"
     )
+    confidence_grpo_trainer.evaluate(metric_key_prefix="eval_before_train")
     confidence_grpo_trainer.train()
+    confidence_grpo_trainer.evaluate(metric_key_prefix="eval_after_train")
     log_msg(
         f"finished training with the following configuration: {config.model_dump_json()}"
     )

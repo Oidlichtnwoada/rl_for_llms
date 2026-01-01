@@ -4,12 +4,17 @@ from functools import partial, update_wrapper
 
 import numpy as np
 import torch
+from datasets import Dataset
 from torch import Tensor
 from torch.nn import Module, functional
 from torch.utils.hooks import RemovableHandle
 from trl.trainer.grpo_trainer import GRPOTrainer
 
-from rl_for_llms.models.answer import Answer, get_answers_with_confidence
+from rl_for_llms.models.answer import (
+    Answer,
+    AnswerWithConfidence,
+    get_answers_with_confidence,
+)
 from rl_for_llms.models.config import Config
 from rl_for_llms.utils.classification_utils import compute_binary_classification_metrics
 from rl_for_llms.utils.confidence_utils import get_confidence_token_logit_sigmoid
@@ -45,6 +50,17 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         self.lm_head_attribute_name = self.config.lm_head_attribute_name
         self.hook_handle: RemovableHandle | None = None
         self.confidence_logits: Tensor | None = None
+        self.eval_mode: bool = False
+        self.eval_binary_classification_metrics_inputs: list[
+            tuple[list[float], list[float]]
+        ] = []
+        self.eval_binary_classification_metrics_outputs: list[
+            dict[tuple[str, ...], float]
+        ] = []
+        self.eval_answer_metrics_inputs: list[
+            tuple[list[AnswerWithConfidence], float]
+        ] = []
+        self.eval_answer_metrics_outputs: list[dict[tuple[str, ...], float]] = []
 
     def get_last_rewards(
         self,
@@ -157,6 +173,17 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             answers_with_confidence, self.config.temperature
         )
         self.add_metrics("answer", answer_metrics)
+        if self.eval_mode:
+            self.eval_binary_classification_metrics_inputs.append(
+                (last_rewards, mean_estimated_rewards_list)
+            )
+            self.eval_binary_classification_metrics_outputs.append(
+                binary_classification_metrics
+            )
+            self.eval_answer_metrics_inputs.append(
+                (answers_with_confidence, self.config.temperature)
+            )
+            self.eval_answer_metrics_outputs.append(answer_metrics)
         return mean_rollout_loss
 
     def compute_loss(
@@ -193,3 +220,23 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         mode = get_mode(typing.cast("torch.nn.Module", self.model))
         for key, value in metrics.items():
             self._metrics[mode][sep.join((namespace, *key))].append(value)
+
+    def clear_eval_inputs_and_outputs(self) -> None:
+        """Clear evaluation inputs and outputs."""
+        self.eval_binary_classification_metrics_inputs.clear()
+        self.eval_binary_classification_metrics_outputs.clear()
+        self.eval_answer_metrics_inputs.clear()
+        self.eval_answer_metrics_outputs.clear()
+
+    def evaluate(
+        self,
+        eval_dataset: Dataset | dict[str, Dataset] | None = None,
+        ignore_keys: list[str] | None = None,
+        metric_key_prefix: str = "eval",
+    ) -> dict[str, float]:
+        """Evaluate the model and return evaluation metrics."""
+        self.eval_mode = True
+        eval_output = super().evaluate(eval_dataset, ignore_keys, metric_key_prefix)
+        self.eval_mode = False
+        self.clear_eval_inputs_and_outputs()
+        return eval_output
