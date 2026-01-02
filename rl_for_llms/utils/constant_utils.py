@@ -45,3 +45,33 @@ def get_boolean_classification_threshold() -> float:
 def get_default_confidence_score() -> float:
     """Return the default confidence score."""
     return 1.0
+
+
+def get_confidence_namespace() -> str:
+    """Return the namespace for confidence-related metrics."""
+    return "confidence"
+
+
+def get_total_namespace() -> str:
+    """Return the namespace for total-related metrics."""
+    return "total"
+
+
+def get_grpo_namespace() -> str:
+    """Return the namespace for GRPO-related metrics."""
+    return "grpo"
+
+
+def get_answer_namespace() -> str:
+    """Return the namespace for answer-related metrics."""
+    return "answer"
+
+
+def get_loss_name() -> str:
+    """Return the name for loss metrics."""
+    return "loss"
+
+
+def get_default_metric_separator() -> str:
+    """Return the default separator for metric names."""
+    return "/"

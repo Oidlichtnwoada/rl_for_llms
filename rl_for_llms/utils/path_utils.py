@@ -26,6 +26,11 @@ def get_training_data_dir() -> pathlib.Path:
     return get_data_dir() / "training"
 
 
+def get_evaluation_metric_dir() -> pathlib.Path:
+    """Return the evaluation metrics data directory path."""
+    return get_evaluation_data_dir() / "metrics"
+
+
 def is_folder_empty(
     folder_path: pathlib.Path, ignore_file_names: tuple[str, ...] = ()
 ) -> bool:

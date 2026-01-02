@@ -23,6 +23,7 @@ class Config(BaseModel):
     confidence_token_logit_std: float = Field(default=1.5)
     confidence_loss_factor: float = Field(default=0.1)
     use_confidence_loss: bool = Field(default=True)
+    use_confidence_reward: bool = Field(default=False)
     learning_rate: float = Field(default=1e-5)
     num_train_epochs: int = Field(default=get_cuda_default_value(2, 1))
     use_vllm: bool = Field(default=False)
@@ -64,3 +65,12 @@ class Config(BaseModel):
     dataloader_pin_memory: bool = Field(
         default=get_cuda_default_value(value_if_cuda=True, value_if_not_cuda=False)
     )
+
+    def get_config_shorthand(self) -> str:
+        """Return a shorthand representation of the config."""
+        confidence_loss_spec = "confloss" if self.use_confidence_loss else "noconfloss"
+        confidence_reward_spec = (
+            "confrew" if self.use_confidence_reward else "noconfrew"
+        )
+        shorthand = f"{confidence_loss_spec}_{confidence_reward_spec}"
+        return shorthand

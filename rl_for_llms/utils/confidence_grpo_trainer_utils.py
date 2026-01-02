@@ -1,6 +1,7 @@
 import typing
 from collections import Counter
 from functools import partial, update_wrapper
+from itertools import chain
 
 import numpy as np
 import torch
@@ -18,8 +19,23 @@ from rl_for_llms.models.answer import (
 from rl_for_llms.models.config import Config
 from rl_for_llms.utils.classification_utils import compute_binary_classification_metrics
 from rl_for_llms.utils.confidence_utils import get_confidence_token_logit_sigmoid
-from rl_for_llms.utils.constant_utils import get_default_confidence_score
-from rl_for_llms.utils.evaluation_utils import compute_answer_metrics
+from rl_for_llms.utils.constant_utils import (
+    get_answer_namespace,
+    get_confidence_namespace,
+    get_default_confidence_score,
+    get_default_metric_separator,
+    get_grpo_namespace,
+    get_loss_name,
+    get_total_namespace,
+)
+from rl_for_llms.utils.evaluation_utils import (
+    aggregate_metrics,
+    change_metric_keys,
+    compute_answer_metrics,
+    get_df_from_metrics,
+    get_eval_metrics_df_name,
+    store_eval_df,
+)
 from rl_for_llms.utils.llm_utils import get_token_to_id_mapping
 from rl_for_llms.utils.reward_utils import get_class_weights_for_rewards
 from rl_for_llms.utils.torch_utils import get_mode
@@ -162,17 +178,17 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         binary_classification_metrics = compute_binary_classification_metrics(
             last_rewards, mean_estimated_rewards_list
         )
-        self.add_metrics("confidence", binary_classification_metrics)
+        self.add_metrics(get_confidence_namespace(), binary_classification_metrics)
         answers_with_confidence = get_answers_with_confidence(
             self.answers,
             mean_estimated_rewards_list
-            if self.confidence_loss_factor > 0
+            if self.is_confidence_trained()
             else [get_default_confidence_score()] * len(self.answers),
         )
         answer_metrics = compute_answer_metrics(
             answers_with_confidence, self.config.temperature
         )
-        self.add_metrics("answer", answer_metrics)
+        self.add_metrics(get_answer_namespace(), answer_metrics)
         if self.eval_mode:
             self.eval_binary_classification_metrics_inputs.append(
                 (last_rewards, mean_estimated_rewards_list)
@@ -208,13 +224,18 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         confidence_loss = self.confidence_loss_factor * self.get_confidence_loss(inputs)
         self.confidence_logits = None
         total_loss = grpo_loss + confidence_loss
-        self.add_metrics("grpo", {("loss",): grpo_loss.item()})
-        self.add_metrics("confidence", {("loss",): confidence_loss.item()})
-        self.add_metrics("total", {("loss",): total_loss.item()})
+        self.add_metrics(get_grpo_namespace(), {(get_loss_name(),): grpo_loss.item()})
+        self.add_metrics(
+            get_confidence_namespace(), {(get_loss_name(),): confidence_loss.item()}
+        )
+        self.add_metrics(get_total_namespace(), {(get_loss_name(),): total_loss.item()})
         return total_loss
 
     def add_metrics(
-        self, namespace: str, metrics: dict[tuple[str, ...], float], sep: str = "/"
+        self,
+        namespace: str,
+        metrics: dict[tuple[str, ...], float],
+        sep: str = get_default_metric_separator(),
     ) -> None:
         """Add metrics with the appropriate mode and namespace prefix."""
         mode = get_mode(typing.cast("torch.nn.Module", self.model))
@@ -228,6 +249,10 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         self.eval_answer_metrics_inputs.clear()
         self.eval_answer_metrics_outputs.clear()
 
+    def is_confidence_trained(self) -> bool:
+        """Check if the confidence loss is being used for training."""
+        return self.confidence_loss_factor > 0
+
     def evaluate(
         self,
         eval_dataset: Dataset | dict[str, Dataset] | None = None,
@@ -238,5 +263,79 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         self.eval_mode = True
         eval_output = super().evaluate(eval_dataset, ignore_keys, metric_key_prefix)
         self.eval_mode = False
+        self.merge_eval_metrics(metric_key_prefix)
         self.clear_eval_inputs_and_outputs()
         return eval_output
+
+    def merge_eval_metrics(self, metric_key_prefix: str) -> None:
+        """Merge evaluation metrics from multiple evaluation runs."""
+        concatenated_eval_binary_classification_metrics_inputs = tuple(
+            list(chain.from_iterable(x))
+            for x in zip(*self.eval_binary_classification_metrics_inputs, strict=True)
+        )
+        concatenated_eval_binary_classification_metrics_outputs = change_metric_keys(
+            compute_binary_classification_metrics(
+                *concatenated_eval_binary_classification_metrics_inputs  # type: ignore[arg-type]
+            ),
+            prefix=(metric_key_prefix, get_confidence_namespace()),
+            postfix=(),
+        )
+        aggregated_eval_binary_classification_metrics_outputs = change_metric_keys(
+            aggregate_metrics(self.eval_binary_classification_metrics_outputs),
+            prefix=(metric_key_prefix, get_confidence_namespace()),
+            postfix=(),
+        )
+        answers_with_confidence, temperatures = zip(
+            *self.eval_answer_metrics_inputs, strict=True
+        )
+        if len(set(temperatures)) != 1:
+            raise ValueError
+        temperature = temperatures[0]
+        concatenated_eval_answer_metrics_inputs = (
+            list(chain.from_iterable(answers_with_confidence)),
+            temperature,
+        )
+        concatenated_eval_answer_metrics_outputs = change_metric_keys(
+            compute_answer_metrics(*concatenated_eval_answer_metrics_inputs),
+            prefix=(metric_key_prefix, get_answer_namespace()),
+            postfix=(),
+        )
+        aggregated_eval_answer_metrics_outputs = change_metric_keys(
+            aggregate_metrics(self.eval_answer_metrics_outputs),
+            prefix=(metric_key_prefix, get_answer_namespace()),
+            postfix=(),
+        )
+        concatenated_eval_binary_classification_metrics_df = get_df_from_metrics(
+            concatenated_eval_binary_classification_metrics_outputs
+        )
+        store_eval_df(
+            get_eval_metrics_df_name(
+                metric_key_prefix, is_aggregated=False, is_bc=True
+            ),
+            concatenated_eval_binary_classification_metrics_df,
+        )
+        aggregated_eval_binary_classification_metrics_df = get_df_from_metrics(
+            aggregated_eval_binary_classification_metrics_outputs
+        )
+        store_eval_df(
+            get_eval_metrics_df_name(metric_key_prefix, is_aggregated=True, is_bc=True),
+            aggregated_eval_binary_classification_metrics_df,
+        )
+        concatenated_eval_answer_metrics_df = get_df_from_metrics(
+            concatenated_eval_answer_metrics_outputs
+        )
+        store_eval_df(
+            get_eval_metrics_df_name(
+                metric_key_prefix, is_aggregated=False, is_bc=False
+            ),
+            concatenated_eval_answer_metrics_df,
+        )
+        aggregated_eval_answer_metrics_df = get_df_from_metrics(
+            aggregated_eval_answer_metrics_outputs
+        )
+        store_eval_df(
+            get_eval_metrics_df_name(
+                metric_key_prefix, is_aggregated=True, is_bc=False
+            ),
+            aggregated_eval_answer_metrics_df,
+        )

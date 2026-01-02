@@ -3,15 +3,21 @@ import random
 import statistics
 from collections import defaultdict
 
+import pandas as pd
+
 from rl_for_llms.models.answer import AnswerWithConfidence
 from rl_for_llms.utils.config_utils import get_config
-from rl_for_llms.utils.constant_utils import get_default_confidence_score
+from rl_for_llms.utils.constant_utils import (
+    get_default_confidence_score,
+    get_default_metric_separator,
+)
 from rl_for_llms.utils.dataset_utils import load_training_data_from_disk, trim_dataset
 from rl_for_llms.utils.llm_utils import (
     get_llm_output_with_step_data,
     get_token_to_id_mapping,
     get_tokenizer,
 )
+from rl_for_llms.utils.path_utils import get_evaluation_metric_dir
 
 
 def get_mean_and_std_of_confidence_token_logit(
@@ -130,3 +136,63 @@ def compute_answer_metrics(
         )
     ] = float(random.choice(max_confidence_answers).answer.is_correct)  # noqa: S311
     return metrics
+
+
+def aggregate_metrics(
+    metrics_list: list[dict[tuple[str, ...], float]],
+) -> dict[tuple[str, ...], float]:
+    """Aggregate metrics by computing mean and standard deviation."""
+    aggregated_metrics: dict[tuple[str, ...], float] = {}
+    if not metrics_list:
+        return aggregated_metrics
+    metric_keys = set().union(*metrics_list)
+    for key in metric_keys:
+        values = [metrics[key] for metrics in metrics_list if key in metrics]
+        if len(values) == 0:
+            raise ValueError
+        aggregated_metrics[(*key, "mean")] = statistics.mean(values)
+        stddev = statistics.stdev(values) if len(values) > 1 else 0.0
+        aggregated_metrics[(*key, "std")] = stddev
+    return aggregated_metrics
+
+
+def change_metric_keys(
+    metrics: dict[tuple[str, ...], float],
+    prefix: tuple[str, ...] = (),
+    postfix: tuple[str, ...] = (),
+) -> dict[tuple[str, ...], float]:
+    """Change metric keys by adding prefix and postfix."""
+    changed_metrics: dict[tuple[str, ...], float] = {}
+    for key, value in metrics.items():
+        new_key = prefix + key + postfix
+        changed_metrics[new_key] = value
+    return changed_metrics
+
+
+def get_df_from_metrics(
+    metrics: dict[tuple[str, ...], float],
+    sep: str = get_default_metric_separator(),
+) -> pd.DataFrame:
+    """Convert metrics dictionary to a pandas DataFrame."""
+    data = {sep.join(key): value for key, value in metrics.items()}
+    df = pd.DataFrame([data])
+    return df
+
+
+def get_eval_metrics_df_name(
+    metric_key_prefix: str, *, is_aggregated: bool = True, is_bc: bool = True
+) -> str:
+    """Get the evaluation metrics DataFrame name."""
+    scope = "agg" if is_aggregated else "concat"
+    metric_type = "bc" if is_bc else "answer"
+    return f"{scope}_{metric_key_prefix}_{metric_type}_metrics"
+
+
+def store_eval_df(
+    file_name: str,
+    df: pd.DataFrame,
+) -> None:
+    """Store evaluation DataFrame to a CSV file."""
+    config = get_config()
+    shorthand = config.get_config_shorthand()
+    df.to_csv(get_evaluation_metric_dir() / f"{file_name}_{shorthand}.csv", index=False)
