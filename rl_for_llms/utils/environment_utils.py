@@ -9,6 +9,16 @@ def is_local_mode_enforced() -> bool:
     return os.getenv("MODE") == "LOCAL"
 
 
+def use_confidence_loss() -> bool:
+    """Check if confidence loss should be used via environment variable."""
+    return os.getenv("USE_CONFIDENCE_LOSS", "1") == "1"
+
+
+def use_confidence_reward() -> bool:
+    """Check if confidence reward should be used via environment variable."""
+    return os.getenv("USE_CONFIDENCE_REWARD", "1") == "1"
+
+
 def get_wandb_api_key() -> str | None:
     """Return the Weights & Biases API key from environment variable."""
     return os.getenv("WANDB_API_KEY")
