@@ -15,6 +15,7 @@ dependencies = [
     "trl==0.26.1",
     "scikit-learn==1.8.0",
     "pandas==2.3.3",
+    "scipy==1.16.3",
 ]
 
 [dependency-groups]

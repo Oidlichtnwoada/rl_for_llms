@@ -4,6 +4,7 @@ import statistics
 from collections import defaultdict
 
 import pandas as pd
+from scipy.stats import skew
 
 from rl_for_llms.models.answer import AnswerWithConfidence
 from rl_for_llms.utils.config_utils import get_config
@@ -22,7 +23,7 @@ from rl_for_llms.utils.path_utils import get_evaluation_metric_dir
 
 def get_mean_and_std_of_confidence_token_logit(
     sample_size: int = 16,
-) -> tuple[float, float]:
+) -> tuple[float, float, float]:
     """Return the mean and standard deviation of the confidence token logit."""
     config = get_config()
     confidence_token_id = get_token_to_id_mapping(config.hf_model_id)[
@@ -51,7 +52,8 @@ def get_mean_and_std_of_confidence_token_logit(
     flattened_logit_values = list(itertools.chain.from_iterable(logit_values))
     mean_value = statistics.mean(flattened_logit_values)
     std_value = statistics.stdev(flattened_logit_values)
-    return mean_value, std_value
+    skewness = skew(flattened_logit_values, bias=False)
+    return mean_value, std_value, skewness
 
 
 def pick_best_answer(
