@@ -27,7 +27,7 @@ dev = [
 
 [tool.ruff.lint]
 select = ["ALL"]
-ignore = ["D100", "D104", "D203", "D213", "COM812", "RET504", "PLR0913", "E501", "TC001", "TC002"]
+ignore = ["D100", "D104", "D203", "D213", "COM812", "RET504", "PLR0913", "E501", "TC001", "TC002", "TC003"]
 
 [tool.mypy]
 strict = true

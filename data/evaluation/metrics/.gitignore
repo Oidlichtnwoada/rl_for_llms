@@ -1,2 +1,6 @@
 *.csv
 *.json
+*.jinja
+*.txt
+*.bin
+*.safetensors

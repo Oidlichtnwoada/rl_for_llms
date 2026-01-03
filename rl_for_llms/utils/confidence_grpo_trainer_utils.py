@@ -1,3 +1,5 @@
+import pathlib
+import shutil
 import typing
 from collections import Counter
 from functools import partial, update_wrapper
@@ -6,9 +8,11 @@ from itertools import chain
 import numpy as np
 import torch
 from datasets import Dataset
+from peft import PeftModel
 from torch import Tensor
 from torch.nn import Module, functional
 from torch.utils.hooks import RemovableHandle
+from transformers import PreTrainedModel
 from trl.trainer.grpo_trainer import GRPOTrainer
 
 from rl_for_llms.models.answer import (
@@ -19,6 +23,7 @@ from rl_for_llms.models.answer import (
 from rl_for_llms.models.config import Config
 from rl_for_llms.utils.classification_utils import compute_binary_classification_metrics
 from rl_for_llms.utils.confidence_utils import get_confidence_token_logit_sigmoid
+from rl_for_llms.utils.config_utils import get_config
 from rl_for_llms.utils.constant_utils import (
     get_answer_namespace,
     get_confidence_namespace,
@@ -37,6 +42,7 @@ from rl_for_llms.utils.evaluation_utils import (
     store_eval_df,
 )
 from rl_for_llms.utils.llm_utils import get_token_to_id_mapping
+from rl_for_llms.utils.path_utils import get_evaluation_metric_dir
 from rl_for_llms.utils.reward_utils import get_class_weights_for_rewards
 from rl_for_llms.utils.torch_utils import get_mode
 
@@ -260,12 +266,56 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         metric_key_prefix: str = "eval",
     ) -> dict[str, float]:
         """Evaluate the model and return evaluation metrics."""
+        self.save_model_to_eval_folder(metric_key_prefix)
+        self.load_model_from_eval_folder(metric_key_prefix)
         self.eval_mode = True
         eval_output = super().evaluate(eval_dataset, ignore_keys, metric_key_prefix)
         self.eval_mode = False
         self.merge_eval_metrics(metric_key_prefix)
         self.clear_eval_inputs_and_outputs()
         return eval_output
+
+    @staticmethod
+    def get_model_output_dir(model_identifier: str) -> pathlib.Path:
+        """Get the model output directory for saving/loading."""
+        config = get_config()
+        shorthand = config.get_config_shorthand()
+        standardized_hf_model_id = (
+            config.hf_model_id.replace("/", "_")
+            .replace("-", "_")
+            .replace(".", "_")
+            .lower()
+        )
+        model_output_dir = (
+            get_evaluation_metric_dir()
+            / f"{standardized_hf_model_id}_{model_identifier}_{shorthand}"
+        )
+        return model_output_dir
+
+    def save_model_to_eval_folder(
+        self,
+        model_identifier: str,
+    ) -> None:
+        """Save the model to disk."""
+        model_output_dir = self.get_model_output_dir(model_identifier)
+        shutil.rmtree(model_output_dir, ignore_errors=True)
+        model_output_dir.mkdir(parents=True, exist_ok=True)
+        self.save_model(str(model_output_dir))
+
+    def load_model_from_eval_folder(self, model_identifier: str) -> None:
+        """Load the model from disk."""
+        model_output_dir = self.get_model_output_dir(model_identifier)
+        config = get_config()
+        if config.enable_lora:
+            saved_model = PeftModel.from_pretrained(
+                typing.cast("Module", self.model),
+                model_output_dir,
+            )
+        else:
+            saved_model = typing.cast("PreTrainedModel", self.model).from_pretrained(
+                model_output_dir
+            )
+        self.model = saved_model
 
     def merge_eval_metrics(self, metric_key_prefix: str) -> None:
         """Merge evaluation metrics from multiple evaluation runs."""
