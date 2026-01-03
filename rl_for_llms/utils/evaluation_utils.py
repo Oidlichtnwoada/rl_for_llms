@@ -1,4 +1,5 @@
 import itertools
+import json
 import random
 import statistics
 from collections import defaultdict
@@ -50,6 +51,9 @@ def get_mean_and_std_of_confidence_token_logit(
         for message_logits in step_data
     ]
     flattened_logit_values = list(itertools.chain.from_iterable(logit_values))
+    file_path = get_evaluation_metric_dir() / "confidence_logit_values.json"
+    with file_path.open("w") as file:
+        file.write(json.dumps(flattened_logit_values))
     mean_value = statistics.mean(flattened_logit_values)
     std_value = statistics.stdev(flattened_logit_values)
     skewness = skew(flattened_logit_values, bias=False)
