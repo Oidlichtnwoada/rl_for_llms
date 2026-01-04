@@ -29,6 +29,11 @@ def get_base_num_generations() -> int:
     return int(os.getenv("BASE_NUM_GENERATIONS", "4"))
 
 
+def get_skip_eval_before_train() -> bool:
+    """Check if evaluation should be skipped before training via environment variable."""
+    return os.getenv("SKIP_EVAL_BEFORE_TRAIN", "0") == "1"
+
+
 def get_wandb_api_key() -> str | None:
     """Return the Weights & Biases API key from environment variable."""
     return os.getenv("WANDB_API_KEY")

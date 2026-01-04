@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 from rl_for_llms.utils.environment_utils import (
     get_base_num_generations,
     get_per_device_rollouts_per_batch,
+    get_skip_eval_before_train,
     use_confidence_loss,
     use_confidence_reward,
 )
@@ -49,7 +50,7 @@ class Config(BaseModel):
     max_completion_length: int = Field(
         default=get_cuda_default_value(8192, 1024), le=8192
     )
-    skip_eval_before_train: bool = Field(default=False)
+    skip_eval_before_train: bool = Field(default=get_skip_eval_before_train())
     num_generations: int = Field(
         default=get_cuda_default_value(
             2 * get_base_num_generations(), get_base_num_generations()
