@@ -332,22 +332,25 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         num_items_in_batch: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Compute the combined GRPO loss and confidence loss."""
-        self.answers = [
-            self.answers[int(index)]
-            for index in convert_tensor_to_list(inputs["indices"])
-        ]
-        self.blend_advantages(inputs)
+        indices = list(map(int, convert_tensor_to_list(inputs["indices"])))
+        ordered_inputs = {
+            key: value[indices] if value.ndim > 0 else value
+            for key, value in inputs.items()
+        }
+        self.blend_advantages(ordered_inputs)
         self.register_hook(unwrap_model=False)
         grpo_loss = typing.cast(
             "torch.Tensor",
             super().compute_loss(
                 model,
-                inputs,
+                ordered_inputs,
                 return_outputs=return_outputs,
                 num_items_in_batch=num_items_in_batch,
             ),
         )
-        confidence_loss = self.confidence_loss_factor * self.get_confidence_loss(inputs)
+        confidence_loss = self.confidence_loss_factor * self.get_confidence_loss(
+            ordered_inputs
+        )
         self.remove_hook()
         total_loss = grpo_loss + confidence_loss
         self.add_metrics(get_grpo_namespace(), {(get_loss_name(),): grpo_loss.item()})
