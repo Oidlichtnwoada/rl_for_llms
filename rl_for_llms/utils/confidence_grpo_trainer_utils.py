@@ -115,18 +115,21 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             raise ValueError
         return rewards_for_advantages_list
 
-    def get_lm_head(self) -> Module:
-        """Get the language model head from the model."""
-        model = getattr(self, "model_wrapped", self.model)
-        unwrapped_model = self.accelerator.unwrap_model(model)
-        lm_head = getattr(unwrapped_model, self.lm_head_attribute_name, None)
+    def get_lm_head(self, *, unwrap_model: bool) -> Module:
+        """Get the language model head."""
+        if unwrap_model:
+            wrapped_model = getattr(self, "model_wrapped", self.model)
+            model = self.accelerator.unwrap_model(wrapped_model)
+        else:
+            model = self.model
+        lm_head = getattr(model, self.lm_head_attribute_name, None)
         if lm_head is None:
             raise ValueError
         return typing.cast("Module", lm_head)
 
-    def register_hook(self) -> None:
-        """Register a hook to capture confidence logits."""
-        lm_head = self.get_lm_head()
+    def register_hook(self, *, unwrap_model: bool) -> None:
+        """Register a forward hook to capture confidence logits."""
+        lm_head = self.get_lm_head(unwrap_model=unwrap_model)
         self.hook_handle = lm_head.register_forward_hook(self.logits_hook)
 
     def clear_confidence_logits(self) -> None:
@@ -150,7 +153,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         self, inputs: list[dict[str, torch.Tensor | typing.Any]]
     ) -> dict[str, torch.Tensor | typing.Any]:
         """Generate completions and capture mean_estimated_rewards for advantage blending."""
-        self.register_hook()
+        self.register_hook(unwrap_model=True)
         output = super()._generate_and_score_completions(inputs)
         mask = output["completion_mask"].bool()
         self.rollout_mean_estimated_rewards = self.get_mean_estimated_rewards(mask)
@@ -317,8 +320,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         if len(self.rollout_mean_estimated_rewards) == 0:
             raise ValueError
         self.blend_advantages(inputs, self.rollout_mean_estimated_rewards)
-        self.rollout_mean_estimated_rewards = []
-        self.register_hook()
+        self.register_hook(unwrap_model=False)
         grpo_loss = typing.cast(
             "torch.Tensor",
             super().compute_loss(
@@ -336,6 +338,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             get_confidence_namespace(), {(get_loss_name(),): confidence_loss.item()}
         )
         self.add_metrics(get_total_namespace(), {(get_loss_name(),): total_loss.item()})
+        self.rollout_mean_estimated_rewards = []
         self.answers = []
         return total_loss
 
