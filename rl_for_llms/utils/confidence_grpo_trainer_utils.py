@@ -381,7 +381,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
 
     def is_confidence_trained(self) -> bool:
         """Check if the confidence loss is being used for training."""
-        return self.confidence_loss_factor > 0
+        return self.confidence_loss_factor > 0.0
 
     def evaluate(
         self,
