@@ -2,7 +2,6 @@ import pathlib
 import shutil
 import statistics
 import typing
-from collections import Counter
 from functools import partial, update_wrapper
 from itertools import chain
 
@@ -46,7 +45,7 @@ from rl_for_llms.utils.evaluation_utils import (
 from rl_for_llms.utils.llm_utils import get_token_to_id_mapping
 from rl_for_llms.utils.path_utils import get_evaluation_metric_dir
 from rl_for_llms.utils.reward_utils import get_class_weights_for_rewards
-from rl_for_llms.utils.torch_utils import get_mode
+from rl_for_llms.utils.torch_utils import convert_tensor_to_list, get_mode
 
 
 class ConfidenceGRPOTrainer(GRPOTrainer):
@@ -75,7 +74,6 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         self.hook_handle: RemovableHandle | None = None
         self.all_confidence_logits: Tensor | None = None
         self.all_confidence_logits_excluding_last: Tensor | None = None
-        self.unblended_advantages: Tensor | None = None
         self.eval_mode: bool = False
         self.eval_binary_classification_metrics_inputs: list[
             tuple[list[float], list[float]]
@@ -87,33 +85,6 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             tuple[list[AnswerWithConfidence], float]
         ] = []
         self.eval_answer_metrics_outputs: list[dict[tuple[str, ...], float]] = []
-        self.rollout_mean_estimated_rewards: list[float] = []
-
-    def get_last_rewards(self) -> list[float]:
-        """Return the last computed rewards."""
-        last_rewards = [answer.reward for answer in self.answers]
-        if self.unblended_advantages is None:
-            raise ValueError
-        advantages_tensor = self.unblended_advantages.detach().cpu()
-        inputs_length = advantages_tensor.shape[0]
-        if len(last_rewards) != inputs_length:
-            raise ValueError
-        sorted_last_rewards = sorted(last_rewards)
-        advantages_np = advantages_tensor.numpy()
-        indices = np.argsort(np.argsort(advantages_np))
-        rewards_for_advantages_np = np.array(sorted_last_rewards)[indices]
-        rewards_for_advantages_list = list(rewards_for_advantages_np.tolist())
-        rewards_counter = Counter(rewards_for_advantages_np)
-        reward_sorted_counts = [
-            rewards_counter[key] for key in sorted(rewards_counter.keys())
-        ]
-        advantages_counter = Counter(advantages_np)
-        advantage_sorted_counts = [
-            advantages_counter[key] for key in sorted(advantages_counter.keys())
-        ]
-        if reward_sorted_counts != advantage_sorted_counts:
-            raise ValueError
-        return rewards_for_advantages_list
 
     def get_lm_head(self, *, unwrap_model: bool) -> Module:
         """Get the language model head."""
@@ -156,7 +127,16 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         self.register_hook(unwrap_model=True)
         output = super()._generate_and_score_completions(inputs)
         mask = output["completion_mask"].bool()
-        self.rollout_mean_estimated_rewards = self.get_mean_estimated_rewards(mask)
+        device = output["advantages"].device
+        output["mean_estimated_rewards"] = torch.tensor(
+            self.get_mean_estimated_rewards(mask), device=device
+        )
+        rewards = torch.tensor(
+            [answer.reward for answer in self.answers],
+            device=device,
+        )
+        output["rewards"] = rewards
+        output["indices"] = torch.tensor(list(range(len(self.answers))), device=device)
         self.remove_hook()
         return output
 
@@ -200,7 +180,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         masked_estimated_rewards = estimated_rewards * mask
         sum_estimated_rewards = masked_estimated_rewards.sum(dim=-1)
         mean_estimated_rewards = sum_estimated_rewards / sequence_lengths
-        mean_estimated_rewards_list = mean_estimated_rewards.detach().cpu().tolist()
+        mean_estimated_rewards_list = convert_tensor_to_list(mean_estimated_rewards)
         return mean_estimated_rewards_list
 
     def get_confidence_loss(self, inputs: dict[str, torch.Tensor]) -> torch.Tensor:
@@ -213,7 +193,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         mask = inputs["completion_mask"].bool()
         sequence_lengths = mask.sum(dim=-1)
         maximum_sequence_length = estimated_rewards.shape[-1]
-        last_rewards = self.get_last_rewards()
+        last_rewards = convert_tensor_to_list(inputs["rewards"])
         real_rewards = (
             torch.tensor(last_rewards)
             .unsqueeze(-1)
@@ -280,18 +260,21 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
     ) -> list[float]:
         """Compute normalized advantages from rewards."""
         rewards_np = np.array(rewards)
-        advantages_np = (rewards_np - np.mean(rewards_np)) / (np.std(rewards_np) + eps)
+        advantages_np = (rewards_np - np.mean(rewards_np)) / (
+            float(np.std(rewards_np)) + eps
+        )
         advantages = list(advantages_np.tolist())
         return advantages
 
     def blend_advantages(
         self,
         inputs: dict[str, torch.Tensor],
-        mean_estimated_rewards: list[float],
     ) -> None:
         """Blend real advantages with estimated reward advantages if stddev > 0.1."""
+        mean_estimated_rewards = convert_tensor_to_list(
+            inputs["mean_estimated_rewards"]
+        )
         mean_estimated_rewards_std = statistics.stdev(mean_estimated_rewards)
-        self.unblended_advantages = inputs["advantages"]
         should_blend = (
             self.is_confidence_trained()
             and self.config.use_confidence_reward
@@ -318,9 +301,11 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         num_items_in_batch: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Compute the combined GRPO loss and confidence loss."""
-        if len(self.rollout_mean_estimated_rewards) == 0:
-            raise ValueError
-        self.blend_advantages(inputs, self.rollout_mean_estimated_rewards)
+        self.answers = [
+            self.answers[int(index)]
+            for index in convert_tensor_to_list(inputs["indices"])
+        ]
+        self.blend_advantages(inputs)
         self.register_hook(unwrap_model=False)
         grpo_loss = typing.cast(
             "torch.Tensor",
@@ -339,8 +324,6 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             get_confidence_namespace(), {(get_loss_name(),): confidence_loss.item()}
         )
         self.add_metrics(get_total_namespace(), {(get_loss_name(),): total_loss.item()})
-        self.unblended_advantages = None
-        self.rollout_mean_estimated_rewards = []
         self.answers = []
         return total_loss
 

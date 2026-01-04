@@ -132,7 +132,8 @@ def start_training() -> None:
     log_msg(
         f"start training with the following configuration: {config.model_dump_json()}"
     )
-    confidence_grpo_trainer.evaluate(metric_key_prefix="eval_before_train")
+    if not config.skip_eval_before_train:
+        confidence_grpo_trainer.evaluate(metric_key_prefix="eval_before_train")
     confidence_grpo_trainer.train()
     confidence_grpo_trainer.evaluate(metric_key_prefix="eval_after_train")
     log_msg(

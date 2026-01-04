@@ -83,6 +83,14 @@ def get_mode(model: torch.nn.Module) -> str:
     return mode
 
 
+def convert_tensor_to_list(tensor: torch.Tensor) -> list[float]:
+    """Convert a PyTorch tensor to a list of floats."""
+    if tensor.ndim != 1:
+        raise ValueError
+    value_list = tensor.detach().float().cpu().tolist()
+    return value_list
+
+
 def setup_environment() -> None:
     """Set up the environment for training."""
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
