@@ -74,11 +74,51 @@ def pick_best_answer(
     return random.choice(top_answers)  # noqa: S311
 
 
+def compute_answer_metrics_for_group(
+    answers_with_confidence: list[AnswerWithConfidence],
+) -> dict[str, float]:
+    """Compute answer metrics for a single group (same prompt)."""
+    group_metrics: dict[str, float] = {}
+    if not answers_with_confidence:
+        return group_metrics
+    flags_for_correctness = [
+        float(x.answer.is_correct) for x in answers_with_confidence
+    ]
+    group_metrics["pass_at_1"] = statistics.mean(flags_for_correctness)
+    group_metrics["pass_at_k"] = max(flags_for_correctness)
+    answer_weights: dict[str, float] = defaultdict(float)
+    weighted_answer_weights: dict[str, float] = defaultdict(float)
+    for answer_with_confidence in answers_with_confidence:
+        answer_weights[answer_with_confidence.answer.model_answer] += (
+            get_default_confidence_score()
+        )
+        weighted_answer_weights[answer_with_confidence.answer.model_answer] += (
+            answer_with_confidence.confidence
+        )
+    group_metrics["majority_voting"] = float(
+        pick_best_answer(answer_weights, answers_with_confidence).answer.is_correct
+    )
+    group_metrics["confidence_weighted_majority_voting"] = float(
+        pick_best_answer(
+            weighted_answer_weights, answers_with_confidence
+        ).answer.is_correct
+    )
+    max_confidence = max(x.confidence for x in answers_with_confidence)
+    max_confidence_answers = [
+        x for x in answers_with_confidence if x.confidence == max_confidence
+    ]
+    group_metrics["highest_confidence"] = float(
+        random.choice(max_confidence_answers).answer.is_correct  # noqa: S311
+    )
+    return group_metrics
+
+
 def compute_answer_metrics(
     answers_with_confidence: list[AnswerWithConfidence],
     temperature: float,
+    num_generations: int | None = None,
 ) -> dict[tuple[str, ...], float]:
-    """Compute binary classification metrics."""
+    """Compute answer metrics, supporting multiple groups."""
     metrics: dict[tuple[str, ...], float] = {}
     sample_amount = len(answers_with_confidence)
     if sample_amount == 0:
@@ -91,56 +131,31 @@ def compute_answer_metrics(
         float(x.answer.is_correct) for x in answers_with_confidence
     ]
     pass_at_1_accuracy = statistics.mean(flags_for_correctness)
-    metrics[
-        (
-            "accuracy",
-            f"pass@1_t={temperature}",
+    metrics[("accuracy", f"pass@1_t={temperature}")] = pass_at_1_accuracy
+    if num_generations is None:
+        num_generations = sample_amount
+    num_groups = sample_amount // num_generations
+    group_metrics_list: list[dict[str, float]] = []
+    for group_idx in range(num_groups):
+        start_idx = group_idx * num_generations
+        end_idx = start_idx + num_generations
+        group_answers = answers_with_confidence[start_idx:end_idx]
+        group_metrics_list.append(compute_answer_metrics_for_group(group_answers))
+    if group_metrics_list:
+        metrics[("accuracy", f"pass@{num_generations}_t={temperature}")] = (
+            statistics.mean(m["pass_at_k"] for m in group_metrics_list)
         )
-    ] = pass_at_1_accuracy
-    pass_at_k_accuracy = max(flags_for_correctness)
-    metrics[
-        (
-            "accuracy",
-            f"pass@{sample_amount}_t={temperature}",
+        metrics[("accuracy", f"majority_voting_t={temperature}")] = statistics.mean(
+            m["majority_voting"] for m in group_metrics_list
         )
-    ] = pass_at_k_accuracy
-    answer_weights: dict[str, float] = defaultdict(float)
-    weighted_answer_weights: dict[str, float] = defaultdict(float)
-    for answer_with_confidence in answers_with_confidence:
-        answer_weights[answer_with_confidence.answer.model_answer] += (
-            get_default_confidence_score()
+        metrics[
+            ("accuracy", f"confidence_weighted_majority_voting_t={temperature}")
+        ] = statistics.mean(
+            m["confidence_weighted_majority_voting"] for m in group_metrics_list
         )
-        weighted_answer_weights[answer_with_confidence.answer.model_answer] += (
-            answer_with_confidence.confidence
+        metrics[("accuracy", f"highest_confidence_t={temperature}")] = statistics.mean(
+            m["highest_confidence"] for m in group_metrics_list
         )
-    metrics[
-        (
-            "accuracy",
-            f"majority_voting_t={temperature}",
-        )
-    ] = float(
-        pick_best_answer(answer_weights, answers_with_confidence).answer.is_correct
-    )
-    metrics[
-        (
-            "accuracy",
-            f"confidence_weighted_majority_voting_t={temperature}",
-        )
-    ] = float(
-        pick_best_answer(
-            weighted_answer_weights, answers_with_confidence
-        ).answer.is_correct
-    )
-    max_confidence = max(x.confidence for x in answers_with_confidence)
-    max_confidence_answers = [
-        x for x in answers_with_confidence if x.confidence == max_confidence
-    ]
-    metrics[
-        (
-            "accuracy",
-            f"highest_confidence_t={temperature}",
-        )
-    ] = float(random.choice(max_confidence_answers).answer.is_correct)  # noqa: S311
     return metrics
 
 

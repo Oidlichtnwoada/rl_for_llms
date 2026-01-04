@@ -82,7 +82,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             dict[tuple[str, ...], float]
         ] = []
         self.eval_answer_metrics_inputs: list[
-            tuple[list[AnswerWithConfidence], float]
+            tuple[list[AnswerWithConfidence], float, int]
         ] = []
         self.eval_answer_metrics_outputs: list[dict[tuple[str, ...], float]] = []
 
@@ -247,7 +247,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             else [get_default_confidence_score()] * len(self.answers),
         )
         answer_metrics = compute_answer_metrics(
-            answers_with_confidence, self.config.temperature
+            answers_with_confidence, self.config.temperature, self.get_num_generations()
         )
         self.add_metrics(get_answer_namespace(), answer_metrics)
         if self.eval_mode:
@@ -258,7 +258,11 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
                 binary_classification_metrics
             )
             self.eval_answer_metrics_inputs.append(
-                (answers_with_confidence, self.config.temperature)
+                (
+                    answers_with_confidence,
+                    self.config.temperature,
+                    self.get_num_generations(),
+                )
             )
             self.eval_answer_metrics_outputs.append(answer_metrics)
         return mean_rollout_loss
@@ -459,15 +463,19 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             prefix=(metric_key_prefix, get_confidence_namespace()),
             postfix=(),
         )
-        answers_with_confidence, temperatures = zip(
+        answers_with_confidence, temperatures, num_generations_list = zip(
             *self.eval_answer_metrics_inputs, strict=True
         )
         if len(set(temperatures)) != 1:
             raise ValueError
+        if len(set(num_generations_list)) != 1:
+            raise ValueError
         temperature = temperatures[0]
+        num_generations = num_generations_list[0]
         concatenated_eval_answer_metrics_inputs = (
             list(chain.from_iterable(answers_with_confidence)),
             temperature,
+            num_generations,
         )
         concatenated_eval_answer_metrics_outputs = change_metric_keys(
             compute_answer_metrics(*concatenated_eval_answer_metrics_inputs),
