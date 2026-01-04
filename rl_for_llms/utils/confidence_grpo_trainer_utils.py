@@ -75,6 +75,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         self.hook_handle: RemovableHandle | None = None
         self.all_confidence_logits: Tensor | None = None
         self.all_confidence_logits_excluding_last: Tensor | None = None
+        self.unblended_advantages: Tensor | None = None
         self.eval_mode: bool = False
         self.eval_binary_classification_metrics_inputs: list[
             tuple[list[float], list[float]]
@@ -88,13 +89,12 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         self.eval_answer_metrics_outputs: list[dict[tuple[str, ...], float]] = []
         self.rollout_mean_estimated_rewards: list[float] = []
 
-    def get_last_rewards(
-        self,
-        advantages: torch.Tensor,
-    ) -> list[float]:
+    def get_last_rewards(self) -> list[float]:
         """Return the last computed rewards."""
         last_rewards = [answer.reward for answer in self.answers]
-        advantages_tensor = advantages.detach().cpu()
+        if self.unblended_advantages is None:
+            raise ValueError
+        advantages_tensor = self.unblended_advantages.detach().cpu()
         inputs_length = advantages_tensor.shape[0]
         if len(last_rewards) != inputs_length:
             raise ValueError
@@ -213,7 +213,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         mask = inputs["completion_mask"].bool()
         sequence_lengths = mask.sum(dim=-1)
         maximum_sequence_length = estimated_rewards.shape[-1]
-        last_rewards = self.get_last_rewards(inputs["advantages"])
+        last_rewards = self.get_last_rewards()
         real_rewards = (
             torch.tensor(last_rewards)
             .unsqueeze(-1)
@@ -291,11 +291,12 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
     ) -> None:
         """Blend real advantages with estimated reward advantages if stddev > 0.1."""
         mean_estimated_rewards_std = statistics.stdev(mean_estimated_rewards)
+        self.unblended_advantages = inputs["advantages"]
         should_blend = (
             self.is_confidence_trained()
             and self.config.use_confidence_reward
             and (mean_estimated_rewards_std > self.config.minimum_confidence_std)
-            and (self.state.global_step > self.config.confidence_loss_warmup_steps)
+            and (self.state.global_step >= self.config.confidence_loss_warmup_steps)
         )
         if should_blend:
             estimated_advantages = self.compute_advantages_from_rewards(
@@ -338,6 +339,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             get_confidence_namespace(), {(get_loss_name(),): confidence_loss.item()}
         )
         self.add_metrics(get_total_namespace(), {(get_loss_name(),): total_loss.item()})
+        self.unblended_advantages = None
         self.rollout_mean_estimated_rewards = []
         self.answers = []
         return total_loss
