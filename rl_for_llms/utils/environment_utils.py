@@ -19,6 +19,16 @@ def use_confidence_reward() -> bool:
     return os.getenv("USE_CONFIDENCE_REWARD", "1") == "1"
 
 
+def get_per_device_rollouts_per_batch() -> int:
+    """Return the number of rollouts per batch per device from environment variable."""
+    return int(os.getenv("PER_DEVICE_ROLLOUTS_PER_BATCH", "1"))
+
+
+def get_base_num_generations() -> int:
+    """Return the base number of generations from environment variable."""
+    return int(os.getenv("BASE_NUM_GENERATIONS", "4"))
+
+
 def get_wandb_api_key() -> str | None:
     """Return the Weights & Biases API key from environment variable."""
     return os.getenv("WANDB_API_KEY")

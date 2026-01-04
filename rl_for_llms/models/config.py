@@ -4,6 +4,8 @@ from peft import TaskType
 from pydantic import BaseModel, Field
 
 from rl_for_llms.utils.environment_utils import (
+    get_base_num_generations,
+    get_per_device_rollouts_per_batch,
     use_confidence_loss,
     use_confidence_reward,
 )
@@ -48,8 +50,15 @@ class Config(BaseModel):
         default=get_cuda_default_value(8192, 1024), le=8192
     )
     skip_eval_before_train: bool = Field(default=False)
-    num_generations: int = Field(default=get_cuda_default_value(8, 4), le=16)
-    per_device_rollouts_per_batch: int = Field(default=1)
+    num_generations: int = Field(
+        default=get_cuda_default_value(
+            2 * get_base_num_generations(), get_base_num_generations()
+        ),
+        le=16,
+    )
+    per_device_rollouts_per_batch: int = Field(
+        default=get_per_device_rollouts_per_batch()
+    )
     gradient_accumulation_steps: int = Field(default=1)
     temperature: float = Field(default=1.0)
     top_p: float = Field(default=1.0)
