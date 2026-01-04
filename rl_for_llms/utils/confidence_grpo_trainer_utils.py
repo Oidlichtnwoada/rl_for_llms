@@ -1,5 +1,6 @@
 import pathlib
 import shutil
+import statistics
 import typing
 from collections import Counter
 from functools import partial, update_wrapper
@@ -28,6 +29,7 @@ from rl_for_llms.utils.constant_utils import (
     get_answer_namespace,
     get_confidence_namespace,
     get_default_confidence_score,
+    get_default_eps,
     get_default_metric_separator,
     get_grpo_namespace,
     get_loss_name,
@@ -71,7 +73,8 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         self.answers: list[Answer] = []
         self.lm_head_attribute_name = self.config.lm_head_attribute_name
         self.hook_handle: RemovableHandle | None = None
-        self.confidence_logits: Tensor | None = None
+        self.all_confidence_logits: Tensor | None = None
+        self.all_confidence_logits_excluding_last: Tensor | None = None
         self.eval_mode: bool = False
         self.eval_binary_classification_metrics_inputs: list[
             tuple[list[float], list[float]]
@@ -83,19 +86,20 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             tuple[list[AnswerWithConfidence], float]
         ] = []
         self.eval_answer_metrics_outputs: list[dict[tuple[str, ...], float]] = []
+        self.rollout_mean_estimated_rewards: list[float] = []
 
     def get_last_rewards(
         self,
-        inputs: dict[str, torch.Tensor],
+        advantages: torch.Tensor,
     ) -> list[float]:
         """Return the last computed rewards."""
         last_rewards = [answer.reward for answer in self.answers]
-        advantages = inputs["advantages"].detach().cpu()
-        inputs_length = advantages.shape[0]
+        advantages_tensor = advantages.detach().cpu()
+        inputs_length = advantages_tensor.shape[0]
         if len(last_rewards) != inputs_length:
             raise ValueError
         sorted_last_rewards = sorted(last_rewards)
-        advantages_np = advantages.numpy()
+        advantages_np = advantages_tensor.numpy()
         indices = np.argsort(np.argsort(advantages_np))
         rewards_for_advantages_np = np.array(sorted_last_rewards)[indices]
         rewards_for_advantages_list = list(rewards_for_advantages_np.tolist())
@@ -111,18 +115,47 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             raise ValueError
         return rewards_for_advantages_list
 
-    def register_hook(self) -> None:
-        """Register a hook to capture confidence logits."""
-        lm_head = getattr(self.model, self.lm_head_attribute_name, None)
+    def get_lm_head(self) -> Module:
+        """Get the language model head from the model."""
+        model = getattr(self, "model_wrapped", self.model)
+        unwrapped_model = self.accelerator.unwrap_model(model)
+        lm_head = getattr(unwrapped_model, self.lm_head_attribute_name, None)
         if lm_head is None:
             raise ValueError
+        return typing.cast("Module", lm_head)
+
+    def register_hook(self) -> None:
+        """Register a hook to capture confidence logits."""
+        lm_head = self.get_lm_head()
         self.hook_handle = lm_head.register_forward_hook(self.logits_hook)
 
-    def remove_hook(self) -> None:
+    def clear_confidence_logits(self) -> None:
+        """Clear confidence logits."""
+        self.all_confidence_logits = None
+        self.all_confidence_logits_excluding_last = None
+
+    def remove_hook(
+        self,
+        *,
+        clear_confidence_logits: bool = True,
+    ) -> None:
         """Remove the registered hook."""
         if self.hook_handle is not None:
             self.hook_handle.remove()
             self.hook_handle = None
+        if clear_confidence_logits:
+            self.clear_confidence_logits()
+
+    def _generate_and_score_completions(
+        self, inputs: list[dict[str, torch.Tensor | typing.Any]]
+    ) -> dict[str, torch.Tensor | typing.Any]:
+        """Generate completions and capture mean_estimated_rewards for advantage blending."""
+        self.register_hook()
+        output = super()._generate_and_score_completions(inputs)
+        mask = output["completion_mask"].bool()
+        self.rollout_mean_estimated_rewards = self.get_mean_estimated_rewards(mask)
+        self.remove_hook()
+        return output
 
     def logits_hook(
         self,
@@ -130,27 +163,54 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         inputs: tuple[Tensor, ...],  # noqa: ARG002
         output: torch.Tensor,
     ) -> None:
-        """Capture the logits for the confidence token."""
+        """Capture confidence logits during the forward pass."""
         logits = output
         if logits.dim() != 3:  # noqa: PLR2004
             raise ValueError
-        confidence_logits = logits[:, :-1, self.confidence_token_id]
-        self.confidence_logits = confidence_logits
+        confidence_logits = logits[:, :, self.confidence_token_id]
+        if self.all_confidence_logits is None:
+            self.all_confidence_logits = confidence_logits
+        else:
+            self.all_confidence_logits = torch.cat(
+                (self.all_confidence_logits, confidence_logits), dim=1
+            )
+        self.all_confidence_logits_excluding_last = self.all_confidence_logits[:, :-1]
 
-    def get_confidence_loss(self, inputs: dict[str, torch.Tensor]) -> torch.Tensor:
-        """Compute the confidence loss based on the last rewards and confidence logits."""
-        if self.confidence_logits is None:
+    def get_mean_estimated_rewards(self, completion_mask: torch.Tensor) -> list[float]:
+        """Get mean estimated rewards for each sample in the batch."""
+        if (
+            self.all_confidence_logits is None
+            or self.all_confidence_logits_excluding_last is None
+        ):
+            raise ValueError
+        mask = completion_mask.bool()
+        sequence_lengths = mask.sum(dim=-1)
+        if self.all_confidence_logits.shape[1] == mask.shape[1]:
+            confidence_logits = self.all_confidence_logits
+        elif self.all_confidence_logits_excluding_last.shape[1] == mask.shape[1]:
+            confidence_logits = self.all_confidence_logits_excluding_last
+        else:
             raise ValueError
         estimated_rewards = get_confidence_token_logit_sigmoid(
-            self.confidence_logits
+            confidence_logits
         ).float()
-        mask = inputs["completion_mask"].bool()
-        sequence_lengths = mask.sum(dim=-1)
         masked_estimated_rewards = estimated_rewards * mask
         sum_estimated_rewards = masked_estimated_rewards.sum(dim=-1)
         mean_estimated_rewards = sum_estimated_rewards / sequence_lengths
+        mean_estimated_rewards_list = mean_estimated_rewards.detach().cpu().tolist()
+        return mean_estimated_rewards_list
+
+    def get_confidence_loss(self, inputs: dict[str, torch.Tensor]) -> torch.Tensor:
+        """Compute the confidence loss based on the last rewards and confidence logits."""
+        if self.all_confidence_logits_excluding_last is None:
+            raise ValueError
+        estimated_rewards = get_confidence_token_logit_sigmoid(
+            self.all_confidence_logits_excluding_last
+        ).float()
+        mask = inputs["completion_mask"].bool()
+        sequence_lengths = mask.sum(dim=-1)
         maximum_sequence_length = estimated_rewards.shape[-1]
-        last_rewards = self.get_last_rewards(inputs)
+        last_rewards = self.get_last_rewards(inputs["advantages"])
         real_rewards = (
             torch.tensor(last_rewards)
             .unsqueeze(-1)
@@ -180,7 +240,9 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             per_sample_loss_masked.sum(dim=-1) / sequence_lengths
         ) * sample_weights
         mean_rollout_loss = per_rollout_loss_weighted.mean()
-        mean_estimated_rewards_list = mean_estimated_rewards.detach().cpu().tolist()
+        mean_estimated_rewards_list = self.get_mean_estimated_rewards(
+            completion_mask=mask
+        )
         binary_classification_metrics = compute_binary_classification_metrics(
             last_rewards, mean_estimated_rewards_list
         )
@@ -208,6 +270,42 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             self.eval_answer_metrics_outputs.append(answer_metrics)
         return mean_rollout_loss
 
+    @staticmethod
+    def compute_advantages_from_rewards(
+        rewards: list[float],
+        eps: float = get_default_eps(),
+    ) -> list[float]:
+        """Compute normalized advantages from rewards."""
+        rewards_np = np.array(rewards)
+        advantages_np = (rewards_np - np.mean(rewards_np)) / (np.std(rewards_np) + eps)
+        advantages = list(advantages_np.tolist())
+        return advantages
+
+    def blend_advantages(
+        self,
+        inputs: dict[str, torch.Tensor],
+        mean_estimated_rewards: list[float],
+    ) -> None:
+        """Blend real advantages with estimated reward advantages if stddev > 0.1."""
+        mean_estimated_rewards_std = statistics.stdev(mean_estimated_rewards)
+        should_blend = (
+            self.is_confidence_trained()
+            and self.config.use_confidence_reward
+            and (mean_estimated_rewards_std > self.config.minimum_confidence_std)
+            and (self.state.global_step > self.config.confidence_loss_warmup_steps)
+        )
+        if should_blend:
+            estimated_advantages = self.compute_advantages_from_rewards(
+                mean_estimated_rewards
+            )
+            percentage = self.config.confidence_reward_percentage
+            blended_advantages = (1 - percentage) * inputs[
+                "advantages"
+            ] + percentage * torch.tensor(
+                estimated_advantages, device=inputs["advantages"].device
+            )
+            inputs["advantages"] = blended_advantages
+
     def compute_loss(
         self,
         model: torch.nn.Module,
@@ -216,6 +314,10 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         num_items_in_batch: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Compute the combined GRPO loss and confidence loss."""
+        if len(self.rollout_mean_estimated_rewards) == 0:
+            raise ValueError
+        self.blend_advantages(inputs, self.rollout_mean_estimated_rewards)
+        self.rollout_mean_estimated_rewards = []
         self.register_hook()
         grpo_loss = typing.cast(
             "torch.Tensor",
@@ -226,15 +328,15 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
                 num_items_in_batch=num_items_in_batch,
             ),
         )
-        self.remove_hook()
         confidence_loss = self.confidence_loss_factor * self.get_confidence_loss(inputs)
-        self.confidence_logits = None
+        self.remove_hook()
         total_loss = grpo_loss + confidence_loss
         self.add_metrics(get_grpo_namespace(), {(get_loss_name(),): grpo_loss.item()})
         self.add_metrics(
             get_confidence_namespace(), {(get_loss_name(),): confidence_loss.item()}
         )
         self.add_metrics(get_total_namespace(), {(get_loss_name(),): total_loss.item()})
+        self.answers = []
         return total_loss
 
     def add_metrics(
@@ -307,15 +409,15 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         model_output_dir = self.get_model_output_dir(model_identifier)
         config = get_config()
         if config.enable_lora:
-            saved_model = PeftModel.from_pretrained(
-                typing.cast("Module", self.model),
-                model_output_dir,
+            peft_model = typing.cast("PeftModel", self.model)
+            peft_model.load_adapter(
+                str(model_output_dir), adapter_name=model_identifier
             )
+            peft_model.set_adapter(model_identifier)
         else:
-            saved_model = typing.cast("PreTrainedModel", self.model).from_pretrained(
+            self.model = typing.cast("PreTrainedModel", self.model).from_pretrained(
                 model_output_dir
             )
-        self.model = saved_model
 
     def merge_eval_metrics(self, metric_key_prefix: str) -> None:
         """Merge evaluation metrics from multiple evaluation runs."""

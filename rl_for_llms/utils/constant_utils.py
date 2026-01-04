@@ -75,3 +75,8 @@ def get_loss_name() -> str:
 def get_default_metric_separator() -> str:
     """Return the default separator for metric names."""
     return "/"
+
+
+def get_default_eps() -> float:
+    """Return the default epsilon value."""
+    return 1e-4

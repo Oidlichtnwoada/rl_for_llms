@@ -28,6 +28,9 @@ class Config(BaseModel):
     confidence_loss_factor: float = Field(default=0.1)
     use_confidence_loss: bool = Field(default=use_confidence_loss())
     use_confidence_reward: bool = Field(default=use_confidence_reward())
+    confidence_loss_warmup_steps: int = Field(default=4096)
+    minimum_confidence_std: float = Field(default=0.1)
+    confidence_reward_percentage: float = Field(default=0.1)
     learning_rate: float = Field(default=1e-5)
     num_train_epochs: int = Field(default=get_cuda_default_value(2, 1))
     use_vllm: bool = Field(default=False)
@@ -54,7 +57,7 @@ class Config(BaseModel):
     gradient_checkpointing: bool = Field(default=True)
     log_completions: bool = Field(default=True)
     beta: float = Field(default=0.0)
-    enable_lora: bool = Field(default=True)
+    enable_lora: bool = Field(default=False)
     lora_target_modules: list[str] = Field(
         default_factory=lambda: ["gate_proj", "up_proj", "down_proj"]
     )
