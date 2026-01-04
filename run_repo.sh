@@ -8,8 +8,8 @@ export TRL_EXPERIMENTAL_SILENCE=1
 
 # set the correct parameters based on GPU availability
 if command -v nvidia-smi &> /dev/null && nvidia-smi &> /dev/null; then
-    DYNAMO_BACKEND="inductor"
-    MIXED_PRECISION="bf16"
+    DYNAMO_BACKEND="no"
+    MIXED_PRECISION="no"
 else
     DYNAMO_BACKEND="no"
     MIXED_PRECISION="no"
