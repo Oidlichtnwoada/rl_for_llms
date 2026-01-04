@@ -133,10 +133,10 @@ def default_batch_reward_function(
     return rewards
 
 
-def get_class_weights_for_rewards(
+def get_class_weights_for_single_group(
     rewards: list[float], correct_class_reward_value: float = 1.0
 ) -> tuple[float, float]:
-    """Get class weights for imbalanced rewards."""
+    """Get class weights for imbalanced rewards within a single group."""
     total_samples = len(rewards)
     correct_samples = len([x for x in rewards if x == correct_class_reward_value])
     incorrect_samples = total_samples - correct_samples
@@ -147,3 +147,22 @@ def get_class_weights_for_rewards(
         total_samples / (2 * correct_samples) if correct_samples > 0 else 0.0
     )
     return incorrect_sample_weight, correct_sample_weight
+
+
+def get_class_weights_for_rewards(
+    rewards: list[float],
+    num_generations: int,
+    correct_class_reward_value: float = 1.0,
+) -> list[tuple[float, float]]:
+    """Get class weights for imbalanced rewards, computed per-group."""
+    num_groups = len(rewards) // num_generations
+    weights_per_group = []
+    for group_idx in range(num_groups):
+        start_idx = group_idx * num_generations
+        end_idx = start_idx + num_generations
+        group_rewards = rewards[start_idx:end_idx]
+        weights = get_class_weights_for_single_group(
+            group_rewards, correct_class_reward_value
+        )
+        weights_per_group.append(weights)
+    return weights_per_group

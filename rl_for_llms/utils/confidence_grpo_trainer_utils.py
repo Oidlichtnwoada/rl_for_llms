@@ -183,6 +183,10 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         mean_estimated_rewards_list = convert_tensor_to_list(mean_estimated_rewards)
         return mean_estimated_rewards_list
 
+    def get_num_generations(self) -> int:
+        """Return the number of generations per prompt."""
+        return typing.cast("int", self.num_generations)
+
     def get_confidence_loss(self, inputs: dict[str, torch.Tensor]) -> torch.Tensor:
         """Compute the confidence loss based on the last rewards and confidence logits."""
         if self.all_confidence_logits_excluding_last is None:
@@ -209,19 +213,25 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             )
             * mask
         )
-        incorrect_sample_weight, correct_sample_weight = get_class_weights_for_rewards(
-            last_rewards
-        )
-        sample_weights = torch.tensor(
-            [
-                correct_sample_weight if reward == 1.0 else incorrect_sample_weight
-                for reward in last_rewards
-            ],
-            device=estimated_rewards.device,
+        num_generations = self.get_num_generations()
+        weights_per_group = get_class_weights_for_rewards(last_rewards, num_generations)
+        sample_weights = []
+        for group_idx, (incorrect_weight, correct_weight) in enumerate(
+            weights_per_group
+        ):
+            start_idx = group_idx * num_generations
+            end_idx = start_idx + num_generations
+            group_rewards = last_rewards[start_idx:end_idx]
+            for reward in group_rewards:
+                sample_weights.extend(
+                    [correct_weight if reward == 1.0 else incorrect_weight]
+                )
+        sample_weights_tensor = torch.tensor(
+            sample_weights, device=estimated_rewards.device
         )
         per_rollout_loss_weighted = (
             per_sample_loss_masked.sum(dim=-1) / sequence_lengths
-        ) * sample_weights
+        ) * sample_weights_tensor
         mean_rollout_loss = per_rollout_loss_weighted.mean()
         mean_estimated_rewards_list = self.get_mean_estimated_rewards(
             completion_mask=mask
@@ -256,42 +266,63 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
     @staticmethod
     def compute_advantages_from_rewards(
         rewards: list[float],
+        num_generations: int,
         eps: float = get_default_eps(),
     ) -> list[float]:
-        """Compute normalized advantages from rewards."""
+        """Compute normalized advantages from rewards, per-group."""
         rewards_np = np.array(rewards)
-        advantages_np = (rewards_np - np.mean(rewards_np)) / (
-            float(np.std(rewards_np)) + eps
-        )
-        advantages = list(advantages_np.tolist())
-        return advantages
+        num_groups = len(rewards) // num_generations
+        all_advantages = []
+        for group_idx in range(num_groups):
+            start_idx = group_idx * num_generations
+            end_idx = start_idx + num_generations
+            group_rewards = rewards_np[start_idx:end_idx]
+            group_advantages = (group_rewards - np.mean(group_rewards)) / (
+                float(np.std(group_rewards)) + eps
+            )
+            all_advantages.extend(group_advantages.tolist())
+        return all_advantages
 
     def blend_advantages(
         self,
         inputs: dict[str, torch.Tensor],
     ) -> None:
-        """Blend real advantages with estimated reward advantages if stddev > 0.1."""
+        """Blend real advantages with estimated reward advantages per-group if stddev > threshold."""
+        if not (
+            self.is_confidence_trained()
+            and self.config.use_confidence_reward
+            and (self.state.global_step >= self.config.confidence_loss_warmup_steps)
+        ):
+            return
         mean_estimated_rewards = convert_tensor_to_list(
             inputs["mean_estimated_rewards"]
         )
-        mean_estimated_rewards_std = statistics.stdev(mean_estimated_rewards)
-        should_blend = (
-            self.is_confidence_trained()
-            and self.config.use_confidence_reward
-            and (mean_estimated_rewards_std > self.config.minimum_confidence_std)
-            and (self.state.global_step >= self.config.confidence_loss_warmup_steps)
+        num_generations = self.get_num_generations()
+        num_groups = len(mean_estimated_rewards) // num_generations
+        percentage = self.config.confidence_reward_percentage
+        blended_advantages = inputs["advantages"].clone()
+        estimated_advantages = self.compute_advantages_from_rewards(
+            mean_estimated_rewards, num_generations
         )
-        if should_blend:
-            estimated_advantages = self.compute_advantages_from_rewards(
-                mean_estimated_rewards
+        estimated_advantages_tensor = torch.tensor(
+            estimated_advantages, device=inputs["advantages"].device
+        )
+        for group_idx in range(num_groups):
+            start_idx = group_idx * num_generations
+            end_idx = start_idx + num_generations
+            group_estimated_rewards = mean_estimated_rewards[start_idx:end_idx]
+            group_std = (
+                statistics.stdev(group_estimated_rewards)
+                if len(group_estimated_rewards) > 1
+                else 0.0
             )
-            percentage = self.config.confidence_reward_percentage
-            blended_advantages = (1 - percentage) * inputs[
-                "advantages"
-            ] + percentage * torch.tensor(
-                estimated_advantages, device=inputs["advantages"].device
-            )
-            inputs["advantages"] = blended_advantages
+            if group_std > self.config.minimum_confidence_std:
+                blended_advantages[start_idx:end_idx] = (1 - percentage) * inputs[
+                    "advantages"
+                ][start_idx:end_idx] + percentage * estimated_advantages_tensor[
+                    start_idx:end_idx
+                ]
+        inputs["advantages"] = blended_advantages
 
     def compute_loss(
         self,
