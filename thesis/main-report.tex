@@ -151,7 +151,7 @@ Furthermore, we set the KL-divergence coefficient ($\beta$) to 0. This removes t
 \subsection{Dense Confidence Mechanism}
 
 \subsubsection{Token Hook Mechanism}
-Unlike standard generation training where only the logits of the selected tokens are relevant, our method requires the logit of the \textbf{confidence token} at \textit{every} step, regardless of what text token was actually sampled. The language model head typically projects the hidden states to the vocabulary dimension to produce these logits, which are then optionally rescaled by a temperature parameter and passed through a softmax function to yield token probabilities for sampling. For our purpose, we intercept the raw logits before sampling.
+Unlike standard generation training where only the logits of the selected tokens are relevant, our method requires the logit of the \textbf{confidence token} at \textit{every} step, regardless of what text token was actually sampled. The language model head typically projects the hidden states to the vocabulary dimension to produce these logits, which are then optionally rescaled by a temperature parameter and passed through a softmax function to yield token probabilities for sampling. For our purpose, we intercept the raw logits before sampling. Importantly, these raw logits are not rescaled by the temperature parameter either.
 
 We selected the unused \texttt{<|vision\_pad|>} token as this confidence token. This choice is motivated by the fact that the used LLM is a text-only model that shares the vocabulary with a multimodal model from the same model family. Consequently, the vision pad token was never seen by the chat-only model during training and remains available for overloading.
 
