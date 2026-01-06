@@ -208,7 +208,19 @@ The confidence loss $L_{\text{conf}}$ acts as a regularizer, forcing the confide
 	L_{\text{conf}} = \text{BCE}(\mathbf{c}, \mathbf{r}) = - \frac{1}{T} \sum_{t=1}^{T} [r \log(c_t) + (1-r) \log(1-c_t)]
 \end{equation}
 
-Crucially, to prevent mode collapse and ensure robust self-verification performance on both ground-truth correct and incorrect trajectories, we apply dynamic importance sampling weights calculated per-group to handle class imbalance.
+To prevent mode collapse and ensure robust self-verification performance on both ground-truth correct and incorrect trajectories, we apply dynamic importance sampling weights calculated per-group to mitigate the effects of class imbalance. In complex reasoning tasks, the policy initially generates predominantly incorrect solutions. Consequently, a standard unweighted loss would bias the confidence head towards trivially predicting failure ($c_t \approx 0$), as it would learn the prior probability of success rather than discriminating based on the reasoning trace. To counteract this, we compute dynamic weights $w_{\text{pos}}$ and $w_{\text{neg}}$ for each group of $G$ generations based on the counts of correct ($N_{\text{pos}}$) and incorrect ($N_{\text{neg}}$) trajectories:
+
+\begin{equation}
+	w_{\text{pos}} = \frac{G}{2 N_{\text{pos}}}, \quad w_{\text{neg}} = \frac{G}{2 N_{\text{neg}}}
+\end{equation}
+
+(where the weight is set to 0 if the corresponding count is 0). These weights ensure that the total contribution of positive and negative examples to the loss is balanced within each update step. The reweighted auxiliary loss for a specific group is defined as the mean of the reweighted BCE losses for each trajectory:
+
+\begin{equation}
+	L_{\text{conf}}^{\text{group}} = \frac{1}{G} \sum_{i=1}^{G} w_{r_i} \left( - \frac{1}{T_i} \sum_{t=1}^{T_i} [r_i \log(c_{i,t}) + (1-r_i) \log(1-c_{i,t})] \right)
+\end{equation}
+
+where $r_i \in \{0, 1\}$ is the ground truth binary reward for trajectory $i$, and $w_{r_i}$ is the class weight corresponding to the label $r_i$. This scheme effectively simulates a balanced dataset, forcing the model to learn features indicative of correctness rather than exploiting base rate imbalances.
 
 \subsubsection{Self-Reward Integration (Advantage Blending)}
 A key innovation is blending the external sparse reward with the internal dense confidence \citep{laser}. Standard RL struggles when the reward signal is sparse, taking \textbf{only} values of 0 or 1 as is common with mathematical verifiers. In this setting, the agent either stumbles upon a solution by chance for difficult questions or learns nothing. A dense reward helps the algorithm differentiate between \textit{completely wrong} and \textit{almost correct} trajectories, whereas both would receive a 0 reward from the external verifier. This dense signal facilitates iterative improvements, particularly for questions at the frontier of the model's capabilities, provided the self-verification mechanism is sufficiently accurate.
