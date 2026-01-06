@@ -176,6 +176,11 @@ for INPUT_SRC in "${SOURCES[@]}"; do
         # Check if build succeeded
         if [[ $EXIT_CODE -eq 0 && -f "$FINAL_PDF" ]]; then
             echo -e "${GREEN}✓ Built successfully: ${FINAL_PDF}${NC}"
+            # Clean up artifacts that latexmk might have generated
+            rm -f "${JOBNAME}.pdf" \
+                  "${JOBNAME}.aux" "${JOBNAME}.log" "${JOBNAME}.out" "${JOBNAME}.toc" \
+                  "${JOBNAME}.fls" "${JOBNAME}.fdb_latexmk" "${JOBNAME}.blg" "${JOBNAME}.bbl" \
+                  "${JOBNAME}.synctex.gz" "${JOBNAME}.xdv"
         else
             echo -e "${RED}✗ Build failed for ${SRC_FILE} ($ENG). Check logs in ${OUTPUT_DIR}/${JOBNAME}.log${NC}"
         fi
