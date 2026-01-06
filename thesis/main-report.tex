@@ -52,6 +52,10 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
+\def\sectionautorefname{Section}
+\def\subsectionautorefname{Section}
+\def\subsubsectionautorefname{Section}
+
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%
@@ -106,12 +110,12 @@
 \section{Introduction}
 \label{sec:introduction}
 
-Scalable oversight for Large Language Models (LLMs) represents a critical frontier in AI alignment research. Conventional Reinforcement Learning from Human Feedback (RLHF) paradigms predominantly utilize sparse, outcome-based reward signals. For complex, multi-step reasoning tasks, this formulation exacerbates the credit assignment problem, as a single scalar reward at the end of a trajectory fails to capture the validity of intermediate logical steps. While process supervision—rewarding granular reasoning steps—offers a remedy \citep{verifystepbystep}, it incurs a prohibitive cost in terms of high-quality human annotation.
+Scalable oversight for Large Language Models (LLMs) represents a critical frontier in AI alignment research. Conventional Reinforcement Learning from Human Feedback (RLHF) \citep{rlhf} paradigms predominantly utilize sparse, outcome-based reward signals. Typically, RLHF provides a continuous scalar reward at the end of a trajectory, derived from a preference model. This approach is highly effective for inexact domains such as creative writing or question answering, where correctness is subjective and cannot be verified via deterministic rules. However, for complex, multi-step reasoning tasks in exact domains like mathematics, this formulation exacerbates the credit assignment problem, as a single scalar reward at the end of a trajectory fails to capture the validity of intermediate logical steps. In these domains, external verifiers can be used to provide exact binary rewards based on the final answer's correctness. While process supervision—rewarding granular reasoning steps—offers a remedy \citep{verifystepbystep}, it incurs a prohibitive cost in terms of high-quality human or automated annotation.
 
 A paradigm shift is emerging in the form of \textit{Self-Rewarding Language Models}, where the resulting policy functions as its own critic. This approach aims to circumvent the \textit{alignment tax} associated with training independent reward models, facilitating scalable, self-improving systems. The LaSeR (Last-Token Self-Rewarding) framework \citep{laser} and recent reasoning-focused reinforcement learning advancements \citep{r1} exemplify this direction by training an LLM to predict a confidence score at the sequence terminus, utilizing this prediction as an intrinsic reward.
 
 \subsection{Research Objectives}
-We posit that a singular terminal signal is insufficient for robust process oversight in long-horizon reasoning. Consequently, we propose a \textbf{dense confidence monitoring} objective. By compelling the model to implicitly evaluate the validity of its reasoning trace at every token step, we aim to reduce the variance of the policy gradient and improve the calibration of uncertainty estimates.
+We posit that a singular terminal signal is insufficient for robust process oversight in long-horizon reasoning. Consequently, we propose a \textbf{dense confidence monitoring} objective. By compelling the model to implicitly evaluate the validity of its reasoning trace at every token step, we aim to improve the calibration of uncertainty estimates.
 
 This study implements a modified LaSeR architecture. Our specific objectives are:
 \begin{enumerate}
@@ -127,20 +131,20 @@ This study implements a modified LaSeR architecture. Our specific objectives are
 \label{sec:methods}
 
 \subsection{System Architecture}
-The implementation leverages the \texttt{trl} library for the training loop and \texttt{peft} for Low-Rank Adaptation (LoRA) \citep{lora} to enable efficient training on consumer-grade hardware. This distinguishes our work from the original LaSeR implementation \citep{laser}, which relied on full-parameter fine-tuning. The core component is the \texttt{ConfidenceGRPOTrainer}, a custom subclass of \texttt{GRPOTrainer} that intercepts the forward pass to extract confidence logits.
+The implementation leverages the \texttt{trl} library for the training loop and \texttt{peft} for Low-Rank Adaptation (LoRA) \citep{lora} to enable efficient training on consumer-grade hardware. It is important to note that LoRA adapters are applied only to the feed-forward layers of the transformer, not the attention layers. This distinguishes our work from the original LaSeR implementation \citep{laser}, which relied on full-parameter fine-tuning. The core component is the \texttt{ConfidenceGRPOTrainer}, a custom subclass of \texttt{GRPOTrainer} that intercepts the forward pass to extract confidence logits.
 
 \begin{figure}[h]
 	\centering
-	\fbox{\parbox[c][6cm]{0.8\textwidth}{\centering \textbf{[PLACEHOLDER: System Architecture Diagram]} \\
-			Schema showing: \\ 1. Inputs (Prompts) $\rightarrow$ 2. LLM Policy $\rightarrow$ 3. Trajectory Generation \\ $\rightarrow$ 4. Logit Extraction Hook (Dense) $\rightarrow$ 5. BCE Confidence Loss \\ $\rightarrow$ 6. Advantage Blending $\rightarrow$ 7. GRPO Update}}
-	\caption{Overview of the Dense Confidence GPRO Architecture. The confidence signal is extracted in parallel to the generation and fed back into both the loss function and the advantage estimation.}
+	\fbox{\parbox[c][8cm]{0.8\textwidth}{\centering \textbf{[PLACEHOLDER: System Architecture Diagram]} \\
+			Schema showing: \\ 1. Inputs (Prompts) $\rightarrow$ 2. LLM Policy $\rightarrow$ 3. Trajectory Generation (No Gradients) \\ $\rightarrow$ 4. Logit Extraction Hook (Initial) $\rightarrow$ 5. Advantage Blending (Self-Reward Integration) \\ $\rightarrow$ 6. Trajectory Re-Evaluation (With Gradients) $\rightarrow$ 7. RL \& BCE Loss Calculation \\ (Logits captured a second time for loss computation) }}
+	\caption{Overview of the Dense Confidence RL Architecture. Tokens are captured twice: first during generation to compute rewards, and second during the backward pass to compute gradients.}
 	\label{fig:architecture}
 \end{figure}
 
 \subsubsection{Policy Model and RL Algorithm}
 We utilize a \textbf{0.5B parameter policy model} (Qwen/Qwen2.5-0.5B-Instruct) to verify the concept within the significant resource constraints typical of LLM fine-tuning, before scaling to larger architectures. For the reinforcement learning component, we employ \textbf{Group Relative Policy Optimization (GRPO)} \citep{deepseekmath}.
 
-The key advantage of this RL algorithm is that it eliminates the need for a separate value network (critic), which typically doubles memory requirements. While other efficient fine-tuning methods like Direct Preference Optimization \citep{directpreferenceopt} also bypass the reward model by implicitly optimizing preferences, GRPO allows us to optimize arbitrary non-differentiable reward functions—such as our confidence metric—directly. Instead, it estimates the baseline for the advantage function by computing the mean reward of a group of outputs $\{o_1, \dots, o_G\}$ generated from the same prompt $q$. This relative comparison stabilizes training by normalizing rewards against the model's current capability level for that specific query.
+The key advantage of this RL algorithm is that it eliminates the need for a separate value network (critic), which typically doubles memory requirements and is a standard component of algorithms like Proximal Policy Optimization (PPO) \citep{ppo}. While other efficient fine-tuning methods like Direct Preference Optimization \citep{directpreferenceopt} also bypass the reward model by implicitly optimizing preferences, GRPO allows us to optimize arbitrary non-differentiable reward functions—such as our confidence metric—directly. Instead, it estimates the baseline for the advantage function by computing the mean reward of a group of outputs $\{o_1, \dots, o_G\}$ generated from the same prompt $q$. This relative comparison stabilizes training by normalizing rewards against the model's current capability level for that specific query.
 
 Furthermore, we set the KL-divergence coefficient ($\beta$) to 0. This removes the necessity of keeping a frozen reference model in memory during training, further saving resources. However, this removes the standard regularization against diverging from the base distribution. Therefore, a significantly small learning rate is crucial to prevent the model from "collapsing"—losing basic grammatical and answering capabilities—while optimizing for the reward signal.
 
@@ -168,9 +172,11 @@ where:
 	\item $\mu_{\text{conf}} = -4.0$: Centers the effective range of the logits.
 	\item $\sigma_{\text{conf}} = 1.5$: Controls the "temperature" or sensitivity of the confidence mapping.
 \end{itemize}
-These parameters were chosen to align the expected pre-trained logit distribution with a useful probability gradient.
+The scaling factor $\frac{\pi}{\sqrt{3}}$ is derived from the statistical property that a logistic distribution with scale parameter $s$ has a variance of $\frac{s^2 \pi^2}{3}$. By setting the scaling coefficient to this value, we align the standard deviation of the input logits (assuming they are normally distributed) with the coherent probability space of the sigmoid function, ensuring that the gradients are well-behaved during backpropagation.
 
 \subsection{Training Algorithm: RL with Confidence}
+The LaSeR framework introduces a self-rewarding mechanism that is theoretically grounded in a reformulation of the RL objective, similar to how Direct Preference Optimization (DPO) \citep{directpreferenceopt} re-derives the optimal policy from a preference loss. Specifically, \citet{laser} show that the optimal reward for a reasoning step can be recovered from the self-rewarding probability of the model itself. While our implementation simplifies this by blending explicit rewards, it retains the core principle: the model's internal confidence should converge to the true correctness probability. This differs from standard RL, where the reward is purely extrinsic. In LaSeR, the "critic" is implicitly the policy itself, evaluated at the special confidence token.
+
 We employ the previously described algorithm, which samples a group of $G$ outputs $\{o_1, \dots, o_G\}$ for a single prompt $q$.
 The objective function maximizes the following surrogate:
 
@@ -195,35 +201,36 @@ The confidence loss $L_{\text{conf}}$ acts as a regularizer, forcing the confide
 Crucially, to handle class imbalance (the ratio of correct to incorrect answers changes during training), we apply dynamic importance sampling weights calculated per-group.
 
 \subsubsection{Self-Reward Integration (Advantage Blending)}
-A key innovation is blending the external sparse reward with the internal dense confidence. Standard RL struggles when the reward signal is sparse (0 or 1); the agent either stumbles upon a solution by chance or learns nothing. A dense reward helps the algorithm differentiate between "completely wrong" and "uncertain but plausible" trajectories.
+A key innovation is blending the external sparse reward with the internal dense confidence \citep{laser}. Standard RL struggles when the reward signal is sparse (0 or 1); the agent either stumbles upon a solution by chance or learns nothing. A dense reward helps the algorithm differentiate between "completely wrong" and "uncertain but plausible" trajectories.
 
 In the \textit{Self-Rewarding} variant, we blend the standard advantage with a standardized confidence score. The blended advantage $A^{\text{blended}}_i$ for trajectory $i$ is defined as:
 
 \begin{equation}
-	A^{\text{blended}}_i = (1 - \alpha) \underbrace{\frac{r_i - \mu_r}{\sigma_r}}_{\text{Standard Advantage}} + \alpha \underbrace{\frac{\bar{c}_i - \mu_{\bar{c}}}{\sigma_{\bar{c}}}}_{\text{Intrinsic Advantage}} \cdot \mathbb{I}(\sigma_{\bar{c}} > \delta)
+	A^{\text{blended}}_i = (1 - \alpha \cdot \mathbb{I}(\sigma_{\bar{c}} > \delta)) \underbrace{\frac{r_i - \mu_r}{\sigma_r}}_{\text{Standard Advantage}} + \alpha \cdot \mathbb{I}(\sigma_{\bar{c}} > \delta) \underbrace{\frac{\bar{c}_i - \mu_{\bar{c}}}{\sigma_{\bar{c}}}}_{\text{Intrinsic Advantage}}
 \end{equation}
 
 where $\bar{c}_i = \frac{1}{T_i} \sum_{t=1}^{T_i} c_{i,t}$ is the mean confidence of the trajectory, $\alpha=0.1$ is the blending factor, and $\mathbb{I}(\cdot)$ gates the intrinsic reward based on whether the group confidence variance $\sigma_{\bar{c}}$ exceeds the threshold $\delta = 0.1$. This formulation ensures that intrinsic rewards only influence the policy when the model differentiates between its own outputs.
 
-Crucially, as established in the original LaSeR protocol \citep{laser}, the validity of this intrinsic signal depends on the model's ability to accurately estimate confidence. To prevent the policy from optimizing towards maximizing a random or poorly calibrated signal early in training, we implement a **warmup phase**. During these initial steps, the blending factor is effectively forced to $\alpha=0$, meaning the policy updates rely exclusively on the sparse ground-truth rewards from the external verifier. The intrinsic confidence signal is only integrated into the advantage function once the auxiliary loss indicates that the internal confidence estimation has stabilized.
+Crucially, as established in the original LaSeR protocol \citep{laser}, the validity of this intrinsic signal depends on the model's ability to accurately estimate confidence. To prevent the policy from optimizing towards maximizing a random or poorly calibrated signal early in training, we implement a \textit{warmup phase}. During these initial steps, the blending factor is effectively forced to $\alpha=0$, meaning the policy updates rely exclusively on the sparse ground-truth rewards from the external verifier. The intrinsic confidence signal is only integrated into the advantage function once the auxiliary loss indicates that the internal confidence estimation has stabilized.
 
 \subsection{Dataset and Preprocessing}
 We utilize the \texttt{Keven16/LaSeR\_training\_data} (specifically the \texttt{DeepMath-103K} subset \citep{deepmath103k}). The dataset consists of math problems requiring step-by-step reasoning. In contrast to the original LaSeR study \citep{laser} which utilized the full dataset, we apply specific constraints to accommodate local hardware limitations:
 \begin{itemize}
-	\item \textbf{Filtering:} Rows are filtered to fit within a context window of 2048 tokens.
-	\item \textbf{Format:} Prompts are formatted using the standard Qwen chat template (`user` and `system` roles).
+	\item \textbf{Filtering:} Rows are filtered to fit within a context window of 2048 tokens. These filters are applied identically to both the training and evaluation sets.
+	\item \textbf{Format:} Prompts are formatted using the standard Qwen chat template (`user` and `system` roles). The maximum length for the prompt (including system message) is restricted to 64 tokens, and the maximum generation length is limited to 1024 tokens.
 \end{itemize}
 
 \subsection{Experimental Variants}
 To ensure scientific rigor, we define three controlled settings:
 \begin{itemize}
+	\item \textbf{Variant 0 (Zero-Shot):} The untouched base model without unweighted finetuning, serving as a reference point.
 	\item \textbf{Variant 1 (Baseline):} Standard RL training. No confidence loss, no confidence reward.
-	\item \textbf{Variant 2 (Multi-Task):} RL + Auxiliary Confidence Loss. The model learns to predict confidence, but this signal does not affect the policy update (only the shared gradients in the backbone affect it).
+	\item \textbf{Variant 2 (Auxiliary-Loss-Only):} RL + Auxiliary Confidence Loss. The model learns to predict confidence, but this signal does not affect the policy update (only the shared gradients in the backbone affect it).
 	\item \textbf{Variant 3 (Self-Rewarding):} RL + Auxiliary Confidence Loss + Reward Integration. The full proposed architecture.
 \end{itemize}
 
 \subsection{Hardware and Compute}
-Training was performed on a local workstation equipped with [INSERT GPU MODEL, e.g., 2x NVIDIA RTX 4090] GPUs. Each run utilized `vllm` for generation to maximize throughput. Total training time per variant was approximately [INSERT TIME] hours for a single epoch. This deviates from the original LaSeR protocol \citep{laser}, which trained for two epochs; we restricted training to one epoch to align with the reduced dataset size and prevent overfitting on the proxy model.
+Training was performed on a local workstation. Each run utilized a custom optimized generation loop in PyTorch to maximize throughput. Total training time per variant was restricted to a single epoch. This deviates from the original LaSeR protocol \citep{laser}, which trained for two epochs; we restricted training to one epoch to align with the reduced dataset size and prevent overfitting on the proxy model.
 
 \section{Results and Interpretation}
 \label{sec:results}
@@ -308,19 +315,19 @@ This study validates the feasibility of \textbf{Dense Confidence} as a mechanism
 	\caption{Key Hyperparameters for all Experiments (Local Mode)}
 	\begin{tabular}{ll}
 		\toprule
-		Parameter                    & Value                      \\
+		Parameter                         & Value                      \\
 		\midrule
-		Model                        & Qwen/Qwen2.5-0.5B-Instruct \\
-		Learning Rate                & 1e-5                       \\
-		Confidence $\mu$             & -4.0                       \\
-		Confidence $\sigma$          & 1.5                        \\
-		Confidence Reward $\alpha$   & 0.1                        \\
-		Min. Confidence Std          & 0.1                        \\
-		Batch Size                   & 4                          \\
-		Num Generations (Group Size) & 4                          \\
-		LoRA Rank                    & 16                         \\
-		Max Prompt Length            & 64                         \\
-		Max Completion Length        & 1024                       \\
+		Model                             & Qwen/Qwen2.5-0.5B-Instruct \\
+		Learning Rate                     & 1e-5                       \\
+		Confidence $\mu$ (Logit Value)    & -4.0                       \\
+		Confidence $\sigma$ (Logit Value) & 1.5                        \\
+		Blending Factor $\alpha$          & 0.1                        \\
+		Min. Confidence Std               & 0.1                        \\
+		Batch Size                        & 4                          \\
+		Num Generations (Group Size)      & 4                          \\
+		LoRA Rank                         & 16                         \\
+		Max Prompt Length                 & 64                         \\
+		Max Completion Length             & 1024                       \\
 		\bottomrule
 	\end{tabular}
 \end{table}
