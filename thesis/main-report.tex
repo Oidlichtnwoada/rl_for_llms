@@ -131,7 +131,7 @@ This study implements a modified LaSeR architecture. Our specific objectives are
 \label{sec:methods}
 
 \subsection{System Architecture}
-The implementation leverages the \texttt{trl} library for the training loop and \texttt{peft} for Low-Rank Adaptation (LoRA) \citep{lora} to enable efficient training on consumer-grade hardware. It is important to note that LoRA adapters are applied only to the feed-forward layers of the transformer, not the attention layers. This distinguishes our work from the original LaSeR implementation \citep{laser}, which relied on full-parameter fine-tuning. The core component is the \texttt{ConfidenceGRPOTrainer}, a custom subclass of \texttt{GRPOTrainer} that intercepts the forward pass to extract confidence logits.
+The implementation leverages the \texttt{trl} library for the training loop and \texttt{peft} for Low-Rank Adaptation (LoRA) \citep{lora} to enable efficient training on consumer-grade hardware. Answer verification is performed using the \texttt{math-verify} package. Unlike simple string matching, this tool parses the LaTeX structure to enable semantic verification (e.g., recognizing that $\frac{1}{2}$ is equivalent to $0.5$), which is essential for robust evaluation in formal domains. It is important to note that LoRA adapters are applied only to the feed-forward layers of the transformer, not the attention layers. This distinguishes our work from the original LaSeR implementation \citep{laser}, which relied on full-parameter fine-tuning. The core component is the \texttt{ConfidenceGRPOTrainer}, a custom subclass of \texttt{GRPOTrainer} that intercepts the forward pass to extract confidence logits.
 
 \begin{figure}[h]
 	\centering
@@ -239,7 +239,7 @@ Crucially, as established in the original LaSeR protocol \citep{laser}, the vali
 We utilize the \texttt{Keven16/LaSeR\_training\_data} (specifically the \texttt{DeepMath-103K} subset \citep{deepmath103k}). The dataset consists of math problems requiring step-by-step reasoning. In contrast to the original LaSeR study \citep{laser} which utilized the full dataset, we apply specific constraints to accommodate local hardware limitations:
 \begin{itemize}
 	\item \textbf{Filtering:} Rows are filtered based on the limited amount of completion tokens to ensure the generation fits within the compute budget. These filters are applied identically to both the training and evaluation sets.
-	\item \textbf{Format:} Prompts are formatted using the standard Qwen chat template (`user` and `system` roles). The maximum length for the prompt (including system message) is restricted to 64 tokens, and the maximum generation length is limited to 1024 tokens.
+	\item \textbf{Format:} Prompts are formatted using the chat template for the specific LLM (\textit{user} and \textit{system} roles). The system message is particularly important to instruct the model to provide the answer in a format that is processable by the external verifier using deterministic functions. Specifically, the model is directed to enclose the final answer in a \texttt{\textbackslash boxed\{\}} command at the end of the output. This last boxed expression is extracted as the prediction for the \texttt{math-verify} library, thus avoiding the need for a stochastic reward model. The maximum length for the prompt (including system message) is restricted to 64 tokens, and the maximum generation length is limited to 1024 tokens.
 \end{itemize}
 
 \subsection{Experimental Variants}
