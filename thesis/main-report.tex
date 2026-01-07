@@ -167,6 +167,7 @@ where $h_t$ is the hidden state at step $t$.
 Raw logits are unbounded. To map them to a probability-like confidence score $c_t \in [0, 1]$, which can also be interpreted as the estimated reward of the trajectory, we employ a parameterized sigmoid function. Instead of a standard sigmoid, we use a scaling factor derived from the logistic distribution to control the slope and center of the mapping:
 
 \begin{equation}
+	\label{eq:sigmoid_transform}
 	c_t = \sigma\left( \frac{\pi}{\sigma_{\text{conf}}\sqrt{3}} (l_{t}^{\text{conf}} - \mu_{\text{conf}}) \right)
 \end{equation}
 
@@ -178,17 +179,61 @@ where:
 The scaling factor $\frac{\pi}{\sqrt{3}}$ is derived from the statistical property that a logistic distribution with scale parameter $s$ has a variance of $\frac{s^2 \pi^2}{3}$. By setting the scaling coefficient to this value, we align the standard deviation of the input logits (assuming they are normally distributed) with the coherent probability space of the sigmoid function, ensuring that the gradients are well-behaved during backpropagation. Furthermore, this scaling ensures that the effective output range of the logits maps comprehensively to the probability interval $[0, 1]$. Consequently, the model is only required to concentrate its output mass within a suitable sub-range corresponding to its estimated capability. We experimentally verified that the confidence logits are indeed approximately normally distributed, justifying this specific transformation.
 
 \subsection{Training Algorithm: RL with Confidence}
-The LaSeR framework introduces a self-rewarding mechanism whereby the policy itself shapes the rewards assignment. \citet{laser} propose blending the self-proposed reward into the advantages before the RL algorithm update step. A key difference in our work is the computation of this estimated reward. LaSeR computes the reward $r_{\text{laser}}$ by performing an additional forward pass to predict the confidence token after the end-of-sequence token:
-\begin{equation}
-	r_{\text{laser}} = \sigma(\text{Logits}(h_{\text{EOS}})[\texttt{id}_{\text{confidence}}])
-\end{equation}
-In contrast, our dense confidence method computes the estimated reward $r_{\text{dense}}$ as the mean of the scaled sigmoid transformations of the confidence token logits across the entire trajectory:
-\begin{equation}
-	r_{\text{dense}} = \frac{1}{T} \sum_{t=1}^{T} c_t
-\end{equation}
-Both methods yield a value in $[0, 1]$, but our approach leverages the dense signal accumulated throughout the reasoning process. Apart from this estimation difference, we follow the LaSeR protocol of blending this intrinsic signal into the advantage calculation.
+The core objective of the LaSeR framework is to enable the model to self-evaluate, thereby providing a denser reward signal than the sparse binary feedback typically available in mathematical reasoning tasks. This section delineates the theoretical formulation of the expected reward in the original LaSeR proposal and contrasts it with the bounded dense implementation employed in this work.
 
-We integrate this mechanism into the control loop. Although adaptable to any policy gradient method, we employ the previously described GRPO algorithm, which samples a group of $G$ outputs $\{o_1, \dots, o_G\}$ for a single prompt $q$.
+\subsubsection{Theoretical Formulation: The LaSeR Objective}
+Standard Reinforcement Learning from Human Feedback (RLHF) aims to maximize the expected reward while maintaining proximity to a reference policy $\pi_{\text{ref}}$ to prevent mode collapse. The objective function is formally defined as:
+
+\begin{equation}
+	\max_{\pi_\theta} \mathbb{E}_{x \sim \mathcal{D}, y \sim \pi_\theta(y|x)} \left[ r(x, y) - \beta D_{\text{KL}}(\pi_\theta(y|x) || \pi_{\text{ref}}(y|x)) \right]
+\end{equation}
+
+where $r(x, y)$ is the reward for prompt $x$ and response $y$, and $\beta$ controls the KL-divergence penalty. As derived in \citet{directpreferenceopt}, the optimal policy $\pi_r$ allowing to maximize this objective takes the closed form:
+
+\begin{equation}
+	\pi_r(y | x) = \frac{1}{Z(x)} \pi_{\text{ref}}(y | x) \exp\left(\frac{1}{\beta} r(x, y)\right)
+\end{equation}
+
+where $Z(x)$ is the partition function. Rearranging this equation allows us to express the reward function in terms of the optimal policy and the reference policy. The LaSeR framework \citep{laser} applies this relation to the prediction of a confidence token $z_c$ conditioned on the context $x$ and the generated reasoning $y$. Substituting the model's policy $\pi_\theta(z_c | x, y)$ for $\pi_r$, the reward derivation becomes:
+
+\begin{equation}
+	r(x, y) = \beta_v \log \frac{\pi_\theta(z_c | x, y)}{\pi_{\text{ref}}(z_c | x, y)} + \beta_v \log Z(x, y)
+\end{equation}
+
+\citet{laser} assume that, because $z_c$ is an unused special token, its probability mass is negligible. Therefore, the partition function $Z(x, y)$ approximates to 1, allowing the term $\beta_v \log Z(x, y)$ to be discarded. Furthermore, empirical observation suggests that the reference policy probability $\pi_{\text{ref}}(z_c | x, y)$ for such tokens is effectively constant.
+
+Applying these simplifications yields the final LaSeR expected reward formulation:
+
+\begin{equation}
+	r_{\text{laser}}(x, y) = \beta_v \log \pi_\theta(z_c | x, y) - \beta_v c_{\text{ref}}
+\end{equation}
+
+where $\beta_v$ is a scaling coefficient and $c_{\text{ref}} \approx \log \pi_{\text{ref}}(z_c | x, y)$ is the constant baseline. Since probabilities lie in $(0, 1]$, the logarithmic term implies that this reward signal is theoretically unbounded in the negative direction, contrasting with our dense sigmoid approach.
+
+\subsubsection{Our Implementation: Bounded Dense Confidence}
+In contrast to the log-probability formulation of LaSeR, our implementation adopts a bounded, logit-based approach for the intrinsic reward calculation. We define the reward $r_{\text{dense}}$ as the average of the sigmoid-transformed logits of the confidence token computed at every step of the reasoning trace:
+
+\begin{equation}
+	r_{\text{dense}} = \frac{1}{T} \sum_{t=1}^{T} \sigma\left( \frac{\pi}{\sigma_{\text{conf}}\sqrt{3}} (l_{t}^{\text{conf}} - \mu_{\text{conf}}) \right)
+\end{equation}
+
+where $l_{t}^{\text{conf}}$ is the raw logit of the special confidence token at step $t$, and parameters $\mu_{\text{conf}}$ and $\sigma_{\text{conf}}$ calibrate the mapping as described in Eq. (\ref{eq:sigmoid_transform}).
+
+\subsubsection{Comparative Analysis}
+The divergence between the two formulations entails significant implications for training stability and interpretation:
+
+\begin{enumerate}
+	\item \textbf{Value Range and Boundedness:} The LaSeR formulation $r_{\text{laser}}$ depends on $\log \pi_\theta$. As $\pi_\theta \to 0$, $r_{\text{laser}} \to -\infty$. This unboundedness can introduce high variance in the advantage estimates $A_i$, potentially destabilizing the policy gradient updates, especially early in training when the model is poorly calibrated. Our formulation maps confidence to a strictly bounded interval $[0, 1]$ via the sigmoid function, ensuring that the intrinsic reward signal remains within a controlled magnitude, consistent with the scale of the external binary rewards ($0$ or $1$).
+
+	\item \textbf{Granularity:} The LaSeR implementation provides a sparse intrinsic signal, computing the self-reward via an additional forward pass executed after the generation concludes to predict the confidence token at the sequence terminus. In contrast, our dense approach evaluates the confidence token at every generation step $t$ during the initial rollout, aggregating a trajectory-wide belief. This aims to provide a more holistic assessment of the reasoning chain rather than just a post-hoc validation of the final state.
+
+	\item \textbf{Optimization Landscape:} Maximizing the log-probability (LaSeR) is consistent with maximum likelihood estimation, pushing the model to eagerly assign mass to the confidence token. Maximizing the sigmoid of the logit (our method) is a softer objective that saturates as the logit increases, potentially preventing overconfidence where the model pushes logits to infinity to satisfy a logarithmic objective.
+
+	\item \textbf{Interference Avoidance via Gradient Saturation:} A critical structural constraint of our dense monitoring approach is that the designated confidence token must strictly remain latent. In the original LaSeR formulation, high confidence logits are unproblematic because the confidence estimation occurs only after the generation is complete (either as an appended token or a separate forward pass), preventing any interference with the reasoning trajectory. In contrast, since we evaluate this token at every step $t$, if its logit $l_t^{\text{conf}}$ were to increase sufficiently to rival the top-$k$ tokens, it would be sampled during generation, corrupting the logical reasoning trace. Our scaled sigmoid formulation inherently prevents this pathology. Unlike the logarithmic objective which implies a constant gradient drive towards maximizing probability (pushing logits towards $+\infty$), the sigmoid function saturates rapidly once $l_t^{\text{conf}}$ marginally exceeds the effective range defined by $\mu_{\text{conf}}$ and $\sigma_{\text{conf}}$. Upon saturation ($c_t \approx 1$), the gradient vanishes, effectively arresting the upward drift of the logit at a value that remains numerically subordinate to the active vocabulary, thereby guaranteeing that the self-monitoring process remains non-intrusive.
+\end{enumerate}
+
+Despite these differences in reward calculation, we adhere to the LaSeR protocol of blending this intrinsic signal into the advantage function of the GRPO algorithm.
+
 The objective function maximizes the following surrogate:
 
 \begin{equation}
