@@ -51,16 +51,17 @@
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-
-\def\sectionautorefname{Section}
-\def\subsectionautorefname{Section}
-\def\subsubsectionautorefname{Section}
-
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%
 %% Report information and title page
 %%
+
+\makeatletter
+\def\sectionautorefname{Section}
+\def\subsectionautorefname{Section}
+\def\subsubsectionautorefname{Section}
+\makeatother
 
 \title{Dense Confidence: Reimplementing and Extending LaSeR with Trajectory-Wide Self-Monitoring for LLM Reasoning}
 
