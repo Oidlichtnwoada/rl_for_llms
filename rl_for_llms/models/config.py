@@ -34,7 +34,7 @@ class Config(BaseModel):
     confidence_loss_warmup_steps: int = Field(default=1024)
     minimum_confidence_std: float = Field(default=0.1)
     confidence_reward_percentage: float = Field(default=0.1)
-    learning_rate: float = Field(default=5e-6)
+    learning_rate: float = Field(default=1e-6)
     num_train_epochs: int = Field(default=get_cuda_default_value(2, 1))
     use_vllm: bool = Field(default=False)
     vllm_gpu_memory_utilization: float = Field(default=0.4)
@@ -68,14 +68,14 @@ class Config(BaseModel):
     eval_steps: float = Field(default=0.2)
     gradient_checkpointing: bool = Field(default=True)
     log_completions: bool = Field(default=True)
-    beta: float = Field(default=0.0)
+    beta: float = Field(default=1e-2)
     enable_lora: bool = Field(default=True)
     lora_target_modules: list[str] = Field(
-        default_factory=lambda: ["gate_proj", "up_proj", "down_proj"]
+        default_factory=lambda: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
     )
     lora_rank: int = Field(default=16)
     lora_alpha_factor_for_rank: int = Field(default=2)
-    lora_dropout: float = Field(default=0.05)
+    lora_dropout: float = Field(default=0.1)
     lora_bias: Literal["none", "all", "lora_only"] = Field(default="none")
     lora_task_type: str = Field(default=TaskType.CAUSAL_LM)
     system_message: str = Field(
