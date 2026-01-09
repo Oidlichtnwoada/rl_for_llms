@@ -23,15 +23,16 @@ def trim_dataset(
     target_percentage: float,
     tokenizer: PreTrainedTokenizerBase,
     max_prompt_tokens: int,
+    seed: int = 0,
 ) -> Dataset:
-    """Trim the dataset to the target percentage by removing random rows."""
+    """Trim the dataset deterministically to the target percentage by removing random rows."""
     total_rows = len(dataset)
     target_rows = int(total_rows * target_percentage)
     filtered_dataset = dataset.filter(
         lambda x: len(tokenize_messages(x["prompt"], tokenizer)) <= max_prompt_tokens
     )
     target_rows = min(target_rows, len(filtered_dataset))
-    trimmed_dataset = filtered_dataset.shuffle().select(range(target_rows))
+    trimmed_dataset = filtered_dataset.shuffle(seed=seed).select(range(target_rows))
     return trimmed_dataset
 
 
