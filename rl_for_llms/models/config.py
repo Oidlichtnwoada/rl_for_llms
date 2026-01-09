@@ -88,7 +88,7 @@ class Config(BaseModel):
         """Return a shorthand representation of the config."""
         confidence_loss_spec = "confloss" if self.use_confidence_loss else "noconfloss"
         confidence_reward_spec = (
-            "confrew" if self.use_confidence_reward else "noconfrew"
+            "confrew" if self.use_confidence_reward and self.use_confidence_loss else "noconfrew"
         )
         shorthand = f"{confidence_loss_spec}_{confidence_reward_spec}"
         return shorthand
