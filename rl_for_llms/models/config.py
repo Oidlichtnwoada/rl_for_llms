@@ -71,7 +71,15 @@ class Config(BaseModel):
     beta: float = Field(default=1e-2)
     enable_lora: bool = Field(default=True)
     lora_target_modules: list[str] = Field(
-        default_factory=lambda: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+        default_factory=lambda: [
+            "q_proj",
+            "k_proj",
+            "v_proj",
+            "o_proj",
+            "gate_proj",
+            "up_proj",
+            "down_proj",
+        ]
     )
     lora_rank: int = Field(default=16)
     lora_alpha_factor_for_rank: int = Field(default=2)
