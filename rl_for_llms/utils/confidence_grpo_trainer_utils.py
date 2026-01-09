@@ -153,7 +153,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         confidence_logits = logits[:, :, self.confidence_token_id]
         if self.all_confidence_logits is None:
             self.all_confidence_logits = confidence_logits
-        else:
+        elif confidence_logits.shape[1] == 1:
             self.all_confidence_logits = torch.cat(
                 (self.all_confidence_logits, confidence_logits), dim=1
             )
