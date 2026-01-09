@@ -70,6 +70,7 @@ def get_grpo_config() -> GRPOConfig:
         num_train_epochs=config.num_train_epochs,
         save_steps=config.save_steps,
         eval_strategy=config.eval_strategy,
+        eval_steps=config.eval_steps,
         per_device_train_batch_size=config.per_device_rollouts_per_batch
         * config.num_generations,
         per_device_eval_batch_size=config.per_device_rollouts_per_batch
