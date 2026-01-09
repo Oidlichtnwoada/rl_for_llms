@@ -28,7 +28,7 @@ class Config(BaseModel):
     confidence_token: str = Field(default="<|vision_pad|>")
     confidence_token_logit_mean: float = Field(default=-4.0)
     confidence_token_logit_std: float = Field(default=1.5)
-    confidence_loss_factor: float = Field(default=0.1)
+    confidence_loss_factor: float = Field(default=0.05)
     use_confidence_loss: bool = Field(default=use_confidence_loss())
     use_confidence_reward: bool = Field(default=use_confidence_reward())
     confidence_loss_warmup_steps: int = Field(default=1024)
