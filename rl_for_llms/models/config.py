@@ -68,7 +68,7 @@ class Config(BaseModel):
     eval_steps: float = Field(default=0.2)
     gradient_checkpointing: bool = Field(default=True)
     log_completions: bool = Field(default=True)
-    beta: float = Field(default=1e-2)
+    beta: float = Field(default=0.0)
     enable_lora: bool = Field(default=True)
     lora_target_modules: list[str] = Field(
         default_factory=lambda: [
