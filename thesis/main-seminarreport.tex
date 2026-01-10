@@ -158,7 +158,7 @@ where $r(x, y)$ is the reward for prompt $x$ and response $y$, and $\beta$ contr
 \begin{equation}
 	\pi_r(y | x) = \frac{1}{Z(x)} \pi_{\text{ref}}(y | x) \exp\left(\frac{1}{\beta} r(x, y)\right)
 \end{equation}
-where $Z(x)$ is the partition function, serving as a normalization term to ensure the probabilities sum to 1. \citet{laser} apply this relation to the prediction of a confidence token $z_c$ (e.g., a special unused token like \texttt{<vision\_start>}) conditioned on the context $x$ and the generated reasoning $y$. Substituting the model's policy $\pi_\theta(z_c | x, y)$ for $\pi_r$, and rearranging the equation to express the reward in terms of the policy, the reward derivation becomes:
+where $Z(x)$ is the partition function, serving as a normalization term to ensure the probabilities sum to $1$. \citet{laser} apply this relation to the prediction of a confidence token $z_c$ (e.g., a special unused token like \texttt{<vision\_start>}) conditioned on the context $x$ and the generated reasoning $y$. Substituting the model's policy $\pi_\theta(z_c | x, y)$ for $\pi_r$, and rearranging the equation to express the reward in terms of the policy, the reward derivation becomes:
 \begin{equation}
 	r(x, y) = \beta_v \log \frac{\pi_\theta(z_c | x, y)}{\pi_{\text{ref}}(z_c | x, y)} + \beta_v \log Z(x, y)
 \end{equation}
