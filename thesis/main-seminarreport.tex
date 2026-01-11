@@ -178,6 +178,17 @@ where $r_{\text{LaSeE}, i}$ is the self-rewarding score of trajectory $i$, $\sig
 
 \textbf{Efficiency via Simplification.} A significant methodological innovation is the simplification of the reference model term. \citet{laser} empirically observe that the log-probability of the special token under the reference model, $\log \pi_{ref}(z_c|x,y)$, is effectively a constant $c_{ref}$ across different inputs due to the irrelevance of the token in standard pre-training. By treating this as a pre-calculated constant, \textit{LaSeR} eliminates the need for a forward pass through the reference model during the self-rewarding calculation. It reduces the computational overhead to merely one additional token inference \citep{laser}.
 
+\begin{figure}[htbp]
+	\centering
+	\includegraphics[
+		page=2,
+		trim=2.5cm 19cm 2.5cm 2cm,
+		clip,
+		width=0.8\textwidth
+	]{papers/laser.pdf}
+	\caption{\textit{LaSeR} Method Visualization \citep{laser}}
+\end{figure}
+
 \subsection{Experiments}
 \textbf{Setup and Baselines.} The framework was evaluated using \textit{LLaMA-3.2 (3B)} and \textit{Qwen-2.5 (7B)} architectures trained on the \textit{DeepMath-103K} dataset \citep{deepmath103k}. \citet{laser} benchmarked \textit{LaSeR} against three distinct baselines: standard pre-trained base models, models trained with standard \textit{GRPO} (Group Relative Policy Optimization) without self-rewarding, and varying sizes of external Reward Models (\textit{ORMs} and \textit{PRMs}), including a $72$B parameter model \citep{laser}. It is worth noting that two variants of \textit{LaSeR} were evaluated: one variant with advantage blending (using its own self-rewarding scores for blended advantages used in the \textit{GRPO} algorithm), and another variant without advantage blending (without \textit{SWA}).
 
