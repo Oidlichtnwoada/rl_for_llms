@@ -70,7 +70,7 @@ class Config(BaseModel):
     top_p: float = Field(default=1.0)
     save_steps: int = Field(default=1024)
     eval_strategy: str = Field(default="steps")
-    eval_steps: float = Field(default=0.25)
+    eval_steps: float = Field(default=0.35)
     gradient_checkpointing: bool = Field(default=True)
     log_completions: bool = Field(default=True)
     beta: float = Field(default=1e-2)
