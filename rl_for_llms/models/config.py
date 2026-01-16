@@ -45,8 +45,12 @@ class Config(BaseModel):
     )
     vllm_importance_sampling_correction: bool = Field(default=False)
     report_to: list[str] = Field(default_factory=lambda: get_logging_integrations())
-    train_dataset_use_row_percentage: float = Field(default=get_cuda_default_value(1.0, 0.1))
-    eval_dataset_use_row_percentage: float = Field(default=get_cuda_default_value(1.0, 0.5))
+    train_dataset_use_row_percentage: float = Field(
+        default=get_cuda_default_value(1.0, 0.1)
+    )
+    eval_dataset_use_row_percentage: float = Field(
+        default=get_cuda_default_value(1.0, 0.5)
+    )
     max_prompt_length: int = Field(default=get_cuda_default_value(2048, 128), le=8192)
     max_completion_length: int = Field(
         default=get_cuda_default_value(8192, 1024), le=8192
@@ -66,7 +70,7 @@ class Config(BaseModel):
     top_p: float = Field(default=1.0)
     save_steps: int = Field(default=1024)
     eval_strategy: str = Field(default="steps")
-    eval_steps: float = Field(default=0.2)
+    eval_steps: float = Field(default=0.25)
     gradient_checkpointing: bool = Field(default=True)
     log_completions: bool = Field(default=True)
     beta: float = Field(default=1e-2)
