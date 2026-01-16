@@ -436,10 +436,9 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         config = get_config()
         if config.enable_lora:
             peft_model = typing.cast("PeftModel", self.model)
-            peft_model.load_adapter(
-                str(model_output_dir), adapter_name=model_identifier
-            )
-            peft_model.set_adapter(model_identifier)
+            adapter_name = f"adapter_{model_identifier}"
+            peft_model.load_adapter(str(model_output_dir), adapter_name=adapter_name)
+            peft_model.set_adapter(adapter_name)
         else:
             self.model = typing.cast("PreTrainedModel", self.model).from_pretrained(
                 model_output_dir
