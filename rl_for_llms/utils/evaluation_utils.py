@@ -33,7 +33,7 @@ def get_mean_and_std_of_confidence_token_logit(
     tokenizer = get_tokenizer(config.hf_model_id)
     dataset = trim_dataset(
         load_training_data_from_disk(),
-        config.dataset_use_row_percentage,
+        config.train_dataset_use_row_percentage,
         tokenizer,
         config.max_prompt_length,
     )
