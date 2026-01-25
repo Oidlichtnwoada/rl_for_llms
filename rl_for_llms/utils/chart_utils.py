@@ -255,7 +255,13 @@ def create_confidence_chart(*, add_stddev_to_label: bool = False) -> None:
     sample_metrics = load_all_metrics_from_csv(variants[0], "bc")
     all_metric_keys = [k for k in sample_metrics if k.startswith("confidence/")]
 
-    percentage_keys = [k for k in all_metric_keys if is_percentage_metric(k)]
+    metric_order = [name for name, _ in get_metric_units()]
+    percentage_keys = sorted(
+        [k for k in all_metric_keys if is_percentage_metric(k)],
+        key=lambda k: metric_order.index(k.split("/")[-1])
+        if k.split("/")[-1] in metric_order
+        else len(metric_order),
+    )
     mcc_key = next((k for k in all_metric_keys if not is_percentage_metric(k)), None)
 
     all_metrics = {v: load_all_metrics_from_csv(v, "bc") for v in variants}
