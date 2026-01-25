@@ -116,7 +116,9 @@ def create_answer_accuracy_chart(*, add_stddev_to_label: bool = False) -> None:
             x_common + offsets[i] * width, means, width, label=variant.get_shorthand()
         )
         for bar, mean, std in zip(bars, means, stds, strict=False):
-            label_text = f"{mean:.2f}%\n±{std:.2f}%" if add_stddev_to_label else f"{mean:.2f}%"
+            label_text = (
+                f"{mean:.2f}%\n±{std:.2f}%" if add_stddev_to_label else f"{mean:.2f}%"
+            )
             ax.text(
                 bar.get_x() + bar.get_width() / 2,
                 bar.get_height() + 0.5,
@@ -144,7 +146,11 @@ def create_answer_accuracy_chart(*, add_stddev_to_label: bool = False) -> None:
                     width,
                     color=f"C{variants.index(variant)}",
                 )
-                label_text = f"{mean:.2f}%\n±{std:.2f}%" if add_stddev_to_label else f"{mean:.2f}%"
+                label_text = (
+                    f"{mean:.2f}%\n±{std:.2f}%"
+                    if add_stddev_to_label
+                    else f"{mean:.2f}%"
+                )
                 ax.text(
                     bar[0].get_x() + bar[0].get_width() / 2,
                     bar[0].get_height() + 0.5,
