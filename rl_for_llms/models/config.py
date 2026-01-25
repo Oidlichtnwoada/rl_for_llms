@@ -108,7 +108,6 @@ class Config(BaseModel):
             Variant.BASE,
             Variant.GRPO,
             Variant.ONLY_CONFLOSS,
-            Variant.WITH_CONFREW,
         )
     )
 
