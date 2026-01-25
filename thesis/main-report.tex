@@ -132,7 +132,7 @@ This study implements a modified LaSeR architecture. Our specific objectives are
 \label{sec:methods}
 
 \subsection{System Architecture}
-The implementation leverages the \texttt{trl} library for the training loop and \texttt{peft} for Low-Rank Adaptation (LoRA) \citep{lora} to enable efficient training on consumer-grade hardware. Answer verification is performed using the \texttt{math-verify} package. Unlike simple string matching, this tool parses the LaTeX structure to enable semantic verification (e.g., recognizing that $\frac{1}{2}$ is equivalent to $0.5$), which is essential for robust evaluation in formal domains. It is important to note that LoRA adapters are applied only to the feed-forward layers of the transformer, not the attention layers. This distinguishes our work from the original LaSeR implementation \citep{laser}, which relied on full-parameter fine-tuning. The core component is the \texttt{ConfidenceGRPOTrainer}, a custom subclass of \texttt{GRPOTrainer} that intercepts the forward pass to extract confidence logits.
+The implementation leverages the \texttt{trl} library for the training loop and \texttt{peft} for Low-Rank Adaptation (LoRA) \citep{lora} to enable efficient training on consumer-grade hardware. Answer verification is performed using the \texttt{math-verify} package. Unlike simple string matching, this tool parses the LaTeX structure to enable semantic verification (e.g., recognizing that $\frac{1}{2}$ is equivalent to $0.5$), which is essential for robust evaluation in formal domains. It is important to note that LoRA adapters are applied to both the attention layers and the feed-forward layers of the transformer. This distinguishes our work from the original LaSeR implementation \citep{laser}, which relied on full-parameter fine-tuning. The core component is the \texttt{ConfidenceGRPOTrainer}, a custom subclass of \texttt{GRPOTrainer} that intercepts the forward pass to extract confidence logits.
 
 \begin{figure}[h]
 	\centering
@@ -147,7 +147,7 @@ We utilize a \textbf{0.5B parameter policy model} (Qwen/Qwen2.5-0.5B-Instruct) t
 
 The key advantage of this specific RL algorithm is that it eliminates the need for a separate value network (critic), which typically doubles memory requirements and is a standard component of algorithms like Proximal Policy Optimization (PPO) \citep{ppo}. While other efficient fine-tuning methods like Direct Preference Optimization \citep{directpreferenceopt} also bypass the reward model by implicitly optimizing preferences, GRPO allows us to optimize arbitrary non-differentiable reward functions directly. Instead, it estimates the baseline for the advantage function using group statistics rather than an external value network (critic), by computing the mean reward of a group of outputs $\{o_1, \dots, o_G\}$ generated from the same prompt $q$. This relative comparison stabilizes training by normalizing rewards against the model's current capability level for that specific query.
 
-Furthermore, we set the KL-divergence coefficient ($\beta$) to 0. This removes the necessity of keeping a frozen reference model in memory during training, further saving resources. However, this removes the standard regularization against diverging from the base distribution. Therefore, a significantly small learning rate is crucial to prevent the model from \textit{collapsing}, losing basic grammatical and answering capabilities while optimizing for the reward signal.
+Furthermore, we set the KL-divergence coefficient ($\beta$) to a small value of $10^{-2}$. This maintains a weak regularization against diverging from the base distribution but entails the necessity of keeping a frozen reference model in memory during training. Nevertheless, a small learning rate remains crucial to prevent the model from \textit{collapsing}, losing basic grammatical and answering capabilities while optimizing for the reward signal.
 
 \subsection{Dense Confidence Mechanism}
 
@@ -244,10 +244,10 @@ where $\rho_{i,t} = \frac{\pi_\theta(o_{i,t} | q, o_{i,<t})}{\pi_{\text{old}}(o_
 \begin{equation}
 	A_i = \frac{r_i - \text{mean}(\{r_1 \dots r_G\})}{\text{std}(\{r_1 \dots r_G\}) + \epsilon}
 \end{equation}
-In our configuration, $\beta_{\text{KL}} = 0$, relying on the clipping mechanism and learning rate for stability.
+In our configuration, $\beta_{\text{KL}} = 10^{-2}$, providing weak regularization while relying additionally on the clipping mechanism and learning rate for stability.
 
 \subsubsection{Auxiliary Confidence Loss}
-The model is trained to minimize a joint loss: $L_{\text{total}} = - \mathcal{J}(\theta) + \beta_{\text{conf}} L_{\text{conf}}$.
+The model is trained to minimize a joint loss: $L_{\text{total}} = - \mathcal{J}(\theta) + \beta_{\text{conf}} L_{\text{conf}}$, where the auxiliary coefficient $\beta_{\text{conf}}$ controls the magnitude of the confidence objective.
 The confidence loss $L_{\text{conf}}$ acts as a regularizer, forcing the confidence scores to predict the eventual correctness of the answer. However, the coefficient $\beta_{\text{conf}}$ must not be set too high, to avoid destroying the pre-trained reasoning policy of the base model. We use Binary Cross Entropy (BCE) between the dense confidence estimates and the broadcasted final reward $r$:
 
 \begin{equation}
@@ -274,18 +274,22 @@ A key innovation is blending the external sparse reward with the internal dense 
 In the \textit{Self-Rewarding} variant, we blend the standard advantage with a standardized confidence score. The blended advantage $A^{\text{blended}}_i$ for trajectory $i$ is defined as:
 
 \begin{equation}
-	A^{\text{blended}}_i = (1 - \alpha \cdot \mathbb{I}(\sigma_{\bar{c}} > \delta)) \underbrace{\frac{r_i - \mu_r}{\sigma_r + \epsilon}}_{\text{Standard Advantage}} + \alpha \cdot \mathbb{I}(\sigma_{\bar{c}} > \delta) \underbrace{\frac{\bar{c}_i - \mu_{\bar{c}}}{\sigma_{\bar{c}} + \epsilon}}_{\text{Intrinsic Advantage}}
+	A^{\text{blended}}_i =
+	\begin{cases}
+		(1 - \alpha) \displaystyle\frac{r_i - \mu_r}{\sigma_r + \epsilon} + \alpha \displaystyle\frac{\bar{c}_i - \mu_{\bar{c}}}{\sigma_{\bar{c}} + \epsilon} & \text{if } \sigma_{\bar{c}} > \delta \\[12pt]
+		\displaystyle\frac{r_i - \mu_r}{\sigma_r + \epsilon}                                                                                                  & \text{otherwise}
+	\end{cases}
 \end{equation}
 
-where $\bar{c}_i = \frac{1}{T_i} \sum_{t=1}^{T_i} c_{i,t}$ is the mean confidence of the trajectory, $\alpha=0.1$ is the blending factor, and $\mathbb{I}(\cdot)$ gates the intrinsic reward based on whether the group confidence standard deviation $\sigma_{\bar{c}}$ exceeds the threshold $\delta = 0.1$. This formulation ensures that intrinsic rewards only influence the policy when the model differentiates between its own outputs (i.e., when the standard deviation is high). If the model is equally uncertain about all samples in the group, we default to the external reward to prevent the RL algorithm from fitting to noise.
+where $\bar{c}_i = \frac{1}{T_i} \sum_{t=1}^{T_i} c_{i,t}$ is the mean confidence of trajectory $i$, $\alpha=0.1$ is the blending factor, $\mu_r$ and $\sigma_r$ denote the mean and standard deviation of ground-truth rewards within the group, $\mu_{\bar{c}}$ and $\sigma_{\bar{c}}$ denote the mean and standard deviation of mean confidences within the group, and the threshold $\delta = 0.1$ gates the intrinsic reward contribution. This formulation ensures that intrinsic rewards only influence the policy when the model exhibits sufficient discriminative variance in its confidence estimates across the group. If the model is equally uncertain about all samples in the group (i.e., $\sigma_{\bar{c}} \leq \delta$), we default to the external reward to prevent the RL algorithm from fitting to noise.
 
-Crucially, as established in the original LaSeR protocol \citep{laser}, the validity of this intrinsic signal depends on the model's ability to accurately estimate confidence. To prevent the policy from optimizing towards maximizing a random or poorly calibrated signal early in training, we implement a \textit{warmup phase}. During these initial steps, the blending factor is effectively forced to $\alpha=0$, meaning the policy updates rely exclusively on the sparse ground-truth rewards from the external verifier. The intrinsic confidence signal is only integrated into the advantage function once the auxiliary loss indicates that the internal confidence estimation has stabilized; this is currently implemented using a configurable number of optimizer steps that must be executed before activating the blended advantages.
+Crucially, as established in the original LaSeR protocol \citep{laser}, the validity of this intrinsic signal depends on the model's ability to accurately estimate confidence. To prevent the policy from optimizing towards maximizing a random or poorly calibrated signal early in training, we implement a \textit{warmup phase}. During these initial steps, the blending factor is effectively forced to $\alpha=0$, meaning the policy updates rely exclusively on the sparse ground-truth rewards from the external verifier. The intrinsic confidence signal is only integrated into the advantage function once the auxiliary loss indicates that the internal confidence estimation has stabilized; this is implemented using a configurable warmup period of several optimizer steps that must be executed before activating the blended advantages.
 
 \subsection{Dataset and Preprocessing}
 We utilize the \texttt{Keven16/LaSeR\_training\_data} (specifically the \texttt{DeepMath-103K} subset \citep{deepmath103k}). The dataset consists of math problems requiring step-by-step reasoning. In contrast to the original LaSeR study \citep{laser} which utilized the full dataset, we apply specific constraints to accommodate local hardware limitations:
 \begin{itemize}
 	\item \textbf{Filtering:} Rows are filtered based on the limited amount of completion tokens to ensure the generation fits within the compute budget. These filters are applied identically to both the training and evaluation sets.
-	\item \textbf{Format:} Prompts are formatted using the chat template for the specific LLM (\textit{user} and \textit{system} roles). The system message is particularly important to instruct the model to provide the answer in a format that is processable by the external verifier using deterministic functions. Specifically, the model is directed to enclose the final answer in a \texttt{\textbackslash boxed\{\}} command at the end of the output. This last boxed expression is extracted as the prediction for the \texttt{math-verify} library, thus avoiding the need for a stochastic reward model. The maximum length for the prompt (including system message) is restricted to 64 tokens, and the maximum generation length is limited to 1024 tokens.
+	\item \textbf{Format:} Prompts are formatted using the chat template for the specific LLM (\textit{user} and \textit{system} roles). The system message is particularly important to instruct the model to provide the answer in a format that is processable by the external verifier using deterministic functions. Specifically, the model is directed to enclose the final answer in a \texttt{\textbackslash boxed\{\}} command at the end of the output. This last boxed expression is extracted as the prediction for the \texttt{math-verify} library, thus avoiding the need for a stochastic reward model. The maximum length for the prompt (including system message) is restricted to 128 tokens, and the maximum generation length is limited to 1024 tokens.
 \end{itemize}
 
 \subsection{Experimental Variants}
@@ -383,19 +387,25 @@ This study validates the feasibility of \textbf{Dense Confidence} as a mechanism
 	\caption{Key Hyperparameters for all Experiments (Local Mode)}
 	\begin{tabular}{ll}
 		\toprule
-		Parameter                         & Value                      \\
+		Parameter                                    & Value                      \\
 		\midrule
-		Model                             & Qwen/Qwen2.5-0.5B-Instruct \\
-		Learning Rate                     & 1e-5                       \\
-		Confidence $\mu$ (Logit Value)    & -4.0                       \\
-		Confidence $\sigma$ (Logit Value) & 1.5                        \\
-		Blending Factor $\alpha$          & 0.1                        \\
-		Min. Confidence Std               & 0.1                        \\
-		Batch Size                        & 4                          \\
-		Num Generations (Group Size)      & 4                          \\
-		LoRA Rank                         & 16                         \\
-		Max Prompt Length                 & 64                         \\
-		Max Completion Length             & 1024                       \\
+		Model                                        & Qwen/Qwen2.5-0.5B-Instruct \\
+		Learning Rate                                & $10^{-6}$                  \\
+		KL Coefficient $\beta_{\text{KL}}$           & $10^{-2}$                  \\
+		Confidence Loss Factor $\beta_{\text{conf}}$ & 0.05                       \\
+		Confidence Warmup Steps                      & 4096                       \\
+		Confidence $\mu$ (Logit Mean)                & $-4.0$                     \\
+		Confidence $\sigma$ (Logit Std)              & $1.5$                      \\
+		Blending Factor $\alpha$                     & 0.1                        \\
+		Min. Confidence Std $\delta$                 & 0.1                        \\
+		Num Generations (Group Size $G$)             & 4                          \\
+		LoRA Rank $r$                                & 16                         \\
+		LoRA Alpha                                   & 32                         \\
+		LoRA Dropout                                 & 0.1                        \\
+		Max Prompt Length                            & 128                        \\
+		Max Completion Length                        & 1024                       \\
+		Temperature                                  & 1.0                        \\
+		Number of Epochs                             & 1                          \\
 		\bottomrule
 	\end{tabular}
 \end{table}
