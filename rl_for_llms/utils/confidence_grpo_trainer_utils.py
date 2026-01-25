@@ -23,7 +23,6 @@ from rl_for_llms.models.answer import (
 from rl_for_llms.models.config import Config
 from rl_for_llms.utils.classification_utils import compute_binary_classification_metrics
 from rl_for_llms.utils.confidence_utils import get_confidence_token_logit_sigmoid
-from rl_for_llms.utils.config_utils import get_config
 from rl_for_llms.utils.constant_utils import (
     get_answer_namespace,
     get_confidence_namespace,
@@ -175,7 +174,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         else:
             raise ValueError
         estimated_rewards = get_confidence_token_logit_sigmoid(
-            confidence_logits
+            confidence_logits, self.config
         ).float()
         masked_estimated_rewards = estimated_rewards * mask
         sum_estimated_rewards = masked_estimated_rewards.sum(dim=-1)
@@ -192,7 +191,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         if self.all_confidence_logits_excluding_last is None:
             raise ValueError
         estimated_rewards = get_confidence_token_logit_sigmoid(
-            self.all_confidence_logits_excluding_last
+            self.all_confidence_logits_excluding_last, self.config
         ).float()
         mask = inputs["completion_mask"].bool()
         sequence_lengths = mask.sum(dim=-1)
@@ -403,13 +402,17 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         self.clear_eval_inputs_and_outputs()
         return eval_output
 
-    @staticmethod
-    def get_model_output_dir(model_identifier: str) -> pathlib.Path:
+    def get_config_shorthand(self) -> str:
+        """Get a shorthand representation of the config."""
+        if self.state.global_step == 0:
+            return "base"
+        return self.config.get_config_shorthand()
+
+    def get_model_output_dir(self, model_identifier: str) -> pathlib.Path:
         """Get the model output directory for saving/loading."""
-        config = get_config()
-        shorthand = config.get_config_shorthand()
+        shorthand = self.get_config_shorthand()
         standardized_hf_model_id = (
-            config.hf_model_id.replace("/", "_")
+            self.config.hf_model_id.replace("/", "_")
             .replace("-", "_")
             .replace(".", "_")
             .lower()
@@ -433,8 +436,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
     def load_model_from_eval_folder(self, model_identifier: str) -> None:
         """Load the model from disk."""
         model_output_dir = self.get_model_output_dir(model_identifier)
-        config = get_config()
-        if config.enable_lora:
+        if self.config.enable_lora:
             peft_model = typing.cast("PeftModel", self.model)
             adapter_name = f"adapter_{model_identifier}"
             peft_model.load_adapter(str(model_output_dir), adapter_name=adapter_name)
@@ -489,11 +491,13 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         concatenated_eval_binary_classification_metrics_df = get_df_from_metrics(
             concatenated_eval_binary_classification_metrics_outputs
         )
+        shorthand = self.get_config_shorthand()
         store_eval_df(
             get_eval_metrics_df_name(
                 metric_key_prefix, is_aggregated=False, is_bc=True
             ),
             concatenated_eval_binary_classification_metrics_df,
+            shorthand,
         )
         aggregated_eval_binary_classification_metrics_df = get_df_from_metrics(
             aggregated_eval_binary_classification_metrics_outputs
@@ -501,6 +505,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         store_eval_df(
             get_eval_metrics_df_name(metric_key_prefix, is_aggregated=True, is_bc=True),
             aggregated_eval_binary_classification_metrics_df,
+            shorthand,
         )
         concatenated_eval_answer_metrics_df = get_df_from_metrics(
             concatenated_eval_answer_metrics_outputs
@@ -510,6 +515,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
                 metric_key_prefix, is_aggregated=False, is_bc=False
             ),
             concatenated_eval_answer_metrics_df,
+            shorthand,
         )
         aggregated_eval_answer_metrics_df = get_df_from_metrics(
             aggregated_eval_answer_metrics_outputs
@@ -519,4 +525,5 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
                 metric_key_prefix, is_aggregated=True, is_bc=False
             ),
             aggregated_eval_answer_metrics_df,
+            shorthand,
         )

@@ -1,10 +1,11 @@
 import typing
 from copy import deepcopy
+from functools import partial
 
 from datasets import Dataset, Value, concatenate_datasets, load_dataset, load_from_disk
 from transformers import PreTrainedTokenizerBase
 
-from rl_for_llms.utils.config_utils import get_config
+from rl_for_llms.models.config import Config
 from rl_for_llms.utils.constant_utils import (
     get_default_evaluation_file_names,
     get_train_split,
@@ -55,14 +56,15 @@ def filter_function(content: str, seen_content: set[str]) -> bool:
     return result
 
 
-def add_system_message(sample: dict[str, typing.Any]) -> dict[str, typing.Any]:
+def add_system_message(
+    sample: dict[str, typing.Any], config: Config
+) -> dict[str, typing.Any]:
     """Add the system message to the sample's prompt."""
-    config = get_config()
     sample["prompt"] = [get_system_message(config.system_message)] + sample["prompt"]
     return sample
 
 
-def clean_dataset(dataset: Dataset) -> Dataset:
+def clean_dataset(dataset: Dataset, config: Config) -> Dataset:
     """Clean the dataset by removing duplicates and adding system messages."""
     cleaned_dataset = dataset.map(clean_dataset_value)
     if len(cleaned_dataset) != len(set(cleaned_dataset["id"])):
@@ -76,12 +78,12 @@ def clean_dataset(dataset: Dataset) -> Dataset:
     ):
         raise ValueError
     cleaned_dataset = cleaned_dataset.map(
-        add_system_message, load_from_cache_file=False
+        partial(add_system_message, config=config), load_from_cache_file=False
     )
     return cleaned_dataset
 
 
-def load_training_data_from_disk() -> Dataset:
+def load_training_data_from_disk(config: Config) -> Dataset:
     """Load training data previously saved to disk."""
     training_data_dir = get_training_data_dir()
     dataset = load_from_disk(training_data_dir)
@@ -92,11 +94,11 @@ def load_training_data_from_disk() -> Dataset:
     answers = [str(x["ground_truth"]) for x in list(dataset["reward_model"])]
     dataset = dataset.add_column("answer", answers)
     dataset = dataset.remove_columns(["reward_model"])
-    cleaned_dataset = clean_dataset(dataset)
+    cleaned_dataset = clean_dataset(dataset, config)
     return cleaned_dataset
 
 
-def load_evaluation_data() -> Dataset:
+def load_evaluation_data(config: Config) -> Dataset:
     """Load evaluation data."""
     file_paths = [
         get_evaluation_data_dir() / file_name
@@ -122,5 +124,5 @@ def load_evaluation_data() -> Dataset:
     prompts = [[get_user_message(x)] for x in list(merged_dataset["problem"])]
     merged_dataset = merged_dataset.add_column("prompt", prompts)
     merged_dataset = merged_dataset.remove_columns(["problem"])
-    cleaned_dataset = clean_dataset(merged_dataset)
+    cleaned_dataset = clean_dataset(merged_dataset, config)
     return cleaned_dataset

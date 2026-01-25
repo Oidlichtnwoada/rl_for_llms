@@ -11,6 +11,7 @@ from math_verify import (
 from transformers import TrainerState
 
 from rl_for_llms.models.answer import Answer
+from rl_for_llms.models.config import Config
 from rl_for_llms.utils.latex_utils import (
     get_boxed_expression,
     get_last_boxed_expression,
@@ -91,10 +92,11 @@ def default_reward_function(
     prompt_id: str,
     answer: str,
     trainer_state: TrainerState,  # noqa: ARG001
+    config: Config,
 ) -> Answer:
     """Return a reward based on the math verification of the model answer."""
     is_truncated = not check_model_output_for_completion(
-        completion_ids, prompt, prompt_id
+        completion_ids, prompt, prompt_id, config
     )
     verification_answer = get_math_verification_answer(
         answer, completion, is_truncated=is_truncated
@@ -117,14 +119,16 @@ def default_batch_reward_function(
             prompt_id,
             answer,
             trainer_state,
+            config,
         )
-        for prompt, completion, completion_ids, prompt_id, answer, trainer_state in zip(
+        for prompt, completion, completion_ids, prompt_id, answer, trainer_state, config in zip(
             prompts,
             completions,
             kwargs["completion_ids"],
             kwargs["id"],
             kwargs["answer"],
             [kwargs["trainer_state"]] * batch_size,
+            [kwargs["trainer"].config] * batch_size,
             strict=True,
         )
     ]

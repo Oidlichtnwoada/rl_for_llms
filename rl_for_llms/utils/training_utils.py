@@ -2,6 +2,7 @@ from datasets import load_dataset
 from peft import LoraConfig
 from trl.trainer.grpo_config import GRPOConfig
 
+from rl_for_llms.models.config import Config
 from rl_for_llms.utils.confidence_grpo_trainer_utils import ConfidenceGRPOTrainer
 from rl_for_llms.utils.config_utils import get_config
 from rl_for_llms.utils.constant_utils import (
@@ -45,9 +46,8 @@ def download_training_data() -> None:
     dataset.save_to_disk(training_data_dir)
 
 
-def get_grpo_config() -> GRPOConfig:
+def get_grpo_config(config: Config) -> GRPOConfig:
     """Get the GRPO configuration."""
-    config = get_config()
     vllm_tensor_parallel_size = get_cuda_device_count() if is_cuda_device_used() else 1
     grpo_config = GRPOConfig(
         max_completion_length=config.max_completion_length,
@@ -86,19 +86,18 @@ def get_grpo_config() -> GRPOConfig:
     return grpo_config
 
 
-def get_confidence_grpo_trainer() -> ConfidenceGRPOTrainer:
+def get_confidence_grpo_trainer(config: Config) -> ConfidenceGRPOTrainer:
     """Get the confidence GRPO trainer."""
-    config = get_config()
-    grpo_config = get_grpo_config()
+    grpo_config = get_grpo_config(config)
     tokenizer = get_tokenizer(config.hf_model_id)
     train_dataset = trim_dataset(
-        load_training_data_from_disk(),
+        load_training_data_from_disk(config),
         config.train_dataset_use_row_percentage,
         tokenizer,
         config.max_prompt_length,
     )
     eval_dataset = trim_dataset(
-        load_evaluation_data(),
+        load_evaluation_data(config),
         config.eval_dataset_use_row_percentage,
         tokenizer,
         config.max_prompt_length,
@@ -129,7 +128,7 @@ def start_training() -> None:
     setup_environment()
     config = get_config()
     download_training_data()
-    confidence_grpo_trainer = get_confidence_grpo_trainer()
+    confidence_grpo_trainer = get_confidence_grpo_trainer(config)
     log_msg(
         f"start training with the following configuration: {config.model_dump_json()}"
     )

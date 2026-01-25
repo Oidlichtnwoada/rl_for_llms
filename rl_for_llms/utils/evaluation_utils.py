@@ -32,7 +32,7 @@ def get_mean_and_std_of_confidence_token_logit(
     ]
     tokenizer = get_tokenizer(config.hf_model_id)
     dataset = trim_dataset(
-        load_training_data_from_disk(),
+        load_training_data_from_disk(config),
         config.train_dataset_use_row_percentage,
         tokenizer,
         config.max_prompt_length,
@@ -42,7 +42,9 @@ def get_mean_and_std_of_confidence_token_logit(
     ]
     step_data = [
         get_llm_output_with_step_data(
-            message, (confidence_token_id,), config.hf_model_id
+            message,
+            config.hf_model_id,
+            (confidence_token_id,),
         )[1]
         for message in messages
     ]
@@ -212,8 +214,7 @@ def get_eval_metrics_df_name(
 def store_eval_df(
     file_name: str,
     df: pd.DataFrame,
+    shorthand: str,
 ) -> None:
     """Store evaluation DataFrame to a CSV file."""
-    config = get_config()
-    shorthand = config.get_config_shorthand()
     df.to_csv(get_evaluation_metric_dir() / f"{file_name}_{shorthand}.csv", index=False)

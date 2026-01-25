@@ -13,7 +13,7 @@ from transformers import (
     pipeline,
 )
 
-from rl_for_llms.utils.config_utils import get_config
+from rl_for_llms.models.config import Config
 from rl_for_llms.utils.logging_utils import log_msg
 from rl_for_llms.utils.torch_utils import get_device, is_bf16_supported
 
@@ -48,8 +48,8 @@ def get_assistant_message(content: str) -> dict[str, str]:
 
 def get_llm_output_with_step_data(
     message: str,
+    model_id: str,
     target_token_ids: tuple[int, ...] = (),
-    model_id: str | None = None,
     temperature: float = 1.0,
     top_p: float = 1.0,
     max_output_tokens: int = 8192,
@@ -58,8 +58,6 @@ def get_llm_output_with_step_data(
     do_sampling: bool = False,
 ) -> tuple[str, list[dict[int, dict[str, float]]]]:
     """Return the LLM output along with step data for the specified target token IDs."""
-    if model_id is None:
-        model_id = get_config().hf_model_id
     pipe = get_pipeline(model_id)
     model = typing.cast("PreTrainedModel", pipe.model)
     tokenizer = typing.cast("PreTrainedTokenizer", pipe.tokenizer)
@@ -149,9 +147,9 @@ def check_model_output_for_completion(
     completion_ids: list[int],
     prompt: str,
     prompt_id: str,
+    config: Config,
 ) -> bool:
     """Check if the model could finish its answer for the given prompt."""
-    config = get_config()
     completion_length = len(completion_ids)
     last_completion_token = completion_ids[-1]
     eos_token_id = get_tokenizer(config.hf_model_id).eos_token_id
