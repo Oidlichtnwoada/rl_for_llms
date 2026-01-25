@@ -6,6 +6,8 @@ from rl_for_llms.models.config import Config
 from rl_for_llms.utils.confidence_grpo_trainer_utils import ConfidenceGRPOTrainer
 from rl_for_llms.utils.config_utils import get_config
 from rl_for_llms.utils.constant_utils import (
+    get_eval_after_train_prefix,
+    get_eval_before_train_prefix,
     get_gitignore_file_name,
     get_hf_training_ds_path,
     get_relative_training_file_path,
@@ -133,9 +135,11 @@ def start_training() -> None:
         f"start training with the following configuration: {config.model_dump_json()}"
     )
     if not config.skip_eval_before_train:
-        confidence_grpo_trainer.evaluate(metric_key_prefix="eval_before_train")
+        confidence_grpo_trainer.evaluate(
+            metric_key_prefix=get_eval_before_train_prefix()
+        )
     confidence_grpo_trainer.train()
-    confidence_grpo_trainer.evaluate(metric_key_prefix="eval_after_train")
+    confidence_grpo_trainer.evaluate(metric_key_prefix=get_eval_after_train_prefix())
     log_msg(
         f"finished training with the following configuration: {config.model_dump_json()}"
     )

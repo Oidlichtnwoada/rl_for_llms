@@ -1,7 +1,10 @@
 import os
 import sys
 
-from rl_for_llms.utils.constant_utils import get_python_debug_modules
+from rl_for_llms.utils.constant_utils import (
+    get_eval_before_train_prefix,
+    get_python_debug_modules,
+)
 
 
 def is_local_mode_enforced() -> bool:
@@ -31,7 +34,7 @@ def get_base_num_generations() -> int:
 
 def get_skip_eval_before_train() -> bool:
     """Check if evaluation should be skipped before training via environment variable."""
-    return os.getenv("SKIP_EVAL_BEFORE_TRAIN", "0") == "1"
+    return os.getenv(f"SKIP_{get_eval_before_train_prefix().upper()}", "0") == "1"
 
 
 def get_wandb_api_key() -> str | None:

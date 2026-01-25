@@ -80,3 +80,28 @@ def get_default_metric_separator() -> str:
 def get_default_eps() -> float:
     """Return the default epsilon value."""
     return 1e-4
+
+
+def get_no_name() -> str:
+    """Return a string 'no'."""
+    return "no"
+
+
+def get_confidence_loss_name() -> str:
+    """Return the name for confidence loss."""
+    return "confloss"
+
+
+def get_confidence_reward_name() -> str:
+    """Return the name for confidence reward."""
+    return "confreward"
+
+
+def get_eval_before_train_prefix() -> str:
+    """Return the prefix for evaluation before training metrics."""
+    return "eval_before_train"
+
+
+def get_eval_after_train_prefix() -> str:
+    """Return the prefix for evaluation after training metrics."""
+    return "eval_after_train"

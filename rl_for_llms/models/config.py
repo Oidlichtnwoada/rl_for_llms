@@ -4,6 +4,11 @@ from peft import TaskType
 from pydantic import BaseModel, Field
 
 from rl_for_llms.models.variant import Variant
+from rl_for_llms.utils.constant_utils import (
+    get_confidence_loss_name,
+    get_confidence_reward_name,
+    get_no_name,
+)
 from rl_for_llms.utils.environment_utils import (
     get_base_num_generations,
     get_per_device_rollouts_per_batch,
@@ -109,11 +114,15 @@ class Config(BaseModel):
 
     def get_config_shorthand(self) -> str:
         """Return a shorthand representation of the config."""
-        confidence_loss_spec = "confloss" if self.use_confidence_loss else "noconfloss"
+        confidence_loss_spec = (
+            get_confidence_loss_name()
+            if self.use_confidence_loss
+            else f"{get_no_name()}{get_confidence_loss_name()}"
+        )
         confidence_reward_spec = (
-            "confrew"
+            get_confidence_reward_name()
             if self.use_confidence_reward and self.use_confidence_loss
-            else "noconfrew"
+            else f"{get_no_name()}{get_confidence_reward_name()}"
         )
         shorthand = f"{confidence_loss_spec}_{confidence_reward_spec}"
         return shorthand
