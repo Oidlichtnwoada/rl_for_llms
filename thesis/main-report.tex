@@ -88,7 +88,7 @@
 \abstract{
 	We present \textbf{Dense Confidence}, a novel extension of the \textit{LaSeR} framework \citep{laser} designed to address the sparsity of reward signals in logical reasoning tasks. Unlike prior approaches that rely on a scalar confidence score at the sequence termination, our architecture compels the policy to estimate the validity of its reasoning trace at \textit{every} token step. By overloading a specialized control token (the confidence token) and applying a scaled sigmoid projection, we map latent representations to interpretable probabilities.
 
-	We evaluate this method on a filtered subset of the \texttt{DeepMath-103K} dataset using a 0.5B parameter policy model. While the proposed dense confidence mechanism is agnostic to the specific reinforcement learning algorithm, we employ Group Relative Policy Optimization (\textit{GRPO}) for our experiments. We define three experimental conditions, consisting of a Baseline, an Auxiliary-Loss-Only variant, and a Self-Rewarding configuration, to rigorously isolate the contribution of dense intrinsic rewards. This work provides a comprehensive analysis of the system architecture, the integration of intrinsic signals into the advantage function, and the implications for scalable oversight in resource-constrained environments. The code is available at \url{https://github.com/Oidlichtnwoada/rl_for_llms}.
+	We evaluate this method on a filtered subset of the \texttt{DeepMath-103K} dataset using a $0.5$B parameter policy model. While the proposed dense confidence mechanism is agnostic to the specific reinforcement learning algorithm, we employ Group Relative Policy Optimization (\textit{GRPO}) for our experiments. We define three experimental conditions, consisting of a Baseline, an Auxiliary-Loss-Only variant, and a Self-Rewarding configuration, to rigorously isolate the contribution of dense intrinsic rewards. This work provides a comprehensive analysis of the system architecture, the integration of intrinsic signals into the advantage function, and the implications for scalable oversight in resource-constrained environments. The code is available at \url{https://github.com/Oidlichtnwoada/rl_for_llms}.
 }
 
 \maketitle
@@ -143,7 +143,7 @@ The implementation leverages the \texttt{trl} library for the training loop and 
 \end{figure}
 
 \subsubsection{Policy Model and RL Algorithm}
-We utilize a \textbf{0.5B parameter policy model} (Qwen/Qwen2.5-0.5B-Instruct) to verify the concept within the significant resource constraints typical of \textit{LLM} fine-tuning, before scaling to larger architectures. This contrasts with the original \textit{LaSeR} study \citep{laser}, which utilized larger models with approximately 7B parameters. \textbf{Reward Agnosticism:} It is important to note that the proposed dense confidence formulation is fundamentally a reward shaping mechanism. Since the confidence alignment loss is simply added to the standard RL surrogate loss, our method is robustly compatible with any reinforcement learning algorithm, such as \textit{PPO} or \textit{A2C}. However, for this implementation, we specifically select \textbf{Group Relative Policy Optimization (\textit{GRPO})} \citep{deepseekmath}.
+We utilize a \textbf{$0.5$B parameter policy model} (Qwen/Qwen2.5-0.5B-Instruct) to verify the concept within the significant resource constraints typical of \textit{LLM} fine-tuning, before scaling to larger architectures. This contrasts with the original \textit{LaSeR} study \citep{laser}, which utilized larger models with approximately $7$B parameters. \textbf{Reward Agnosticism:} It is important to note that the proposed dense confidence formulation is fundamentally a reward shaping mechanism. Since the confidence alignment loss is simply added to the standard RL surrogate loss, our method is robustly compatible with any reinforcement learning algorithm, such as \textit{PPO} or \textit{A2C}. However, for this implementation, we specifically select \textbf{Group Relative Policy Optimization (\textit{GRPO})} \citep{deepseekmath}.
 
 The key advantage of this specific RL algorithm is that it eliminates the need for a separate value network (critic), which typically doubles memory requirements and is a standard component of algorithms like Proximal Policy Optimization (\textit{PPO}) \citep{ppo}. While other efficient fine-tuning methods like Direct Preference Optimization \citep{directpreferenceopt} also bypass the reward model by implicitly optimizing preferences, \textit{GRPO} allows us to optimize arbitrary non-differentiable reward functions directly. Instead, it estimates the baseline for the advantage function using group statistics rather than an external value network (critic), by computing the mean reward of a group of outputs $\{o_1, \dots, o_G\}$ generated from the same prompt $q$. This relative comparison stabilizes training by normalizing rewards against the model's current capability level for that specific query.
 
@@ -200,9 +200,9 @@ where $Z(x)$ is the partition function. Rearranging this equation allows us to e
 	r(x, y) = \beta_v \log \frac{\pi_\theta(z_c | x, y)}{\pi_{\text{ref}}(z_c | x, y)} + \beta_v \log Z(x, y)
 \end{equation}
 
-\citet{laser} assume that, because $z_c$ is an unused special token, its probability mass is negligible. Therefore, the partition function $Z(x, y)$ approximates to 1, allowing the term $\beta_v \log Z(x, y)$ to be discarded. Furthermore, empirical observation suggests that the reference policy probability $\pi_{\text{ref}}(z_c | x, y)$ for such tokens is effectively constant.
+\citet{laser} assume that, because $z_c$ is an unused special token, its probability mass is negligible. Therefore, the partition function $Z(x, y)$ approximates to $1$, allowing the term $\beta_v \log Z(x, y)$ to be discarded. Furthermore, empirical observation suggests that the reference policy probability $\pi_{\text{ref}}(z_c | x, y)$ for such tokens is effectively constant.
 
-Applying these simplifications yields the final LaSeR expected reward formulation:
+Applying these simplifications yields the final \textit{LaSeR} expected reward formulation:
 
 \begin{equation}
 	r_{\text{laser}}(x, y) = \beta_v \log \pi_\theta(z_c | x, y) - \beta_v c_{\text{ref}}
@@ -289,7 +289,7 @@ Crucially, as established in the original \textit{LaSeR} protocol \citep{laser},
 We utilize the \texttt{Keven16/LaSeR\_training\_data} (specifically the \texttt{DeepMath-103K} subset \citep{deepmath103k}). The dataset consists of math problems requiring step-by-step reasoning. In contrast to the original \textit{LaSeR} study \citep{laser} which utilized the full dataset, we apply specific constraints to accommodate local hardware limitations:
 \begin{itemize}
 	\item \textbf{Filtering:} Rows are filtered based on the limited amount of completion tokens to ensure the generation fits within the compute budget. These filters are applied identically to both the training and evaluation sets.
-	\item \textbf{Format:} Prompts are formatted using the chat template for the specific \textit{LLM} (\textit{user} and \textit{system} roles). The system message is particularly important to instruct the model to provide the answer in a format that is processable by the external verifier using deterministic functions. Specifically, the model is directed to enclose the final answer in a \texttt{\textbackslash boxed\{\}} command at the end of the output. This last boxed expression is extracted as the prediction for the \texttt{math-verify} library, thus avoiding the need for a stochastic reward model. The maximum length for the prompt (including system message) is restricted to 128 tokens, and the maximum generation length is limited to 1024 tokens.
+	\item \textbf{Format:} Prompts are formatted using the chat template for the specific \textit{LLM} (\textit{user} and \textit{system} roles). The system message is particularly important to instruct the model to provide the answer in a format that is processable by the external verifier using deterministic functions. Specifically, the model is directed to enclose the final answer in a \texttt{\textbackslash boxed\{\}} command at the end of the output. This last boxed expression is extracted as the prediction for the \texttt{math-verify} library, thus avoiding the need for a stochastic reward model. The maximum length for the prompt (including system message) is restricted to $128$ tokens, and the maximum generation length is limited to $1024$ tokens.
 \end{itemize}
 
 \subsection{Experimental Variants}
@@ -355,7 +355,7 @@ The calibration plot (Fig. \ref{fig:calibration}) reveals the correlation betwee
 \label{sec:conclusion}
 
 \subsection{Technical Limitations}
-A primary constraint of this study is the computational intensity inherent to \textit{LLM} fine-tuning. We implemented the training loop in pure PyTorch rather than using high-throughput libraries like \texttt{vllm} for the entire pipeline, as the latter currently lack full support for Metal Performance Shaders (\textit{MPS}) required for local debugging. However, for efficient data collection, we could utilize the specific interface \texttt{LogitsProcessor} from the \texttt{vllm} library to modify the logits during the rollout generation. While this accelerates the generation phase, \texttt{vllm} supports only this initial inference step. No gradient flow is possible through the engine. Consequently, the training pass necessitates a separate PyTorch forward pass to capture gradients for the confidence auxiliary loss, introducing complexity in synchronizing state between the inference engine and the training loop. Finally, the reliance on a 0.5B parameter proxy model bounds the upper limit of reasoning complexity, potentially masking emergent behaviors observable only at larger scales.
+A primary constraint of this study is the computational intensity inherent to \textit{LLM} fine-tuning. We implemented the training loop in pure PyTorch rather than using high-throughput libraries like \texttt{vllm} for the entire pipeline, as the latter currently lack full support for Metal Performance Shaders (\textit{MPS}) required for local debugging. However, for efficient data collection, we could utilize the specific interface \texttt{LogitsProcessor} from the \texttt{vllm} library to modify the logits during the rollout generation. While this accelerates the generation phase, \texttt{vllm} supports only this initial inference step. No gradient flow is possible through the engine. Consequently, the training pass necessitates a separate PyTorch forward pass to capture gradients for the confidence auxiliary loss, introducing complexity in synchronizing state between the inference engine and the training loop. Finally, the reliance on a $0.5$B parameter proxy model bounds the upper limit of reasoning complexity, potentially masking emergent behaviors observable only at larger scales.
 
 \subsection{Conclusion}
 This study validates the feasibility of \textbf{Dense Confidence} as a mechanism for self-supervised process oversight. We demonstrate that standard \textit{LLMs} can be fine-tuned to function as concurrent verifiers without significant architectural modifications. The experimental results highlight that while auxiliary objectives improve representation learning, the active integration of self-rewards requires careful balancing to outperform strong baselines. Future research should investigate training explicit Process Reward Models (\textit{PRM}) \citep{verifystepbystep} via this self-supervised signal, potentially eliminating the dependency on costly human-labeled logical traces.
@@ -392,20 +392,20 @@ This study validates the feasibility of \textbf{Dense Confidence} as a mechanism
 		Model                                        & Qwen/Qwen2.5-0.5B-Instruct \\
 		Learning Rate                                & $10^{-6}$                  \\
 		KL Coefficient $\beta_{\text{KL}}$           & $10^{-2}$                  \\
-		Confidence Loss Factor $\beta_{\text{conf}}$ & 0.05                       \\
-		Confidence Warmup Steps                      & 4096                       \\
+		Confidence Loss Factor $\beta_{\text{conf}}$ & $0.05$                     \\
+		Confidence Warmup Steps                      & $4096$                     \\
 		Confidence $\mu$ (Logit Mean)                & $-4.0$                     \\
 		Confidence $\sigma$ (Logit Std)              & $1.5$                      \\
-		Blending Factor $\alpha$                     & 0.1                        \\
-		Min. Confidence Std $\delta$                 | 0.1                        |
-		Num Generations (Group Size $G$)             | 4                          |
-		\textit{LoRA} Rank $r$                       & 16                         \\
-		\textit{LoRA} Alpha                          & 32                         \\
-		\textit{LoRA} Dropout                        & 0.1                        \\
-		Max Prompt Length                            & 128                        \\
-		Max Completion Length                        & 1024                       \\
-		Temperature                                  & 1.0                        \\
-		Number of Epochs                             & 1                          \\
+		Blending Factor $\alpha$                     & $0.1$                      \\
+		Min. Confidence Std $\delta$                 & $0.1$                      \\
+		Num Generations (Group Size $G$)             & $4$                        \\
+		\textit{LoRA} Rank $r$                       & $16$                       \\
+		\textit{LoRA} Alpha                          & $32$                       \\
+		\textit{LoRA} Dropout                        & $0.1$                      \\
+		Max Prompt Length                            & $128$                      \\
+		Max Completion Length                        & $1024$                     \\
+		Temperature                                  & $1.0$                      \\
+		Number of Epochs                             & $1$                        \\
 		\bottomrule
 	\end{tabular}
 \end{table}
