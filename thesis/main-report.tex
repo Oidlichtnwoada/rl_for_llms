@@ -295,10 +295,10 @@ We utilize the \texttt{Keven16/LaSeR\_training\_data} (specifically the \texttt{
 \subsection{Experimental Variants}
 To ensure scientific rigor, we define four controlled settings:
 \begin{itemize}
-	\item \textbf{Variant 0 (Zero-Shot):} The untouched base model without unweighted finetuning, serving as a reference point.
-	\item \textbf{Variant 1 (Baseline):} Standard RL training. No confidence loss, no confidence reward.
-	\item \textbf{Variant 2 (Auxiliary-Loss-Only):} RL + Auxiliary Confidence Loss. The model is optimized for the RL loss and the confidence loss, but the self-predicted confidence is not used in the advantages used in the RL algorithm.
-	\item \textbf{Variant 3 (Self-Rewarding):} RL + Auxiliary Confidence Loss + Reward Integration. This variant uses the self-proposed rewards blended into the advantages of the RL algorithm.
+	\item \textbf{BASE (base):} The untouched base model without unweighted finetuning, serving as a reference point.
+	\item \textbf{GRPO (-l-r):} Standard RL training. No confidence loss, no confidence reward.
+	\item \textbf{ONLY\_CONFLOSS (+l-r):} RL + Auxiliary Confidence Loss. The model is optimized for the RL loss and the confidence loss, but the self-predicted confidence is not used in the advantages used in the RL algorithm.
+	\item \textbf{WITH\_CONFREW (+l+r):} RL + Auxiliary Confidence Loss + Reward Integration. This variant uses the self-proposed rewards blended into the advantages of the RL algorithm.
 \end{itemize}
 
 \subsection{Hardware and Compute}
@@ -313,12 +313,12 @@ We first analyze the loss curves to verify the learning process.
 \begin{figure}[h]
 	\centering
 	\fbox{\parbox[c][6cm]{0.8\textwidth}{\centering \textbf{[PLACEHOLDER: Loss Curves]} \\
-			Plot 1: Total Policy Loss vs Steps \\ Plot 2: Confidence Loss vs Steps (Variant 2 \& 3)}}
+			Plot 1: Total Policy Loss vs Steps \\ Plot 2: Confidence Loss vs Steps (ONLY\_CONFLOSS \& WITH\_CONFREW)}}
 	\caption{Training dynamics. Left: The policy loss decreases, indicating improved likelihood of high-reward answers. Right: The confidence loss drops sharply initially, suggesting the model quickly learns to utilize the special token.}
 	\label{fig:losses}
 \end{figure}
 
-As shown in \autoref{fig:losses}, Variant 2 and 3 successfully minimize the auxiliary confidence loss. This confirms that the hook mechanism works and the model can map the correctness of its mathematical derivation to the confidence token space.
+As shown in \autoref{fig:losses}, ONLY\_CONFLOSS (+l-r) and WITH\_CONFREW (+l+r) successfully minimize the auxiliary confidence loss. This confirms that the hook mechanism works and the model can map the correctness of its mathematical derivation to the confidence token space.
 
 \subsection{Evaluation Performance}
 Evaluation was performed on the full evaluation dataset, which is a merged collection of all available evaluation samples. To ensure experimental consistency, the same filtering criteria applied to the training dataset were also applied to the evaluation data. Table~\ref{tab:results} summarizes the accuracy (\textit{Pass@1}) for each variant.
@@ -329,15 +329,15 @@ Evaluation was performed on the full evaluation dataset, which is a merged colle
 	\label{tab:results}
 	\begin{tabular}{lcccc}
 		\toprule
-		\textbf{Dataset} & \textbf{Zero-Shot} & \textbf{Var 1 (Base)} & \textbf{Var 2 (Aux)} & \textbf{Var 3 (Self-Rwd)} \\
+		\textbf{Dataset} & \textbf{BASE (base)} & \textbf{GRPO (-l-r)} & \textbf{ONLY\_CONFLOSS (+l-r)} & \textbf{WITH\_CONFREW (+l+r)} \\
 		\midrule
-		Merged Eval Set  & TBD                & TBD                   & TBD                  & TBD                       \\
+		Merged Eval Set  & TBD                  & TBD                  & TBD                            & TBD                           \\
 		\bottomrule
 	\end{tabular}
 \end{table}
 
 \textbf{Interpretation (Expected):}
-If Variant 3 outperforms Variant 1, it suggests that the self-rewarding signal successfully guides the model in cases where the sparse external reward is insufficient, or it acts as a regularizer preventing overfitting to specific solution patterns. If Variant 2 outperforms Variant 1, it implies that the multi-task nature of learning to verify one's own output creates a more robust internal representation, even without explicit reward shaping.
+If WITH\_CONFREW (+l+r) outperforms GRPO (-l-r), it suggests that the self-rewarding signal successfully guides the model in cases where the sparse external reward is insufficient, or it acts as a regularizer preventing overfitting to specific solution patterns. If ONLY\_CONFLOSS (+l-r) outperforms GRPO (-l-r), it implies that the multi-task nature of learning to verify one's own output creates a more robust internal representation, even without explicit reward shaping.
 
 \subsection{Confidence Calibration}
 A critical question is whether the learned confidence is actually meaningful.
