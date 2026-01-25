@@ -11,6 +11,16 @@ def get_data_dir() -> pathlib.Path:
     return get_repo_root() / "data"
 
 
+def get_thesis_dir() -> pathlib.Path:
+    """Return the thesis directory path."""
+    return get_repo_root() / "thesis"
+
+
+def get_charts_dir() -> pathlib.Path:
+    """Return the charts directory path."""
+    return get_thesis_dir() / "charts"
+
+
 def get_checkpoints_data_dir() -> pathlib.Path:
     """Return the checkpoints data directory path."""
     return get_data_dir() / "checkpoints"
@@ -29,6 +39,11 @@ def get_training_data_dir() -> pathlib.Path:
 def get_evaluation_metric_dir() -> pathlib.Path:
     """Return the evaluation metrics data directory path."""
     return get_evaluation_data_dir() / "metrics"
+
+
+def get_evaluation_final_dir() -> pathlib.Path:
+    """Return the final evaluation data directory path."""
+    return get_evaluation_data_dir() / "final"
 
 
 def is_folder_empty(

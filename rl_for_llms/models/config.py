@@ -3,6 +3,7 @@ from typing import Literal
 from peft import TaskType
 from pydantic import BaseModel, Field
 
+from rl_for_llms.models.variant import Variant
 from rl_for_llms.utils.environment_utils import (
     get_base_num_generations,
     get_per_device_rollouts_per_batch,
@@ -96,6 +97,14 @@ class Config(BaseModel):
     )
     dataloader_pin_memory: bool = Field(
         default=get_cuda_default_value(value_if_cuda=True, value_if_not_cuda=False)
+    )
+    evaluation_variants: tuple[Variant, ...] = Field(
+        default=(
+            Variant.BASE,
+            Variant.GRPO,
+            Variant.ONLY_CONFLOSS,
+            Variant.WITH_CONFREW,
+        )
     )
 
     def get_config_shorthand(self) -> str:
