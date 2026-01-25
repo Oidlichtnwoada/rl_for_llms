@@ -94,7 +94,7 @@ def get_confidence_loss_name() -> str:
 
 def get_confidence_reward_name() -> str:
     """Return the name for confidence reward."""
-    return "confreward"
+    return "confrew"
 
 
 def get_eval_before_train_prefix() -> str:

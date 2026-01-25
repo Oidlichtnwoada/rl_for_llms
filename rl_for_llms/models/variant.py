@@ -32,3 +32,7 @@ class Variant(StrEnum):
     def has_trained_confidence(self) -> bool:
         """Check if the variant has trained confidence loss."""
         return self in {Variant.ONLY_CONFLOSS, Variant.WITH_CONFREW}
+
+    def is_trained(self) -> bool:
+        """Check if the variant is a trained variant."""
+        return self != Variant.BASE
