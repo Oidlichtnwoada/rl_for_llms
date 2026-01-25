@@ -1,2 +1,2 @@
 eval_before_train/answer/truncation_percentage_t=1.0,eval_before_train/answer/accuracy/pass@1_t=1.0,eval_before_train/answer/accuracy/pass@4_t=1.0,eval_before_train/answer/accuracy/majority_voting_t=1.0,eval_before_train/answer/accuracy/confidence_weighted_majority_voting_t=1.0,eval_before_train/answer/accuracy/highest_confidence_t=1.0
-0.051181102362204724,0.2795275590551181,0.5669291338582677,0.3700787401574803,0.3779527559055118,0.2755905511811024
+0.10086342229199372,0.1357927786499215,0.29513343799058084,0.17111459968602827,0.1554160125588697,0.07849293563579278
