@@ -28,3 +28,7 @@ class Variant(StrEnum):
                 return "+l-r"
             case Variant.WITH_CONFREW:
                 return "+l+r"
+
+    def has_trained_confidence(self) -> bool:
+        """Check if the variant has trained confidence loss."""
+        return self in {Variant.ONLY_CONFLOSS, Variant.WITH_CONFREW}
