@@ -1,4 +1,5 @@
 import pathlib
+from typing import Literal
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -101,20 +102,26 @@ def get_eval_prefix(variant: Variant) -> str:
     )
 
 
-def get_csv_path(variant: Variant, metric_type: str) -> pathlib.Path:
+def get_csv_path(
+    variant: Variant, metric_type: str, aggregation: Literal["agg", "concat"]
+) -> pathlib.Path:
     """Return the CSV path for metrics of a variant."""
     final_dir = get_evaluation_final_dir()
     prefix = get_eval_prefix(variant)
-    return final_dir / f"agg_{prefix}_{metric_type}_metrics_{variant.value}.csv"
+    return (
+        final_dir / f"{aggregation}_{prefix}_{metric_type}_metrics_{variant.value}.csv"
+    )
 
 
-def load_metrics_from_csv(
-    variant: Variant, metric_type: str, metric_keys: tuple[str, ...]
+def load_agg_metrics_from_csv(
+    variant: Variant,
+    metric_type: str,
+    metric_keys: tuple[str, ...],
 ) -> dict[str, tuple[float, float]]:
-    """Load metrics (mean, std) from CSV for a variant."""
-    df = pd.read_csv(get_csv_path(variant, metric_type))
+    """Load aggregated metrics (mean, std) from CSV for a variant."""
+    df = pd.read_csv(get_csv_path(variant, metric_type, "agg"))
     prefix = get_eval_prefix(variant)
-    metrics = {}
+    metrics: dict[str, tuple[float, float]] = {}
     for metric in metric_keys:
         mean_key = f"{prefix}/{metric}/mean"
         std_key = f"{prefix}/{metric}/std"
@@ -123,19 +130,32 @@ def load_metrics_from_csv(
     return metrics
 
 
-def load_all_metrics_from_csv(
+def load_all_agg_metrics_from_csv(
     variant: Variant, metric_type: str
 ) -> dict[str, tuple[float, float]]:
-    """Load all metrics (mean, std) from CSV for a variant."""
-    df = pd.read_csv(get_csv_path(variant, metric_type))
+    """Load all aggregated metrics (mean, std) from CSV for a variant."""
+    df = pd.read_csv(get_csv_path(variant, metric_type, "agg"))
     prefix = get_eval_prefix(variant)
-    metrics = {}
+    metrics: dict[str, tuple[float, float]] = {}
     for col in df.columns:
         if col.endswith("/mean"):
             base_key = col[len(prefix) + 1 : -5]
             std_key = f"{prefix}/{base_key}/std"
             if std_key in df.columns:
                 metrics[base_key] = (df[col].iloc[0], df[std_key].iloc[0])
+    return metrics
+
+
+def load_all_concat_metrics_from_csv(
+    variant: Variant, metric_type: str
+) -> dict[str, float]:
+    """Load all concatenated metrics (single values) from CSV for a variant."""
+    df = pd.read_csv(get_csv_path(variant, metric_type, "concat"))
+    prefix = get_eval_prefix(variant)
+    metrics: dict[str, float] = {}
+    for col in df.columns:
+        base_key = col[len(prefix) + 1 :]
+        metrics[base_key] = df[col].iloc[0]
     return metrics
 
 
@@ -187,7 +207,7 @@ def create_answer_accuracy_chart(*, add_stddev_to_label: bool = False) -> None:
     )
 
     all_metrics = {
-        v: load_metrics_from_csv(v, "answer", all_metric_keys) for v in variants
+        v: load_agg_metrics_from_csv(v, "answer", all_metric_keys) for v in variants
     }
 
     _, ax = plt.subplots(figsize=(14, 7))
@@ -243,7 +263,7 @@ def create_answer_accuracy_chart(*, add_stddev_to_label: bool = False) -> None:
     save_chart("answer_accuracy_chart.pdf")
 
 
-def create_confidence_chart(*, add_stddev_to_label: bool = False) -> None:
+def create_confidence_chart() -> None:
     """Create a confidence prediction metrics chart comparing trained variants."""
     configure_matplotlib_fonts()
     config = get_config()
@@ -252,7 +272,7 @@ def create_confidence_chart(*, add_stddev_to_label: bool = False) -> None:
     if not variants:
         return
 
-    sample_metrics = load_all_metrics_from_csv(variants[0], "bc")
+    sample_metrics = load_all_concat_metrics_from_csv(variants[0], "bc")
     all_metric_keys = [k for k in sample_metrics if k.startswith("confidence/")]
 
     metric_order = [name for name, _ in get_metric_units()]
@@ -264,7 +284,7 @@ def create_confidence_chart(*, add_stddev_to_label: bool = False) -> None:
     )
     mcc_key = next((k for k in all_metric_keys if not is_percentage_metric(k)), None)
 
-    all_metrics = {v: load_all_metrics_from_csv(v, "bc") for v in variants}
+    all_metrics = {v: load_all_concat_metrics_from_csv(v, "bc") for v in variants}
 
     _, ax = plt.subplots(figsize=(14, 7))
     width = 0.25
@@ -274,17 +294,25 @@ def create_confidence_chart(*, add_stddev_to_label: bool = False) -> None:
 
     for i, variant in enumerate(variants):
         metrics = all_metrics[variant]
-        means = [metrics.get(k, (0, 0))[0] * 100 for k in percentage_keys]
-        stds = [metrics.get(k, (0, 0))[1] * 100 for k in percentage_keys]
+        means = [metrics.get(k, 0) * 100 for k in percentage_keys]
         all_max_values.extend([m for m in means if not np.isnan(m)])
 
         legend_label = variant.get_shorthand()
         if mcc_key and mcc_key in metrics:
-            mcc_value = metrics[mcc_key][0]
+            mcc_value = metrics[mcc_key]
             legend_label = f"{legend_label} (MCC: {mcc_value:.2f})"
 
         bars = ax.bar(x + offsets[i] * width, means, width, label=legend_label)
-        add_bar_labels(ax, bars, means, stds, add_stddev=add_stddev_to_label)
+        for bar, mean in zip(bars, means, strict=False):
+            if not np.isnan(mean):
+                ax.text(
+                    bar.get_x() + bar.get_width() / 2,
+                    bar.get_height() + 0.5,
+                    f"{mean:.2f}%",
+                    ha="center",
+                    va="bottom",
+                    fontsize=6,
+                )
 
     labels = [format_metric_label(k) for k in percentage_keys]
     ax.set_ylabel("Percentage [%]")
