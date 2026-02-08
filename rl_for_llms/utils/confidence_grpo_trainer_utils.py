@@ -52,12 +52,14 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
 
     def __init__(self, config: Config, **kwargs: typing.Any) -> None:  # noqa: ANN401
         """Initialize the class with confidence loss parameters."""
-        if len(kwargs["reward_funcs"]) != 1:
+        if len(kwargs["reward_funcs"]) < 1:
             raise ValueError
-        reward_func = kwargs["reward_funcs"][0]
-        wrapped_reward_func = partial(reward_func, trainer=self)
-        update_wrapper(wrapped_reward_func, reward_func)
-        kwargs["reward_funcs"] = [wrapped_reward_func]
+        wrapped_reward_funcs = []
+        for reward_func in kwargs["reward_funcs"]:
+            wrapped_reward_func = partial(reward_func, trainer=self)
+            update_wrapper(wrapped_reward_func, reward_func)
+            wrapped_reward_funcs.append(wrapped_reward_func)
+        kwargs["reward_funcs"] = wrapped_reward_funcs
         super().__init__(**kwargs)
         self.config = config
         self.confidence_token_id = get_token_to_id_mapping(self.config.hf_model_id)[

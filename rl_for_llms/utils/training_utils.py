@@ -25,7 +25,10 @@ from rl_for_llms.utils.path_utils import (
     get_training_data_dir,
     is_folder_empty,
 )
-from rl_for_llms.utils.reward_utils import default_batch_reward_function
+from rl_for_llms.utils.reward_utils import (
+    correctness_batch_reward_function,
+    format_batch_reward_function,
+)
 from rl_for_llms.utils.torch_utils import (
     get_cuda_device_count,
     is_cuda_device_used,
@@ -124,7 +127,7 @@ def get_confidence_grpo_trainer(config: Config) -> ConfidenceGRPOTrainer:
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         processing_class=tokenizer,
-        reward_funcs=[default_batch_reward_function],
+        reward_funcs=[correctness_batch_reward_function, format_batch_reward_function],
         peft_config=peft_config if config.enable_lora else None,
     )
     return confidence_grpo_trainer

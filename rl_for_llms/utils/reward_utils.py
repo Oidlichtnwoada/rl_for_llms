@@ -13,6 +13,7 @@ from transformers import TrainerState
 from rl_for_llms.models.answer import Answer
 from rl_for_llms.models.config import Config
 from rl_for_llms.utils.latex_utils import (
+    find_all_boxed_expression_contents,
     get_boxed_expression,
     get_last_boxed_expression,
 )
@@ -87,7 +88,7 @@ def get_math_verification_answer(
     return answer
 
 
-def default_reward_function(
+def correctness_reward_function(
     prompt: str,
     completion: str,
     completion_ids: list[int],
@@ -110,15 +111,22 @@ def default_reward_function(
     return verification_answer
 
 
-def default_batch_reward_function(
+def format_reward_function(completion: str) -> float:
+    """Return a reward based on whether the completion contains at least one boxed expression."""
+    boxed_contents = find_all_boxed_expression_contents(completion)
+    has_boxed_expression = len(boxed_contents) > 0
+    return float(has_boxed_expression)
+
+
+def correctness_batch_reward_function(
     prompts: list[typing.Any],
     completions: list[typing.Any],
     **kwargs: typing.Any,  # noqa: ANN401
 ) -> list[float]:
-    """Return a list of reward values for a batch of prompts and completions."""
+    """Return a list of correctness reward values for a batch of prompts and completions."""
     batch_size = len(prompts)
     answers = [
-        default_reward_function(
+        correctness_reward_function(
             prompt[-1]["content"],
             completion[-1]["content"],
             completion_ids,
@@ -140,6 +148,18 @@ def default_batch_reward_function(
     ]
     kwargs["trainer"].answers = answers
     rewards = [answer.reward for answer in answers]
+    return rewards
+
+
+def format_batch_reward_function(
+    prompts: list[typing.Any],  # noqa: ARG001
+    completions: list[typing.Any],
+    **kwargs: typing.Any,  # noqa: ANN401, ARG001
+) -> list[float]:
+    """Return a list of format reward values for a batch of prompts and completions."""
+    rewards = [
+        format_reward_function(completion[-1]["content"]) for completion in completions
+    ]
     return rewards
 
 
