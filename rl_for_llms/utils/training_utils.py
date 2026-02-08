@@ -18,7 +18,7 @@ from rl_for_llms.utils.dataset_utils import (
     load_training_data_from_disk,
     trim_dataset,
 )
-from rl_for_llms.utils.llm_utils import get_tokenizer
+from rl_for_llms.utils.llm_utils import get_token_to_id_mapping, get_tokenizer
 from rl_for_llms.utils.logging_utils import log_msg
 from rl_for_llms.utils.path_utils import (
     get_checkpoint_folder_for_model_id,
@@ -111,6 +111,11 @@ def get_confidence_grpo_trainer(config: Config) -> ConfidenceGRPOTrainer:
         lora_dropout=config.lora_dropout,
         bias=config.lora_bias,
         task_type=config.lora_task_type,
+        trainable_token_indices=[
+            get_token_to_id_mapping(config.hf_model_id)[config.confidence_token]
+        ]
+        if config.lora_fully_finetune_confidence_token
+        else [],
     )
     confidence_grpo_trainer = ConfidenceGRPOTrainer(
         config=config,

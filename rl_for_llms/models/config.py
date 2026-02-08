@@ -97,6 +97,7 @@ class Config(BaseModel):
     lora_dropout: float = Field(default=0.05)
     lora_bias: Literal["none", "all", "lora_only"] = Field(default="none")
     lora_task_type: str = Field(default=TaskType.CAUSAL_LM)
+    lora_fully_finetune_confidence_token: bool = Field(default=True)
     system_message: str = Field(
         default="Reason step by step, then provide the final answer within the last \\boxed{} command of your output."
     )
