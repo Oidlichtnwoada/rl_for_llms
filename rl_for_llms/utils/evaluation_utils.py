@@ -129,6 +129,12 @@ def compute_answer_metrics(
         [float(x.answer.is_truncated) for x in answers_with_confidence]
     )
     metrics[(f"truncation_percentage_t={temperature}",)] = truncation_percentage
+    confidence_token_inclusion_percentage = statistics.mean(
+        [float(x.answer.contains_confidence_token) for x in answers_with_confidence]
+    )
+    metrics[(f"confidence_token_inclusion_percentage_t={temperature}",)] = (
+        confidence_token_inclusion_percentage
+    )
     flags_for_correctness = [
         float(x.answer.is_correct) for x in answers_with_confidence
     ]

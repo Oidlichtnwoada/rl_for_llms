@@ -101,6 +101,7 @@ def get_model_representation(model_id: str) -> str:
     return model_representation
 
 
+@cache
 def get_id_to_token_mapping(model_id: str) -> dict[int, str]:
     """Generate a mapping from token IDs to token texts for the specified model ID."""
     tokenizer = get_tokenizer(model_id)
@@ -110,6 +111,7 @@ def get_id_to_token_mapping(model_id: str) -> dict[int, str]:
     return sorted_vocab
 
 
+@cache
 def get_token_to_id_mapping(model_id: str) -> dict[str, int]:
     """Generate a mapping from token texts to token IDs for the specified model ID."""
     tokenizer = get_tokenizer(model_id)
@@ -153,7 +155,7 @@ def check_model_output_for_completion(
     prompt: str,
     prompt_id: str,
     config: Config,
-) -> bool:
+) -> tuple[bool, bool]:
     """Check if the model could finish its answer for the given prompt."""
     completion_length = len(completion_ids)
     last_completion_token = completion_ids[-1]
@@ -166,5 +168,16 @@ def check_model_output_for_completion(
             f'model could not finish its answer for prompt ("{prompt}") with ID ("{prompt_id}")',
             level=logging.WARNING,
         )
-        return False
-    return True
+        is_completed = False
+    else:
+        is_completed = True
+    confidence_token_count = completion_ids.count(
+        get_token_to_id_mapping(config.hf_model_id)[config.confidence_token]
+    )
+    contains_confidence_token = confidence_token_count > 0
+    if contains_confidence_token:
+        log_msg(
+            f'model output for prompt ("{prompt}") with ID ("{prompt_id}") contains {confidence_token_count} confidence token(s), which should not be sampled by the model during generation',
+            level=logging.WARNING,
+        )
+    return is_completed, contains_confidence_token

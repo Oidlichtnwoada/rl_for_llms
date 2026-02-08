@@ -65,6 +65,7 @@ def get_math_verification_answer(
     model_answer: str,
     *,
     is_truncated: bool,
+    contains_confidence_token: bool,
 ) -> Answer:
     """Return the math verification answer."""
     boxed_correct_answer = get_boxed_expression(correct_answer)
@@ -81,6 +82,7 @@ def get_math_verification_answer(
         model_answer=boxed_model_answer,
         is_correct=verification_result,
         is_truncated=is_truncated,
+        contains_confidence_token=contains_confidence_token,
     )
     return answer
 
@@ -95,11 +97,15 @@ def default_reward_function(
     config: Config,
 ) -> Answer:
     """Return a reward based on the math verification of the model answer."""
-    is_truncated = not check_model_output_for_completion(
+    is_completed, contains_confidence_token = check_model_output_for_completion(
         completion_ids, prompt, prompt_id, config
     )
+    is_truncated = not is_completed
     verification_answer = get_math_verification_answer(
-        answer, completion, is_truncated=is_truncated
+        answer,
+        completion,
+        is_truncated=is_truncated,
+        contains_confidence_token=contains_confidence_token,
     )
     return verification_answer
 

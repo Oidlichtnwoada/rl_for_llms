@@ -57,6 +57,7 @@ def get_common_answer_metrics(config: Config) -> tuple[str, ...]:
         f"accuracy/pass@{config.num_generations}",
         "accuracy/majority_voting",
         "truncation_percentage",
+        "confidence_token_inclusion_percentage",
     )
 
 

@@ -9,6 +9,7 @@ class Answer(BaseModel):
     model_answer: str
     is_correct: bool
     is_truncated: bool
+    contains_confidence_token: bool
 
 
 class AnswerWithConfidence(BaseModel):
