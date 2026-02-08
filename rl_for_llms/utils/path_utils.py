@@ -1,5 +1,7 @@
 import pathlib
 
+from rl_for_llms.models.dataset import Dataset
+
 
 def get_repo_root() -> pathlib.Path:
     """Return the root directory of the repository."""
@@ -31,9 +33,12 @@ def get_evaluation_data_dir() -> pathlib.Path:
     return get_data_dir() / "evaluation"
 
 
-def get_training_data_dir() -> pathlib.Path:
+def get_training_data_dir(dataset: Dataset | None = None) -> pathlib.Path:
     """Return the training data directory path."""
-    return get_data_dir() / "training"
+    base_dir = get_data_dir() / "training"
+    if dataset is None:
+        return base_dir
+    return base_dir / dataset.value.lower()
 
 
 def get_evaluation_metric_dir() -> pathlib.Path:

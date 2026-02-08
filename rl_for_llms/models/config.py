@@ -52,7 +52,7 @@ class Config(BaseModel):
     )
     vllm_importance_sampling_correction: bool = Field(default=False)
     report_to: list[str] = Field(default_factory=lambda: get_logging_integrations())
-    dataset: Dataset = Field(default=Dataset.DEEPMATH_103K)
+    dataset: Dataset = Field(default=Dataset.GSM8K)
     train_dataset_rows: int = Field(default=get_cuda_default_value(-1, 8192))
     eval_dataset_rows: int = Field(default=get_cuda_default_value(-1, 512))
     max_prompt_length: int = Field(default=get_cuda_default_value(2048, 128), le=8192)

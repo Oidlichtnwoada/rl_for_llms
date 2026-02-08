@@ -3,6 +3,7 @@ from peft import LoraConfig
 from trl.trainer.grpo_config import GRPOConfig
 
 from rl_for_llms.models.config import Config
+from rl_for_llms.models.dataset import Dataset
 from rl_for_llms.utils.confidence_grpo_trainer_utils import ConfidenceGRPOTrainer
 from rl_for_llms.utils.config_utils import get_config
 from rl_for_llms.utils.constant_utils import (
@@ -10,6 +11,7 @@ from rl_for_llms.utils.constant_utils import (
     get_eval_before_train_prefix,
     get_gitignore_file_name,
     get_hf_training_ds_path,
+    get_hf_training_ds_subset,
     get_relative_training_file_path,
     get_train_split,
 )
@@ -36,18 +38,30 @@ from rl_for_llms.utils.torch_utils import (
 )
 
 
-def download_training_data() -> None:
+def download_training_data(config: Config) -> None:
     """Download training data from a remote source."""
-    training_data_dir = get_training_data_dir()
+    training_data_dir = get_training_data_dir(config.dataset)
+    training_data_dir.mkdir(parents=True, exist_ok=True)
     if not is_folder_empty(
         training_data_dir, ignore_file_names=(get_gitignore_file_name(),)
     ):
         return
-    dataset = load_dataset(
-        path=get_hf_training_ds_path(),
-        data_files=get_relative_training_file_path(),
-        split=get_train_split(),
-    )
+    hf_path = get_hf_training_ds_path(config.dataset)
+    relative_path = get_relative_training_file_path(config.dataset)
+    subset = get_hf_training_ds_subset(config.dataset)
+    match config.dataset:
+        case Dataset.DEEPMATH_103K:
+            dataset = load_dataset(
+                path=hf_path,
+                data_files=relative_path,
+                split=get_train_split(),
+            )
+        case Dataset.GSM8K:
+            dataset = load_dataset(
+                path=hf_path,
+                name=subset,
+                split=get_train_split(),
+            )
     dataset.save_to_disk(training_data_dir)
 
 
@@ -137,7 +151,7 @@ def start_training() -> None:
     """Start the training process."""
     setup_environment()
     config = get_config()
-    download_training_data()
+    download_training_data(config)
     confidence_grpo_trainer = get_confidence_grpo_trainer(config)
     log_msg(
         f"start training with the following configuration: {config.model_dump_json()}"

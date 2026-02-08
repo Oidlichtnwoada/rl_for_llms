@@ -1,14 +1,48 @@
 from datasets import Split
 
+from rl_for_llms.models.dataset import Dataset
 
-def get_hf_training_ds_path() -> str:
+
+def get_hf_training_ds_path(dataset: Dataset) -> str:
     """Return the Hugging Face dataset path for training data."""
-    return "Keven16/LaSeR_training_data"
+    match dataset:
+        case Dataset.DEEPMATH_103K:
+            return "Keven16/LaSeR_training_data"
+        case Dataset.GSM8K:
+            return "openai/gsm8k"
 
 
-def get_relative_training_file_path() -> str:
+def get_relative_training_file_path(dataset: Dataset) -> str | None:
     """Return the relative file path for training data within the dataset."""
-    return "RL_data/DeepMath-103K/train.parquet"
+    match dataset:
+        case Dataset.DEEPMATH_103K:
+            return "RL_data/DeepMath-103K/train.parquet"
+        case Dataset.GSM8K:
+            return None
+
+
+def get_hf_training_ds_subset(dataset: Dataset) -> str | None:
+    """Return the subset name for training data within the dataset."""
+    match dataset:
+        case Dataset.DEEPMATH_103K:
+            return None
+        case Dataset.GSM8K:
+            return "main"
+
+
+def get_default_evaluation_file_names(dataset: Dataset) -> tuple[str, ...]:
+    """Return the default evaluation file name."""
+    match dataset:
+        case Dataset.DEEPMATH_103K:
+            return (
+                "aime-2024-test.jsonl",
+                "aime-2025-test.jsonl",
+                "amc-2023-test.jsonl",
+                "math-500-test.jsonl",
+                "olympiad-bench-test.jsonl",
+            )
+        case Dataset.GSM8K:
+            return ()
 
 
 def get_train_split() -> Split:
@@ -16,20 +50,14 @@ def get_train_split() -> Split:
     return Split.TRAIN
 
 
+def get_test_split() -> Split:
+    """Return the default test split."""
+    return Split.TEST
+
+
 def get_gitignore_file_name() -> str:
     """Return the .gitignore file name."""
     return ".gitignore"
-
-
-def get_default_evaluation_file_names() -> tuple[str, ...]:
-    """Return the default evaluation file name."""
-    return (
-        "aime-2024-test.jsonl",
-        "aime-2025-test.jsonl",
-        "amc-2023-test.jsonl",
-        "math-500-test.jsonl",
-        "olympiad-bench-test.jsonl",
-    )
 
 
 def get_python_debug_modules() -> list[str]:

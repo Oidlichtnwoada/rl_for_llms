@@ -1,3 +1,4 @@
+import re
 import typing
 from copy import deepcopy
 from functools import partial
@@ -6,8 +7,12 @@ from datasets import Dataset, Value, concatenate_datasets, load_dataset, load_fr
 from transformers import PreTrainedTokenizerBase
 
 from rl_for_llms.models.config import Config
+from rl_for_llms.models.dataset import Dataset as DatasetEnum
 from rl_for_llms.utils.constant_utils import (
     get_default_evaluation_file_names,
+    get_hf_training_ds_path,
+    get_hf_training_ds_subset,
+    get_test_split,
     get_train_split,
 )
 from rl_for_llms.utils.hash_utils import generate_deterministic_id
@@ -86,8 +91,19 @@ def clean_dataset(dataset: Dataset, config: Config) -> Dataset:
 
 def load_training_data_from_disk(config: Config) -> Dataset:
     """Load training data previously saved to disk."""
-    training_data_dir = get_training_data_dir()
+    training_data_dir = get_training_data_dir(config.dataset)
     dataset = load_from_disk(training_data_dir)
+    match config.dataset:
+        case DatasetEnum.DEEPMATH_103K:
+            dataset = transform_deepmath_dataset(dataset)
+        case DatasetEnum.GSM8K:
+            dataset = transform_gsm8k_dataset(dataset)
+    cleaned_dataset = clean_dataset(dataset, config)
+    return cleaned_dataset
+
+
+def transform_deepmath_dataset(dataset: Dataset) -> Dataset:
+    """Transform DeepMath dataset to the common format."""
     dataset = dataset.remove_columns(["ability", "data_source"])
     ids = [str(x["index"]) for x in list(dataset["extra_info"])]
     dataset = dataset.add_column("id", ids)
@@ -95,15 +111,46 @@ def load_training_data_from_disk(config: Config) -> Dataset:
     answers = [str(x["ground_truth"]) for x in list(dataset["reward_model"])]
     dataset = dataset.add_column("answer", answers)
     dataset = dataset.remove_columns(["reward_model"])
-    cleaned_dataset = clean_dataset(dataset, config)
-    return cleaned_dataset
+    return dataset
+
+
+def extract_gsm8k_answer(answer_text: str) -> str:
+    """Extract the numeric answer from the GSM8K answer format."""
+    match = re.search("####\\s(-?[\\d,]+)$", answer_text.strip())
+    if not match:
+        raise ValueError
+    return match.group(1).replace(",", "")
+
+
+def transform_gsm8k_dataset(dataset: Dataset) -> Dataset:
+    """Transform GSM8K dataset to the common format."""
+    prompts = [[get_user_message(x)] for x in list(dataset["question"])]
+    answers = [extract_gsm8k_answer(x) for x in list(dataset["answer"])]
+    ids = ["" for _ in range(len(prompts))]
+    dataset = Dataset.from_dict(
+        {
+            "prompt": prompts,
+            "answer": answers,
+            "id": ids,
+        }
+    )
+    return dataset
 
 
 def load_evaluation_data(config: Config) -> Dataset:
     """Load evaluation data."""
+    match config.dataset:
+        case DatasetEnum.DEEPMATH_103K:
+            return load_deepmath_evaluation_data(config)
+        case DatasetEnum.GSM8K:
+            return load_gsm8k_evaluation_data(config)
+
+
+def load_deepmath_evaluation_data(config: Config) -> Dataset:
+    """Load evaluation data for DeepMath dataset."""
     file_paths = [
         get_evaluation_data_dir() / file_name
-        for file_name in get_default_evaluation_file_names()
+        for file_name in get_default_evaluation_file_names(config.dataset)
     ]
     dataset_dicts = [
         load_dataset("json", data_files=[str(file_path.resolve())])
@@ -126,4 +173,16 @@ def load_evaluation_data(config: Config) -> Dataset:
     merged_dataset = merged_dataset.add_column("prompt", prompts)
     merged_dataset = merged_dataset.remove_columns(["problem"])
     cleaned_dataset = clean_dataset(merged_dataset, config)
+    return cleaned_dataset
+
+
+def load_gsm8k_evaluation_data(config: Config) -> Dataset:
+    """Load evaluation data for GSM8K dataset."""
+    dataset = load_dataset(
+        get_hf_training_ds_path(config.dataset),
+        get_hf_training_ds_subset(config.dataset),
+        split=str(get_test_split()),
+    )
+    transformed_dataset = transform_gsm8k_dataset(dataset)
+    cleaned_dataset = clean_dataset(transformed_dataset, config)
     return cleaned_dataset
