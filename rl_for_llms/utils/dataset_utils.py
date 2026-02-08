@@ -21,14 +21,15 @@ from rl_for_llms.utils.path_utils import get_evaluation_data_dir, get_training_d
 
 def trim_dataset(
     dataset: Dataset,
-    target_percentage: float,
+    target_rows: int,
     tokenizer: PreTrainedTokenizerBase,
     max_prompt_tokens: int,
     seed: int = 0,
 ) -> Dataset:
     """Trim the dataset deterministically to the target percentage by removing random rows."""
     total_rows = len(dataset)
-    target_rows = int(total_rows * target_percentage)
+    if target_rows == -1:
+        target_rows = total_rows
     filtered_dataset = dataset.filter(
         lambda x: len(tokenize_messages(x["prompt"], tokenizer)) <= max_prompt_tokens
     )

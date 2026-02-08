@@ -97,13 +97,13 @@ def get_confidence_grpo_trainer(config: Config) -> ConfidenceGRPOTrainer:
     tokenizer = get_tokenizer(config.hf_model_id)
     train_dataset = trim_dataset(
         load_training_data_from_disk(config),
-        config.train_dataset_use_row_percentage,
+        config.train_dataset_rows,
         tokenizer,
         config.max_prompt_length,
     )
     eval_dataset = trim_dataset(
         load_evaluation_data(config),
-        config.eval_dataset_use_row_percentage,
+        config.eval_dataset_rows,
         tokenizer,
         config.max_prompt_length,
     )

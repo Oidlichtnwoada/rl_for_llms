@@ -3,6 +3,7 @@ from typing import Literal
 from peft import TaskType
 from pydantic import BaseModel, Field
 
+from rl_for_llms.models.dataset import Dataset
 from rl_for_llms.models.variant import Variant
 from rl_for_llms.utils.constant_utils import (
     get_confidence_loss_name,
@@ -51,12 +52,9 @@ class Config(BaseModel):
     )
     vllm_importance_sampling_correction: bool = Field(default=False)
     report_to: list[str] = Field(default_factory=lambda: get_logging_integrations())
-    train_dataset_use_row_percentage: float = Field(
-        default=get_cuda_default_value(1.0, 0.1)
-    )
-    eval_dataset_use_row_percentage: float = Field(
-        default=get_cuda_default_value(1.0, 0.5)
-    )
+    dataset: Dataset = Field(default=Dataset.DEEPMATH_103K)
+    train_dataset_rows: int = Field(default=get_cuda_default_value(-1, 8192))
+    eval_dataset_rows: int = Field(default=get_cuda_default_value(-1, 512))
     max_prompt_length: int = Field(default=get_cuda_default_value(2048, 128), le=8192)
     max_completion_length: int = Field(
         default=get_cuda_default_value(8192, 1024), le=8192
