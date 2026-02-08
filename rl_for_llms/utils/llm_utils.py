@@ -6,6 +6,7 @@ import torch
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
+    BatchEncoding,
     Pipeline,
     PreTrainedTokenizer,
     PreTrainedTokenizerBase,
@@ -122,7 +123,10 @@ def tokenize_messages(
     tokenizer: PreTrainedTokenizerBase,
 ) -> list[int]:
     """Return the tokenized representation of the given text."""
-    token_list = list(map(int, tokenizer.apply_chat_template(messages)))
+    batch_encoding = typing.cast(
+        "BatchEncoding", tokenizer.apply_chat_template(messages)
+    )
+    token_list = list(map(int, batch_encoding.data["input_ids"]))
     return token_list
 
 
