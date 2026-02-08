@@ -94,7 +94,7 @@ class Config(BaseModel):
     )
     lora_rank: int = Field(default=16)
     lora_alpha_factor_for_rank: int = Field(default=2)
-    lora_dropout: float = Field(default=0.1)
+    lora_dropout: float = Field(default=0.05)
     lora_bias: Literal["none", "all", "lora_only"] = Field(default="none")
     lora_task_type: str = Field(default=TaskType.CAUSAL_LM)
     system_message: str = Field(
