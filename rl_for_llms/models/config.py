@@ -81,17 +81,7 @@ class Config(BaseModel):
     log_completions: bool = Field(default=True)
     beta: float = Field(default=0.0)
     enable_lora: bool = Field(default=True)
-    lora_target_modules: list[str] = Field(
-        default_factory=lambda: [
-            "q_proj",
-            "k_proj",
-            "v_proj",
-            "o_proj",
-            "gate_proj",
-            "up_proj",
-            "down_proj",
-        ]
-    )
+    lora_target_modules: str | list[str] = Field(default="all-linear")
     lora_rank: int = Field(default=16)
     lora_alpha_factor_for_rank: int = Field(default=2)
     lora_dropout: float = Field(default=0.05)
