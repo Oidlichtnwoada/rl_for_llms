@@ -38,7 +38,7 @@ def get_metric_units() -> tuple[tuple[str, str], ...]:
 
 def get_unit_for_metric(metric_name: str) -> str:
     """Return the unit for a given metric name."""
-    base_name = metric_name.split("/")[-1]
+    base_name = metric_name.rsplit("/", maxsplit=1)[-1]
     for name, unit in get_metric_units():
         if name == base_name:
             return unit
@@ -87,7 +87,7 @@ def configure_matplotlib_fonts() -> None:
 
 def format_metric_label(metric_name: str) -> str:
     """Convert metric name to display label (two lines, capitalized)."""
-    name = metric_name.split("/")[-1].replace("_", " ").title()
+    name = metric_name.rsplit("/", maxsplit=1)[-1].replace("_", " ").title()
     words = name.split()
     mid = (len(words) + 1) // 2
     return " ".join(words[:mid]) + "\n" + " ".join(words[mid:])
@@ -278,9 +278,11 @@ def create_confidence_chart() -> None:
     metric_order = [name for name, _ in get_metric_units()]
     percentage_keys = sorted(
         [k for k in all_metric_keys if is_percentage_metric(k)],
-        key=lambda k: metric_order.index(k.split("/")[-1])
-        if k.split("/")[-1] in metric_order
-        else len(metric_order),
+        key=lambda k: (
+            metric_order.index(k.split("/")[-1])
+            if k.split("/")[-1] in metric_order
+            else len(metric_order)
+        ),
     )
     mcc_key = next((k for k in all_metric_keys if not is_percentage_metric(k)), None)
 

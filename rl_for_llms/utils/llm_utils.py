@@ -7,7 +7,6 @@ from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
     Pipeline,
-    PreTrainedModel,
     PreTrainedTokenizer,
     PreTrainedTokenizerBase,
     pipeline,
@@ -59,7 +58,7 @@ def get_llm_output_with_step_data(
 ) -> tuple[str, list[dict[int, dict[str, float]]]]:
     """Return the LLM output along with step data for the specified target token IDs."""
     pipe = get_pipeline(model_id)
-    model = typing.cast("PreTrainedModel", pipe.model)
+    model = pipe.model
     tokenizer = typing.cast("PreTrainedTokenizer", pipe.tokenizer)
     messages = [get_user_message(message)]
     prompt = tokenizer.apply_chat_template(
@@ -79,7 +78,9 @@ def get_llm_output_with_step_data(
         eos_token_id=tokenizer.eos_token_id,
     )
     generated_ids = outputs.sequences[0][len(inputs["input_ids"][0]) :]
-    output_message = tokenizer.decode(generated_ids, skip_special_tokens=True).strip()
+    output_message = str(
+        tokenizer.decode(generated_ids, skip_special_tokens=True)
+    ).strip()
     step_data = []
     for step_tensor in outputs.logits:
         step_probs = torch.softmax(step_tensor / temperature, dim=-1)
@@ -137,7 +138,7 @@ def get_tokenizer(
         truncation_side=truncation_side,
         padding_side=padding_side,
         trust_remote_code=True,
-    )  # type: ignore[no-untyped-call]
+    )
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     return typing.cast("PreTrainedTokenizerBase", tokenizer)
