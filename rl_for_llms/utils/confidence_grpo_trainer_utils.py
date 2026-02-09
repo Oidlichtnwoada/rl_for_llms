@@ -138,6 +138,21 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         )
         output["rewards"] = rewards
         output["indices"] = torch.tensor(list(range(len(self.answers))), device=device)
+
+        # Debug: Print info about generated output and indices
+        print(f"[DEBUG _generate_and_score_completions] len(inputs): {len(inputs)}")
+        print(
+            f"[DEBUG _generate_and_score_completions] len(self.answers): {len(self.answers)}"
+        )
+        print(
+            f"[DEBUG _generate_and_score_completions] output['indices']: {output['indices'].tolist()}"
+        )
+        for key, value in output.items():
+            if hasattr(value, "shape"):
+                print(
+                    f"[DEBUG _generate_and_score_completions] output['{key}'].shape: {value.shape}"
+                )
+
         self.remove_hook()
         return output
 
@@ -338,6 +353,32 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
     ) -> torch.Tensor:
         """Compute the combined GRPO loss and confidence loss."""
         indices = list(map(int, convert_tensor_to_list(inputs["indices"])))
+
+        # Debug: Print index and tensor shape information
+        print(f"[DEBUG compute_loss] indices: {indices}")
+        print(
+            f"[DEBUG compute_loss] min(indices): {min(indices)}, max(indices): {max(indices)}"
+        )
+        print(f"[DEBUG compute_loss] len(indices): {len(indices)}")
+        print(f"[DEBUG compute_loss] len(self.answers): {len(self.answers)}")
+        for key, value in inputs.items():
+            if hasattr(value, "shape"):
+                print(
+                    f"[DEBUG compute_loss] inputs['{key}'].shape: {value.shape}, ndim: {value.ndim}"
+                )
+            else:
+                print(f"[DEBUG compute_loss] inputs['{key}']: type={type(value)}")
+
+        # Check for potential index out of bounds before indexing
+        for key, value in inputs.items():
+            if hasattr(value, "ndim") and value.ndim > 0:
+                batch_dim = value.shape[0]
+                invalid_indices = [i for i in indices if i < 0 or i >= batch_dim]
+                if invalid_indices:
+                    print(
+                        f"[DEBUG compute_loss] ERROR: Invalid indices for '{key}' (shape {value.shape}): {invalid_indices}"
+                    )
+
         ordered_inputs = {
             key: value[indices] if value.ndim > 0 else value
             for key, value in inputs.items()
