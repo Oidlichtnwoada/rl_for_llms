@@ -232,9 +232,8 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         """Compute the confidence loss based on the last rewards and confidence logits."""
         if self.all_confidence_logits_excluding_last is None:
             raise ValueError
-        batch_confidence_logits = self.all_confidence_logits_excluding_last[indices]
         estimated_rewards = get_confidence_token_logit_sigmoid(
-            batch_confidence_logits, self.config
+            self.all_confidence_logits_excluding_last, self.config
         ).float()
         mask = inputs["completion_mask"].bool()
         sequence_lengths = mask.sum(dim=-1)
