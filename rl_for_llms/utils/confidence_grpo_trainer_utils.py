@@ -43,7 +43,7 @@ from rl_for_llms.utils.evaluation_utils import (
 )
 from rl_for_llms.utils.llm_utils import get_token_to_id_mapping
 from rl_for_llms.utils.path_utils import get_evaluation_metric_dir
-from rl_for_llms.utils.reward_utils import get_class_weights_for_rewards
+from rl_for_llms.utils.reward_utils import get_class_weights_for_single_group
 from rl_for_llms.utils.torch_utils import convert_tensor_to_list, get_mode
 
 
@@ -125,6 +125,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         self, inputs: list[dict[str, torch.Tensor | typing.Any]]
     ) -> dict[str, torch.Tensor | typing.Any]:
         """Generate completions and capture mean_estimated_rewards for advantage blending."""
+        self.answers = []
         self.register_hook(unwrap_model=True)
         output = super()._generate_and_score_completions(inputs)
         mask = output["completion_mask"].bool()
@@ -138,21 +139,6 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         )
         output["rewards"] = rewards
         output["indices"] = torch.tensor(list(range(len(self.answers))), device=device)
-
-        # Debug: Print info about generated output and indices
-        print(f"[DEBUG _generate_and_score_completions] len(inputs): {len(inputs)}")
-        print(
-            f"[DEBUG _generate_and_score_completions] len(self.answers): {len(self.answers)}"
-        )
-        print(
-            f"[DEBUG _generate_and_score_completions] output['indices']: {output['indices'].tolist()}"
-        )
-        for key, value in output.items():
-            if hasattr(value, "shape"):
-                print(
-                    f"[DEBUG _generate_and_score_completions] output['{key}'].shape: {value.shape}"
-                )
-
         self.remove_hook()
         return output
 
@@ -203,7 +189,25 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         """Return the number of generations per prompt."""
         return typing.cast("int", self.num_generations)
 
-    def get_confidence_loss(self, inputs: dict[str, torch.Tensor]) -> torch.Tensor:
+    def get_original_group_for_index(self, global_index: int) -> int:
+        """Get the original generation group index for a global sample index."""
+        return global_index // self.get_num_generations()
+
+    def group_batch_by_original_groups(
+        self, indices: list[int], values: list[float]
+    ) -> dict[int, list[tuple[int, float]]]:
+        """Group batch samples by their original generation groups."""
+        groups: dict[int, list[tuple[int, float]]] = {}
+        for batch_idx, global_idx in enumerate(indices):
+            group_id = self.get_original_group_for_index(global_idx)
+            if group_id not in groups:
+                groups[group_id] = []
+            groups[group_id].append((batch_idx, values[batch_idx]))
+        return groups
+
+    def get_confidence_loss(
+        self, inputs: dict[str, torch.Tensor], indices: list[int]
+    ) -> torch.Tensor:
         """Compute the confidence loss based on the last rewards and confidence logits."""
         if self.all_confidence_logits_excluding_last is None:
             raise ValueError
@@ -230,18 +234,17 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             * mask
         )
         num_generations = self.get_num_generations()
-        weights_per_group = get_class_weights_for_rewards(last_rewards, num_generations)
-        sample_weights = []
-        for group_idx, (incorrect_weight, correct_weight) in enumerate(
-            weights_per_group
-        ):
-            start_idx = group_idx * num_generations
-            end_idx = start_idx + num_generations
-            group_rewards = last_rewards[start_idx:end_idx]
-            for reward in group_rewards:
-                sample_weights.extend(
-                    [correct_weight if reward == 1.0 else incorrect_weight]
-                )
+        original_groups = self.group_batch_by_original_groups(indices, last_rewards)
+        sample_weights = [1.0] * len(indices)
+        for group_samples in original_groups.values():
+            group_rewards = [reward for _, reward in group_samples]
+            if len(group_rewards) == num_generations:
+                weights = get_class_weights_for_single_group(group_rewards)
+                incorrect_weight, correct_weight = weights
+                for batch_idx, reward in group_samples:
+                    sample_weights[batch_idx] = (
+                        correct_weight if reward == 1.0 else incorrect_weight
+                    )
         sample_weights_tensor = torch.tensor(
             sample_weights, device=estimated_rewards.device
         )
@@ -256,14 +259,15 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             last_rewards, mean_estimated_rewards_list
         )
         self.add_metrics(get_confidence_namespace(), binary_classification_metrics)
+        batch_answers = [self.answers[i] for i in indices]
         answers_with_confidence = get_answers_with_confidence(
-            self.answers,
+            batch_answers,
             mean_estimated_rewards_list
             if self.is_confidence_trained()
-            else [get_default_confidence_score()] * len(self.answers),
+            else [get_default_confidence_score()] * len(batch_answers),
         )
         answer_metrics = compute_answer_metrics(
-            answers_with_confidence, self.config.temperature, self.get_num_generations()
+            answers_with_confidence, self.config.temperature, num_generations=None
         )
         self.add_metrics(get_answer_namespace(), answer_metrics)
         if self.eval_mode:
@@ -306,8 +310,9 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
     def blend_advantages(
         self,
         inputs: dict[str, torch.Tensor],
+        indices: list[int],
     ) -> None:
-        """Blend real advantages with estimated reward advantages per-group if stddev > threshold."""
+        """Blend real advantages with estimated reward advantages per-group if stddev is above threshold."""
         if not (
             self.is_confidence_trained()
             and self.config.use_confidence_reward
@@ -318,30 +323,30 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             inputs["mean_estimated_rewards"]
         )
         num_generations = self.get_num_generations()
-        num_groups = len(mean_estimated_rewards) // num_generations
         percentage = self.config.confidence_reward_percentage
         blended_advantages = inputs["advantages"].clone()
-        estimated_advantages = self.compute_advantages_from_rewards(
-            mean_estimated_rewards, num_generations
+        original_groups = self.group_batch_by_original_groups(
+            indices, mean_estimated_rewards
         )
-        estimated_advantages_tensor = torch.tensor(
-            estimated_advantages, device=inputs["advantages"].device
-        )
-        for group_idx in range(num_groups):
-            start_idx = group_idx * num_generations
-            end_idx = start_idx + num_generations
-            group_estimated_rewards = mean_estimated_rewards[start_idx:end_idx]
+        for group_samples in original_groups.values():
+            if len(group_samples) != num_generations:
+                continue
+            group_samples_sorted = sorted(group_samples, key=lambda x: x[0])
+            batch_indices = [batch_idx for batch_idx, _ in group_samples_sorted]
+            group_estimated_rewards = [reward for _, reward in group_samples_sorted]
             group_std = (
                 statistics.stdev(group_estimated_rewards)
                 if len(group_estimated_rewards) > 1
                 else 0.0
             )
             if group_std > self.config.minimum_confidence_std:
-                blended_advantages[start_idx:end_idx] = (1 - percentage) * inputs[
-                    "advantages"
-                ][start_idx:end_idx] + percentage * estimated_advantages_tensor[
-                    start_idx:end_idx
-                ]
+                group_estimated_advantages = self.compute_advantages_from_rewards(
+                    group_estimated_rewards, num_generations
+                )
+                for i, batch_idx in enumerate(batch_indices):
+                    blended_advantages[batch_idx] = (1 - percentage) * inputs[
+                        "advantages"
+                    ][batch_idx] + percentage * group_estimated_advantages[i]
         inputs["advantages"] = blended_advantages
 
     def compute_loss(
@@ -353,49 +358,19 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
     ) -> torch.Tensor:
         """Compute the combined GRPO loss and confidence loss."""
         indices = list(map(int, convert_tensor_to_list(inputs["indices"])))
-
-        # Debug: Print index and tensor shape information
-        print(f"[DEBUG compute_loss] indices: {indices}")
-        print(
-            f"[DEBUG compute_loss] min(indices): {min(indices)}, max(indices): {max(indices)}"
-        )
-        print(f"[DEBUG compute_loss] len(indices): {len(indices)}")
-        print(f"[DEBUG compute_loss] len(self.answers): {len(self.answers)}")
-        for key, value in inputs.items():
-            if hasattr(value, "shape"):
-                print(
-                    f"[DEBUG compute_loss] inputs['{key}'].shape: {value.shape}, ndim: {value.ndim}"
-                )
-            else:
-                print(f"[DEBUG compute_loss] inputs['{key}']: type={type(value)}")
-
-        # Check for potential index out of bounds before indexing
-        for key, value in inputs.items():
-            if hasattr(value, "ndim") and value.ndim > 0:
-                batch_dim = value.shape[0]
-                invalid_indices = [i for i in indices if i < 0 or i >= batch_dim]
-                if invalid_indices:
-                    print(
-                        f"[DEBUG compute_loss] ERROR: Invalid indices for '{key}' (shape {value.shape}): {invalid_indices}"
-                    )
-
-        ordered_inputs = {
-            key: value[indices] if value.ndim > 0 else value
-            for key, value in inputs.items()
-        }
-        self.blend_advantages(ordered_inputs)
+        self.blend_advantages(inputs, indices)
         self.register_hook(unwrap_model=False)
         grpo_loss = typing.cast(
             "torch.Tensor",
             super().compute_loss(
                 model,
-                ordered_inputs,
+                inputs,
                 return_outputs=return_outputs,
                 num_items_in_batch=num_items_in_batch,
             ),
         )
         confidence_loss = self.confidence_loss_factor * self.get_confidence_loss(
-            ordered_inputs
+            inputs, indices
         )
         self.remove_hook()
         total_loss = grpo_loss + confidence_loss
@@ -404,7 +379,6 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             get_confidence_namespace(), {(get_loss_name(),): confidence_loss.item()}
         )
         self.add_metrics(get_total_namespace(), {(get_loss_name(),): total_loss.item()})
-        self.answers = []
         return total_loss
 
     def add_metrics(
