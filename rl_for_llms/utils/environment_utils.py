@@ -37,6 +37,11 @@ def get_skip_eval_before_train() -> bool:
     return os.getenv(f"SKIP_{get_eval_before_train_prefix().upper()}", "0") == "1"
 
 
+def get_lora_train_confidence_token_embedding() -> bool:
+    """Check if the confidence token embedding should be trained via environment variable."""
+    return os.getenv("LORA_TRAIN_CONFIDENCE_TOKEN_EMBEDDING", "1") == "1"
+
+
 def get_wandb_api_key() -> str | None:
     """Return the Weights & Biases API key from environment variable."""
     return os.getenv("WANDB_API_KEY")

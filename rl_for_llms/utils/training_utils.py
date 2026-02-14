@@ -130,9 +130,8 @@ def get_confidence_grpo_trainer(config: Config) -> ConfidenceGRPOTrainer:
         task_type=config.lora_task_type,
         trainable_token_indices=[
             get_token_to_id_mapping(config.hf_model_id)[config.confidence_token]
-        ]
-        if config.lora_fully_finetune_confidence_token
-        else [],
+        ] if config.lora_train_confidence_token_embedding
+        else None,
     )
     confidence_grpo_trainer = ConfidenceGRPOTrainer(
         config=config,

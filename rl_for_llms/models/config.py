@@ -16,6 +16,7 @@ from rl_for_llms.utils.environment_utils import (
     get_skip_eval_before_train,
     use_confidence_loss,
     use_confidence_reward,
+    get_lora_train_confidence_token_embedding,
 )
 from rl_for_llms.utils.torch_utils import (
     get_cuda_default_value,
@@ -85,7 +86,7 @@ class Config(BaseModel):
     lora_dropout: float = Field(default=0.05)
     lora_bias: Literal["none", "all", "lora_only"] = Field(default="none")
     lora_task_type: str = Field(default=TaskType.CAUSAL_LM)
-    lora_fully_finetune_confidence_token: bool = Field(default=True)
+    lora_train_confidence_token_embedding: bool = Field(default=get_lora_train_confidence_token_embedding())
     system_message: str = Field(
         default="Reason step by step, then provide the final answer within the last \\boxed{} command of your output."
     )
