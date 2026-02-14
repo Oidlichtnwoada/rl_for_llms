@@ -99,8 +99,11 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             raise ValueError
         return typing.cast("Module", lm_head)
 
-    def register_hook(self, *, unwrap_model: bool) -> None:
+    def register_hook(
+        self, *, unwrap_model: bool, clear_confidence_logits: bool = True
+    ) -> None:
         """Register a forward hook to capture confidence logits."""
+        self.remove_hook(clear_confidence_logits=clear_confidence_logits)
         lm_head = self.get_lm_head(unwrap_model=unwrap_model)
         self.hook_handle = lm_head.register_forward_hook(self.logits_hook)
 
