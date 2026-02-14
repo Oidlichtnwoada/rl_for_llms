@@ -133,15 +133,33 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         output = super()._generate_and_score_completions(inputs)
         mask = output["completion_mask"].bool()
         device = output["advantages"].device
+        mean_estimated_rewards_list = self.get_mean_estimated_rewards(mask)
         output["mean_estimated_rewards"] = torch.tensor(
-            self.get_mean_estimated_rewards(mask), device=device
+            mean_estimated_rewards_list, device=device
         )
         rewards = torch.tensor(
             [answer.reward for answer in self.answers],
             device=device,
         )
         output["rewards"] = rewards
-        output["indices"] = torch.tensor(list(range(len(self.answers))), device=device)
+        indices = list(range(len(self.answers)))
+        output["indices"] = torch.tensor(indices, device=device)
+        num_generations = self.get_num_generations()
+        original_groups = self.group_batch_by_original_groups(
+            indices, convert_tensor_to_list(rewards)
+        )
+        sample_weights = [1.0] * len(indices)
+        for group_samples in original_groups.values():
+            group_rewards = [reward for _, reward in group_samples]
+            if len(group_rewards) == num_generations:
+                weights = get_class_weights_for_single_group(group_rewards)
+                incorrect_weight, correct_weight = weights
+                for batch_idx, reward in group_samples:
+                    sample_weights[batch_idx] = (
+                        correct_weight if reward == 1.0 else incorrect_weight
+                    )
+        output["sample_weights"] = torch.tensor(sample_weights, device=device)
+        self.blend_advantages(output, indices)
         self.remove_hook()
         return output
 
@@ -214,8 +232,9 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         """Compute the confidence loss based on the last rewards and confidence logits."""
         if self.all_confidence_logits_excluding_last is None:
             raise ValueError
+        batch_confidence_logits = self.all_confidence_logits_excluding_last[indices]
         estimated_rewards = get_confidence_token_logit_sigmoid(
-            self.all_confidence_logits_excluding_last, self.config
+            batch_confidence_logits, self.config
         ).float()
         mask = inputs["completion_mask"].bool()
         sequence_lengths = mask.sum(dim=-1)
@@ -236,27 +255,13 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             )
             * mask
         )
-        num_generations = self.get_num_generations()
-        original_groups = self.group_batch_by_original_groups(indices, last_rewards)
-        sample_weights = [1.0] * len(indices)
-        for group_samples in original_groups.values():
-            group_rewards = [reward for _, reward in group_samples]
-            if len(group_rewards) == num_generations:
-                weights = get_class_weights_for_single_group(group_rewards)
-                incorrect_weight, correct_weight = weights
-                for batch_idx, reward in group_samples:
-                    sample_weights[batch_idx] = (
-                        correct_weight if reward == 1.0 else incorrect_weight
-                    )
-        sample_weights_tensor = torch.tensor(
-            sample_weights, device=estimated_rewards.device
-        )
+        sample_weights_tensor = inputs["sample_weights"]
         per_rollout_loss_weighted = (
             per_sample_loss_masked.sum(dim=-1) / sequence_lengths
         ) * sample_weights_tensor
         mean_rollout_loss = per_rollout_loss_weighted.mean()
-        mean_estimated_rewards_list = self.get_mean_estimated_rewards(
-            completion_mask=mask
+        mean_estimated_rewards_list = convert_tensor_to_list(
+            inputs["mean_estimated_rewards"]
         )
         binary_classification_metrics = compute_binary_classification_metrics(
             last_rewards, mean_estimated_rewards_list
@@ -361,7 +366,6 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
     ) -> torch.Tensor:
         """Compute the combined GRPO loss and confidence loss."""
         indices = list(map(int, convert_tensor_to_list(inputs["indices"])))
-        self.blend_advantages(inputs, indices)
         self.register_hook(unwrap_model=False)
         grpo_loss = typing.cast(
             "torch.Tensor",
