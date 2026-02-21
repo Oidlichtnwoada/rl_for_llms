@@ -85,7 +85,7 @@ class Config(BaseModel):
     lora_target_modules: str | list[str] = Field(default="all-linear")
     lora_rank: int = Field(default=16)
     lora_alpha_factor_for_rank: int = Field(default=2)
-    lora_dropout: float = Field(default=0.05)
+    lora_dropout: float = Field(default=0.0)
     lora_bias: Literal["none", "all", "lora_only"] = Field(default="none")
     lora_task_type: str = Field(default=TaskType.CAUSAL_LM)
     lora_train_confidence_token_embedding: bool = Field(
