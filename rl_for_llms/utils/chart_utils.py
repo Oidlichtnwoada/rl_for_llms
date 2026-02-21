@@ -306,16 +306,7 @@ def create_confidence_chart() -> None:
             legend_label = f"{legend_label} (MCC: {mcc_value:.2f})"
 
         bars = ax.bar(x + offsets[i] * width, means, width, label=legend_label)
-        for bar, mean in zip(bars, means, strict=False):
-            if not np.isnan(mean):
-                ax.text(
-                    bar.get_x() + bar.get_width() / 2,
-                    bar.get_height() + 0.5,
-                    f"{mean:.2f}%",
-                    ha="center",
-                    va="bottom",
-                    fontsize=6,
-                )
+        add_bar_labels(ax, bars, means, [0.0] * len(means))
 
     labels = [format_metric_label(k) for k in percentage_keys]
     ax.set_ylabel("Percentage [%]")

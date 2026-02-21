@@ -12,6 +12,7 @@ from transformers import TrainerState
 
 from rl_for_llms.models.answer import Answer
 from rl_for_llms.models.config import Config
+from rl_for_llms.utils.group_utils import iter_groups
 from rl_for_llms.utils.latex_utils import (
     find_all_boxed_expression_contents,
     get_boxed_expression,
@@ -185,14 +186,7 @@ def get_class_weights_for_rewards(
     correct_class_reward_value: float = 1.0,
 ) -> list[tuple[float, float]]:
     """Get class weights for imbalanced rewards, computed per-group."""
-    num_groups = len(rewards) // num_generations
-    weights_per_group = []
-    for group_idx in range(num_groups):
-        start_idx = group_idx * num_generations
-        end_idx = start_idx + num_generations
-        group_rewards = rewards[start_idx:end_idx]
-        weights = get_class_weights_for_single_group(
-            group_rewards, correct_class_reward_value
-        )
-        weights_per_group.append(weights)
-    return weights_per_group
+    return [
+        get_class_weights_for_single_group(group, correct_class_reward_value)
+        for _, _, group in iter_groups(rewards, num_generations)
+    ]

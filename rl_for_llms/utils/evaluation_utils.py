@@ -14,6 +14,7 @@ from rl_for_llms.utils.constant_utils import (
     get_default_metric_separator,
 )
 from rl_for_llms.utils.dataset_utils import load_training_data_from_disk, trim_dataset
+from rl_for_llms.utils.group_utils import iter_groups
 from rl_for_llms.utils.llm_utils import (
     get_llm_output_with_step_data,
     get_token_to_id_mapping,
@@ -76,6 +77,13 @@ def pick_best_answer(
     return random.choice(top_answers)  # noqa: S311
 
 
+def get_correctness_flags(
+    answers_with_confidence: list[AnswerWithConfidence],
+) -> list[float]:
+    """Extract correctness flags from answers."""
+    return [float(x.answer.is_correct) for x in answers_with_confidence]
+
+
 def compute_answer_metrics_for_group(
     answers_with_confidence: list[AnswerWithConfidence],
 ) -> dict[str, float]:
@@ -83,9 +91,7 @@ def compute_answer_metrics_for_group(
     group_metrics: dict[str, float] = {}
     if not answers_with_confidence:
         return group_metrics
-    flags_for_correctness = [
-        float(x.answer.is_correct) for x in answers_with_confidence
-    ]
+    flags_for_correctness = get_correctness_flags(answers_with_confidence)
     group_metrics["pass_at_1"] = statistics.mean(flags_for_correctness)
     group_metrics["pass_at_k"] = max(flags_for_correctness)
     answer_weights: dict[str, float] = defaultdict(float)
@@ -135,20 +141,14 @@ def compute_answer_metrics(
     metrics[(f"confidence_token_inclusion_percentage_t={temperature}",)] = (
         confidence_token_inclusion_percentage
     )
-    flags_for_correctness = [
-        float(x.answer.is_correct) for x in answers_with_confidence
-    ]
-    pass_at_1_accuracy = statistics.mean(flags_for_correctness)
+    pass_at_1_accuracy = statistics.mean(get_correctness_flags(answers_with_confidence))
     metrics[("accuracy", f"pass@1_t={temperature}")] = pass_at_1_accuracy
     if num_generations is None:
         num_generations = sample_amount
-    num_groups = sample_amount // num_generations
-    group_metrics_list: list[dict[str, float]] = []
-    for group_idx in range(num_groups):
-        start_idx = group_idx * num_generations
-        end_idx = start_idx + num_generations
-        group_answers = answers_with_confidence[start_idx:end_idx]
-        group_metrics_list.append(compute_answer_metrics_for_group(group_answers))
+    group_metrics_list = [
+        compute_answer_metrics_for_group(group)
+        for _, _, group in iter_groups(answers_with_confidence, num_generations)
+    ]
     if group_metrics_list:
         metrics[("accuracy", f"pass@{num_generations}_t={temperature}")] = (
             statistics.mean(m["pass_at_k"] for m in group_metrics_list)

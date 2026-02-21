@@ -15,7 +15,6 @@ from trl.trainer.grpo_trainer import GRPOTrainer
 
 from rl_for_llms.models.answer import (
     Answer,
-    AnswerWithConfidence,
     get_answers_with_confidence,
 )
 from rl_for_llms.models.config import Config
@@ -39,6 +38,7 @@ from rl_for_llms.utils.evaluation_utils import (
     get_eval_metrics_df_name,
     store_eval_df,
 )
+from rl_for_llms.utils.group_utils import iter_groups
 from rl_for_llms.utils.llm_utils import get_token_to_id_mapping
 from rl_for_llms.utils.path_utils import get_evaluation_metric_dir
 from rl_for_llms.utils.reward_utils import get_class_weights_for_single_group
@@ -74,16 +74,11 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         self.all_confidence_logits: Tensor | None = None
         self.all_confidence_logits_excluding_last: Tensor | None = None
         self.eval_mode: bool = False
-        self.eval_binary_classification_metrics_inputs: list[
-            tuple[list[float], list[float]]
-        ] = []
-        self.eval_binary_classification_metrics_outputs: list[
-            dict[tuple[str, ...], float]
-        ] = []
-        self.eval_answer_metrics_inputs: list[
-            tuple[list[AnswerWithConfidence], float, int]
-        ] = []
-        self.eval_answer_metrics_outputs: list[dict[tuple[str, ...], float]] = []
+        self.eval_inputs: dict[str, list[typing.Any]] = {"bc": [], "answer": []}
+        self.eval_outputs: dict[str, list[dict[tuple[str, ...], float]]] = {
+            "bc": [],
+            "answer": [],
+        }
 
     def get_lm_head(self, *, unwrap_model: bool) -> Module:
         """Get the language model head."""
@@ -145,9 +140,9 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         """Check if the confidence loss is being used."""
         return self.confidence_loss_factor > 0.0
 
-    def _compute_mean_estimated_rewards(
+    def _get_masked_estimated_rewards(
         self, completion_mask: torch.Tensor
-    ) -> list[float]:
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         if (
             self.all_confidence_logits is None
             or self.all_confidence_logits_excluding_last is None
@@ -164,8 +159,15 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         estimated_rewards = get_confidence_token_logit_sigmoid(
             confidence_logits, self.config
         ).float()
-        masked_estimated_rewards = estimated_rewards * mask
-        sum_estimated_rewards = masked_estimated_rewards.sum(dim=-1)
+        return estimated_rewards, mask, sequence_lengths
+
+    def _compute_mean_estimated_rewards(
+        self, completion_mask: torch.Tensor
+    ) -> list[float]:
+        estimated_rewards, mask, sequence_lengths = self._get_masked_estimated_rewards(
+            completion_mask
+        )
+        sum_estimated_rewards = (estimated_rewards * mask).sum(dim=-1)
         mean_estimated_rewards = sum_estimated_rewards / sequence_lengths
         return convert_tensor_to_list(mean_estimated_rewards)
 
@@ -174,11 +176,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
     ) -> list[float]:
         num_generations = self.get_num_generations()
         sample_weights = [1.0] * batch_size
-        num_groups = batch_size // num_generations
-        for group_idx in range(num_groups):
-            start = group_idx * num_generations
-            end = start + num_generations
-            group_rewards = rewards[start:end]
+        for start, _, group_rewards in iter_groups(rewards, num_generations):
             if len(group_rewards) == num_generations:
                 incorrect_weight, correct_weight = get_class_weights_for_single_group(
                     group_rewards
@@ -214,14 +212,12 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         self.add_metrics(get_answer_namespace(), answer_metrics)
 
         if self.eval_mode:
-            self.eval_binary_classification_metrics_inputs.append(
-                (rewards, mean_estimated_rewards)
-            )
-            self.eval_binary_classification_metrics_outputs.append(bc_metrics)
-            self.eval_answer_metrics_inputs.append(
+            self.eval_inputs["bc"].append((rewards, mean_estimated_rewards))
+            self.eval_outputs["bc"].append(bc_metrics)
+            self.eval_inputs["answer"].append(
                 (answers_with_confidence, self.config.temperature, num_generations)
             )
-            self.eval_answer_metrics_outputs.append(answer_metrics)
+            self.eval_outputs["answer"].append(answer_metrics)
 
     @staticmethod
     def _compute_advantages_from_rewards(
@@ -229,15 +225,11 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         num_generations: int,
         eps: float = get_default_eps(),
     ) -> list[float]:
-        rewards_np = np.array(rewards)
-        num_groups = len(rewards) // num_generations
         all_advantages: list[float] = []
-        for group_idx in range(num_groups):
-            start = group_idx * num_generations
-            end = start + num_generations
-            group_rewards = rewards_np[start:end]
-            group_advantages = (group_rewards - np.mean(group_rewards)) / (
-                float(np.std(group_rewards)) + eps
+        for _, _, group in iter_groups(rewards, num_generations):
+            group_np = np.array(group)
+            group_advantages = (group_np - np.mean(group_np)) / (
+                float(np.std(group_np)) + eps
             )
             all_advantages.extend(group_advantages.tolist())
         return all_advantages
@@ -254,14 +246,11 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         ):
             return advantages
         num_generations = self.get_num_generations()
-        batch_size = len(mean_estimated_rewards)
         percentage = self.config.confidence_reward_percentage
         blended = advantages.clone()
-        num_groups = batch_size // num_generations
-        for group_idx in range(num_groups):
-            start = group_idx * num_generations
-            end = start + num_generations
-            group_estimated = mean_estimated_rewards[start:end]
+        for start, _, group_estimated in iter_groups(
+            mean_estimated_rewards, num_generations
+        ):
             group_std = (
                 statistics.stdev(group_estimated) if len(group_estimated) > 1 else 0.0
             )
@@ -312,9 +301,11 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         ).float()
         mask = inputs["completion_mask"].bool()
         sequence_lengths = mask.sum(dim=-1)
-        maximum_sequence_length = estimated_rewards.shape[-1]
         real_rewards = (
-            inputs["rewards"].unsqueeze(-1).expand(-1, maximum_sequence_length).float()
+            inputs["rewards"]
+            .unsqueeze(-1)
+            .expand(-1, estimated_rewards.shape[-1])
+            .float()
         )
         if mask.sum().item() == 0:
             raise ValueError
@@ -372,10 +363,9 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
 
     def clear_eval_inputs_and_outputs(self) -> None:
         """Clear evaluation inputs and outputs."""
-        self.eval_binary_classification_metrics_inputs.clear()
-        self.eval_binary_classification_metrics_outputs.clear()
-        self.eval_answer_metrics_inputs.clear()
-        self.eval_answer_metrics_outputs.clear()
+        for key in self.eval_inputs:
+            self.eval_inputs[key].clear()
+            self.eval_outputs[key].clear()
 
     def evaluate(
         self,
@@ -418,73 +408,65 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         self.save_model(str(model_output_dir))
 
     def _merge_eval_metrics(self, metric_key_prefix: str) -> None:
-        concatenated_bc_inputs = tuple(
-            list(chain.from_iterable(x))
-            for x in zip(*self.eval_binary_classification_metrics_inputs, strict=True)
-        )
-        concatenated_bc_outputs = change_metric_keys(
-            compute_binary_classification_metrics(
-                *concatenated_bc_inputs  # type: ignore[arg-type]
-            ),
-            prefix=(metric_key_prefix, get_confidence_namespace()),
-        )
-        aggregated_bc_outputs = change_metric_keys(
-            aggregate_metrics(self.eval_binary_classification_metrics_outputs),
-            prefix=(metric_key_prefix, get_confidence_namespace()),
-        )
+        bc_concat, bc_agg = self._compute_eval_bc_metrics(metric_key_prefix)
+        answer_concat, answer_agg = self._compute_eval_answer_metrics(metric_key_prefix)
+        shorthand = self.get_config_shorthand()
+        metric_bundles: list[tuple[bool, bool, dict[tuple[str, ...], float]]] = [
+            (False, True, bc_concat),
+            (True, True, bc_agg),
+            (False, False, answer_concat),
+            (True, False, answer_agg),
+        ]
+        for is_aggregated, is_bc, data in metric_bundles:
+            store_eval_df(
+                get_eval_metrics_df_name(
+                    metric_key_prefix, is_aggregated=is_aggregated, is_bc=is_bc
+                ),
+                get_df_from_metrics(data),
+                shorthand,
+            )
 
+    def _compute_eval_bc_metrics(
+        self, prefix: str
+    ) -> tuple[dict[tuple[str, ...], float], dict[tuple[str, ...], float]]:
+        concatenated_inputs = tuple(
+            list(chain.from_iterable(x))
+            for x in zip(*self.eval_inputs["bc"], strict=True)
+        )
+        namespace = (prefix, get_confidence_namespace())
+        concatenated = change_metric_keys(
+            compute_binary_classification_metrics(
+                *concatenated_inputs  # type: ignore[arg-type]
+            ),
+            prefix=namespace,
+        )
+        aggregated = change_metric_keys(
+            aggregate_metrics(self.eval_outputs["bc"]),
+            prefix=namespace,
+        )
+        return concatenated, aggregated
+
+    def _compute_eval_answer_metrics(
+        self, prefix: str
+    ) -> tuple[dict[tuple[str, ...], float], dict[tuple[str, ...], float]]:
         answers_with_confidence, temperatures, num_generations_list = zip(
-            *self.eval_answer_metrics_inputs, strict=True
+            *self.eval_inputs["answer"], strict=True
         )
         if len(set(temperatures)) != 1:
             raise ValueError
         if len(set(num_generations_list)) != 1:
             raise ValueError
-        temperature = temperatures[0]
-        num_generations = num_generations_list[0]
-
-        concatenated_answer_outputs = change_metric_keys(
+        namespace = (prefix, get_answer_namespace())
+        concatenated = change_metric_keys(
             compute_answer_metrics(
                 list(chain.from_iterable(answers_with_confidence)),
-                temperature,
-                num_generations,
+                temperatures[0],
+                num_generations_list[0],
             ),
-            prefix=(metric_key_prefix, get_answer_namespace()),
+            prefix=namespace,
         )
-        aggregated_answer_outputs = change_metric_keys(
-            aggregate_metrics(self.eval_answer_metrics_outputs),
-            prefix=(metric_key_prefix, get_answer_namespace()),
+        aggregated = change_metric_keys(
+            aggregate_metrics(self.eval_outputs["answer"]),
+            prefix=namespace,
         )
-
-        shorthand = self.get_config_shorthand()
-        self._store_eval_metrics(
-            metric_key_prefix,
-            shorthand,
-            concatenated_bc_outputs,
-            aggregated_bc_outputs,
-            concatenated_answer_outputs,
-            aggregated_answer_outputs,
-        )
-
-    @staticmethod
-    def _store_eval_metrics(
-        prefix: str,
-        shorthand: str,
-        concat_bc: dict[tuple[str, ...], float],
-        agg_bc: dict[tuple[str, ...], float],
-        concat_answer: dict[tuple[str, ...], float],
-        agg_answer: dict[tuple[str, ...], float],
-    ) -> None:
-        for is_aggregated, is_bc, data in [
-            (False, True, concat_bc),
-            (True, True, agg_bc),
-            (False, False, concat_answer),
-            (True, False, agg_answer),
-        ]:
-            store_eval_df(
-                get_eval_metrics_df_name(
-                    prefix, is_aggregated=is_aggregated, is_bc=is_bc
-                ),
-                get_df_from_metrics(data),
-                shorthand,
-            )
+        return concatenated, aggregated
