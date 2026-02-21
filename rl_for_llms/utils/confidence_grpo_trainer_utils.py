@@ -8,6 +8,8 @@ from itertools import chain
 import numpy as np
 import torch
 from datasets import Dataset
+from peft import set_peft_model_state_dict
+from peft.utils import load_peft_weights
 from torch import Tensor
 from torch.nn import Module, functional
 from torch.utils.hooks import RemovableHandle
@@ -323,7 +325,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         model: torch.nn.Module,
         inputs: dict[str, torch.Tensor],
         return_outputs: bool = False,  # noqa: FBT001, FBT002
-        num_items_in_batch: torch.Tensor | None = None,
+        num_items_in_batch: torch.Tensor | int | None = None,
     ) -> torch.Tensor:
         """Compute the combined GRPO loss and confidence loss."""
         self.register_hook(unwrap_model=False)
@@ -404,6 +406,17 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         shutil.rmtree(model_output_dir, ignore_errors=True)
         model_output_dir.mkdir(parents=True, exist_ok=True)
         self.save_model(str(model_output_dir))
+
+    def load_checkpoint_from_disk(self, model_identifier: str) -> None:
+        """Load previously saved adapter weights into the model's default adapter."""
+        model_output_dir = self._get_model_output_dir(model_identifier)
+        if not model_output_dir.exists():
+            raise FileNotFoundError(model_output_dir)
+        model = self.accelerator.unwrap_model(
+            getattr(self, "model_wrapped", self.model)
+        )
+        adapter_weights = load_peft_weights(str(model_output_dir))
+        set_peft_model_state_dict(model, adapter_weights, adapter_name="default")
 
     def _merge_eval_metrics(self, metric_key_prefix: str) -> None:
         bc_concat, bc_agg = self._compute_eval_bc_metrics(metric_key_prefix)
