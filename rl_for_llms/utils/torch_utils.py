@@ -22,25 +22,24 @@ def get_device() -> torch.device:
     return device
 
 
+def _device_name() -> str:
+    """Return the device name string."""
+    return str(get_device())
+
+
 def is_cuda_device_used() -> bool:
     """Check if the current device is a CUDA device."""
-    device_string = str(get_device())
-    is_cuda_device = device_string == "cuda"
-    return is_cuda_device
+    return _device_name() == "cuda"
 
 
 def is_mps_device_used() -> bool:
     """Check if the current device is an MPS device."""
-    device_string = str(get_device())
-    is_mps_device = device_string == "mps"
-    return is_mps_device
+    return _device_name() == "mps"
 
 
 def is_cpu_device_used() -> bool:
     """Check if the current device is a CPU device."""
-    device_string = str(get_device())
-    is_cpu_device = device_string == "cpu"
-    return is_cpu_device
+    return _device_name() == "cpu"
 
 
 def get_cuda_default_value[T](value_if_cuda: T, value_if_not_cuda: T) -> T:

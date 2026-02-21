@@ -119,16 +119,9 @@ def load_agg_metrics_from_csv(
     metric_type: str,
     metric_keys: tuple[str, ...],
 ) -> dict[str, tuple[float, float]]:
-    """Load aggregated metrics (mean, std) from CSV for a variant."""
-    df = pd.read_csv(get_csv_path(variant, metric_type, "agg"))
-    prefix = get_eval_prefix(variant)
-    metrics: dict[str, tuple[float, float]] = {}
-    for metric in metric_keys:
-        mean_key = f"{prefix}/{metric}/mean"
-        std_key = f"{prefix}/{metric}/std"
-        if mean_key in df.columns and std_key in df.columns:
-            metrics[metric] = (df[mean_key].iloc[0], df[std_key].iloc[0])
-    return metrics
+    """Load aggregated metrics (mean, std) from CSV for a variant, filtered to given keys."""
+    all_metrics = load_all_agg_metrics_from_csv(variant, metric_type)
+    return {k: v for k, v in all_metrics.items() if k in metric_keys}
 
 
 def load_all_agg_metrics_from_csv(
@@ -185,6 +178,29 @@ def add_bar_labels(
                 va="bottom",
                 fontsize=6,
             )
+
+
+def finalize_chart(
+    ax: Axes,
+    labels: list[str],
+    x_positions: np.ndarray,
+    all_max_values: list[float],
+    *,
+    title: str,
+    filename: str,
+    default_ylim: float = 100,
+) -> None:
+    """Apply shared chart formatting and save."""
+    ax.set_ylabel("Percentage [%]")
+    ax.set_title(title)
+    ax.set_xticks(x_positions)
+    ax.set_xticklabels(labels, rotation=45, ha="right")
+    ax.legend(loc="upper right")
+    ax.set_ylim(
+        0, compute_ylim(max(all_max_values)) if all_max_values else default_ylim
+    )
+    ax.grid(axis="y", alpha=0.3)
+    save_chart(filename)
 
 
 def save_chart(filename: str) -> None:
@@ -254,14 +270,14 @@ def create_answer_accuracy_chart(*, add_stddev_to_label: bool = False) -> None:
 
     x_all = np.arange(len(common_metrics) + len(confidence_metrics))
     labels = [format_metric_label(m) for m in common_metrics + confidence_metrics]
-    ax.set_ylabel("Percentage [%]")
-    ax.set_title("Answer Accuracy Metrics By Variant")
-    ax.set_xticks(x_all)
-    ax.set_xticklabels(labels, rotation=45, ha="right")
-    ax.legend(loc="upper right")
-    ax.set_ylim(0, compute_ylim(max(all_max_values)))
-    ax.grid(axis="y", alpha=0.3)
-    save_chart("answer_accuracy_chart.pdf")
+    finalize_chart(
+        ax,
+        labels,
+        x_all,
+        all_max_values,
+        title="Answer Accuracy Metrics By Variant",
+        filename="answer_accuracy_chart.pdf",
+    )
 
 
 def create_confidence_chart() -> None:
@@ -309,11 +325,11 @@ def create_confidence_chart() -> None:
         add_bar_labels(ax, bars, means, [0.0] * len(means))
 
     labels = [format_metric_label(k) for k in percentage_keys]
-    ax.set_ylabel("Percentage [%]")
-    ax.set_title("Confidence Prediction Metrics By Variant")
-    ax.set_xticks(x)
-    ax.set_xticklabels(labels, rotation=45, ha="right")
-    ax.legend(loc="upper right")
-    ax.set_ylim(0, compute_ylim(max(all_max_values)) if all_max_values else 100)
-    ax.grid(axis="y", alpha=0.3)
-    save_chart("confidence_chart.pdf")
+    finalize_chart(
+        ax,
+        labels,
+        x,
+        all_max_values,
+        title="Confidence Prediction Metrics By Variant",
+        filename="confidence_chart.pdf",
+    )

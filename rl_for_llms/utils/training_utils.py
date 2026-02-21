@@ -1,3 +1,4 @@
+import datasets
 from datasets import load_dataset
 from peft import LoraConfig
 from trl.trainer.grpo_config import GRPOConfig
@@ -20,7 +21,7 @@ from rl_for_llms.utils.dataset_utils import (
     load_training_data_from_disk,
     trim_dataset,
 )
-from rl_for_llms.utils.llm_utils import get_token_to_id_mapping, get_tokenizer
+from rl_for_llms.utils.llm_utils import get_confidence_token_id, get_tokenizer
 from rl_for_llms.utils.logging_utils import log_msg
 from rl_for_llms.utils.path_utils import (
     get_checkpoint_folder_for_model_id,
@@ -109,17 +110,15 @@ def get_confidence_grpo_trainer(config: Config) -> ConfidenceGRPOTrainer:
     """Get the confidence GRPO trainer."""
     grpo_config = get_grpo_config(config)
     tokenizer = get_tokenizer(config.hf_model_id)
-    train_dataset = trim_dataset(
-        load_training_data_from_disk(config),
-        config.train_dataset_rows,
-        tokenizer,
-        config.max_prompt_length,
+
+    def _load_and_trim(dataset: datasets.Dataset, max_rows: int) -> datasets.Dataset:
+        return trim_dataset(dataset, max_rows, tokenizer, config.max_prompt_length)
+
+    train_dataset = _load_and_trim(
+        load_training_data_from_disk(config), config.train_dataset_rows
     )
-    eval_dataset = trim_dataset(
-        load_evaluation_data(config),
-        config.eval_dataset_rows,
-        tokenizer,
-        config.max_prompt_length,
+    eval_dataset = _load_and_trim(
+        load_evaluation_data(config), config.eval_dataset_rows
     )
     peft_config = LoraConfig(
         r=config.lora_rank,
@@ -128,9 +127,7 @@ def get_confidence_grpo_trainer(config: Config) -> ConfidenceGRPOTrainer:
         lora_dropout=config.lora_dropout,
         bias=config.lora_bias,
         task_type=config.lora_task_type,
-        trainable_token_indices=[
-            get_token_to_id_mapping(config.hf_model_id)[config.confidence_token]
-        ]
+        trainable_token_indices=[get_confidence_token_id(config)]
         if config.lora_train_confidence_token_embedding
         else None,
     )
@@ -151,17 +148,14 @@ def start_training() -> None:
     """Start the training process."""
     setup_environment()
     config = get_config()
+    config_json = config.model_dump_json()
     download_training_data(config)
     confidence_grpo_trainer = get_confidence_grpo_trainer(config)
-    log_msg(
-        f"start training with the following configuration: {config.model_dump_json()}"
-    )
+    log_msg(f"start training with the following configuration: {config_json}")
     if not config.skip_eval_before_train:
         confidence_grpo_trainer.evaluate(
             metric_key_prefix=get_eval_before_train_prefix()
         )
     confidence_grpo_trainer.train()
     confidence_grpo_trainer.evaluate(metric_key_prefix=get_eval_after_train_prefix())
-    log_msg(
-        f"finished training with the following configuration: {config.model_dump_json()}"
-    )
+    log_msg(f"finished training with the following configuration: {config_json}")

@@ -120,6 +120,11 @@ def get_token_to_id_mapping(model_id: str) -> dict[str, int]:
     return sorted_vocab
 
 
+def get_confidence_token_id(config: Config) -> int:
+    """Return the token ID for the confidence token."""
+    return get_token_to_id_mapping(config.hf_model_id)[config.confidence_token]
+
+
 def tokenize_messages(
     messages: list[dict[str, typing.Any]],
     tokenizer: PreTrainedTokenizerBase,
@@ -171,9 +176,7 @@ def check_model_output_for_completion(
         is_completed = False
     else:
         is_completed = True
-    confidence_token_count = completion_ids.count(
-        get_token_to_id_mapping(config.hf_model_id)[config.confidence_token]
-    )
+    confidence_token_count = completion_ids.count(get_confidence_token_id(config))
     contains_confidence_token = confidence_token_count > 0
     if contains_confidence_token:
         log_msg(

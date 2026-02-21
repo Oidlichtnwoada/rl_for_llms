@@ -39,7 +39,7 @@ from rl_for_llms.utils.evaluation_utils import (
     store_eval_df,
 )
 from rl_for_llms.utils.group_utils import iter_groups
-from rl_for_llms.utils.llm_utils import get_token_to_id_mapping
+from rl_for_llms.utils.llm_utils import get_confidence_token_id
 from rl_for_llms.utils.path_utils import get_evaluation_metric_dir
 from rl_for_llms.utils.reward_utils import get_class_weights_for_single_group
 from rl_for_llms.utils.torch_utils import convert_tensor_to_list, get_mode
@@ -60,9 +60,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         kwargs["reward_funcs"] = wrapped_reward_funcs
         super().__init__(**kwargs)
         self.config = config
-        self.confidence_token_id: int = get_token_to_id_mapping(
-            self.config.hf_model_id
-        )[self.config.confidence_token]
+        self.confidence_token_id: int = get_confidence_token_id(self.config)
         self.confidence_loss_factor: float = (
             self.config.confidence_loss_factor
             if self.config.use_confidence_loss
@@ -426,6 +424,20 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
                 shorthand,
             )
 
+    def _compute_eval_metric_pair(
+        self,
+        prefix: str,
+        namespace: str,
+        recomputed: dict[tuple[str, ...], float],
+        outputs_key: str,
+    ) -> tuple[dict[tuple[str, ...], float], dict[tuple[str, ...], float]]:
+        ns = (prefix, namespace)
+        concatenated = change_metric_keys(recomputed, prefix=ns)
+        aggregated = change_metric_keys(
+            aggregate_metrics(self.eval_outputs[outputs_key]), prefix=ns
+        )
+        return concatenated, aggregated
+
     def _compute_eval_bc_metrics(
         self, prefix: str
     ) -> tuple[dict[tuple[str, ...], float], dict[tuple[str, ...], float]]:
@@ -433,18 +445,12 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             list(chain.from_iterable(x))
             for x in zip(*self.eval_inputs["bc"], strict=True)
         )
-        namespace = (prefix, get_confidence_namespace())
-        concatenated = change_metric_keys(
-            compute_binary_classification_metrics(
-                *concatenated_inputs  # type: ignore[arg-type]
-            ),
-            prefix=namespace,
+        recomputed = compute_binary_classification_metrics(
+            *concatenated_inputs  # type: ignore[arg-type]
         )
-        aggregated = change_metric_keys(
-            aggregate_metrics(self.eval_outputs["bc"]),
-            prefix=namespace,
+        return self._compute_eval_metric_pair(
+            prefix, get_confidence_namespace(), recomputed, "bc"
         )
-        return concatenated, aggregated
 
     def _compute_eval_answer_metrics(
         self, prefix: str
@@ -456,17 +462,11 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             raise ValueError
         if len(set(num_generations_list)) != 1:
             raise ValueError
-        namespace = (prefix, get_answer_namespace())
-        concatenated = change_metric_keys(
-            compute_answer_metrics(
-                list(chain.from_iterable(answers_with_confidence)),
-                temperatures[0],
-                num_generations_list[0],
-            ),
-            prefix=namespace,
+        recomputed = compute_answer_metrics(
+            list(chain.from_iterable(answers_with_confidence)),
+            temperatures[0],
+            num_generations_list[0],
         )
-        aggregated = change_metric_keys(
-            aggregate_metrics(self.eval_outputs["answer"]),
-            prefix=namespace,
+        return self._compute_eval_metric_pair(
+            prefix, get_answer_namespace(), recomputed, "answer"
         )
-        return concatenated, aggregated
