@@ -8,11 +8,9 @@ from itertools import chain
 import numpy as np
 import torch
 from datasets import Dataset
-from peft import PeftModel
 from torch import Tensor
 from torch.nn import Module, functional
 from torch.utils.hooks import RemovableHandle
-from transformers import PreTrainedModel
 from trl.trainer.grpo_trainer import GRPOTrainer
 
 from rl_for_llms.models.answer import (
@@ -51,7 +49,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
     """GRPO trainer with auxiliary confidence loss."""
 
     def __init__(self, config: Config, **kwargs: typing.Any) -> None:  # noqa: ANN401
-        """Initialize the class with confidence loss parameters."""
+        """Initialize the ConfidenceGRPOTrainer."""
         if len(kwargs["reward_funcs"]) < 1:
             raise ValueError
         wrapped_reward_funcs = []
@@ -62,16 +60,16 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         kwargs["reward_funcs"] = wrapped_reward_funcs
         super().__init__(**kwargs)
         self.config = config
-        self.confidence_token_id = get_token_to_id_mapping(self.config.hf_model_id)[
-            self.config.confidence_token
-        ]
-        self.confidence_loss_factor = (
+        self.confidence_token_id: int = get_token_to_id_mapping(
+            self.config.hf_model_id
+        )[self.config.confidence_token]
+        self.confidence_loss_factor: float = (
             self.config.confidence_loss_factor
             if self.config.use_confidence_loss
             else 0.0
         )
         self.answers: list[Answer] = []
-        self.lm_head_attribute_name = self.config.lm_head_attribute_name
+        self.lm_head_attribute_name: str = self.config.lm_head_attribute_name
         self.hook_handle: RemovableHandle | None = None
         self.all_confidence_logits: Tensor | None = None
         self.all_confidence_logits_excluding_last: Tensor | None = None
@@ -112,56 +110,13 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         self.all_confidence_logits = None
         self.all_confidence_logits_excluding_last = None
 
-    def remove_hook(
-        self,
-        *,
-        clear_confidence_logits: bool = True,
-    ) -> None:
+    def remove_hook(self, *, clear_confidence_logits: bool = True) -> None:
         """Remove the registered hook."""
         if self.hook_handle is not None:
             self.hook_handle.remove()
             self.hook_handle = None
         if clear_confidence_logits:
             self.clear_confidence_logits()
-
-    def _generate_and_score_completions(
-        self, inputs: list[dict[str, torch.Tensor | typing.Any]]
-    ) -> dict[str, torch.Tensor | typing.Any]:
-        """Generate completions and capture mean_estimated_rewards for advantage blending."""
-        self.answers = []
-        self.register_hook(unwrap_model=True)
-        output = super()._generate_and_score_completions(inputs)
-        mask = output["completion_mask"].bool()
-        device = output["advantages"].device
-        mean_estimated_rewards_list = self.get_mean_estimated_rewards(mask)
-        output["mean_estimated_rewards"] = torch.tensor(
-            mean_estimated_rewards_list, device=device
-        )
-        rewards = torch.tensor(
-            [answer.reward for answer in self.answers],
-            device=device,
-        )
-        output["rewards"] = rewards
-        indices = list(range(len(self.answers)))
-        output["indices"] = torch.tensor(indices, device=device)
-        num_generations = self.get_num_generations()
-        original_groups = self.group_batch_by_original_groups(
-            indices, convert_tensor_to_list(rewards)
-        )
-        sample_weights = [1.0] * len(indices)
-        for group_samples in original_groups.values():
-            group_rewards = [reward for _, reward in group_samples]
-            if len(group_rewards) == num_generations:
-                weights = get_class_weights_for_single_group(group_rewards)
-                incorrect_weight, correct_weight = weights
-                for batch_idx, reward in group_samples:
-                    sample_weights[batch_idx] = (
-                        correct_weight if reward == 1.0 else incorrect_weight
-                    )
-        output["sample_weights"] = torch.tensor(sample_weights, device=device)
-        self.blend_advantages(output, indices)
-        self.remove_hook()
-        return output
 
     def logits_hook(
         self,
@@ -182,8 +137,17 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             )
         self.all_confidence_logits_excluding_last = self.all_confidence_logits[:, :-1]
 
-    def get_mean_estimated_rewards(self, completion_mask: torch.Tensor) -> list[float]:
-        """Get mean estimated rewards for each sample in the batch."""
+    def get_num_generations(self) -> int:
+        """Return the number of generations per prompt."""
+        return typing.cast("int", self.num_generations)
+
+    def is_confidence_trained(self) -> bool:
+        """Check if the confidence loss is being used."""
+        return self.confidence_loss_factor > 0.0
+
+    def _compute_mean_estimated_rewards(
+        self, completion_mask: torch.Tensor
+    ) -> list[float]:
         if (
             self.all_confidence_logits is None
             or self.all_confidence_logits_excluding_last is None
@@ -203,33 +167,144 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         masked_estimated_rewards = estimated_rewards * mask
         sum_estimated_rewards = masked_estimated_rewards.sum(dim=-1)
         mean_estimated_rewards = sum_estimated_rewards / sequence_lengths
-        mean_estimated_rewards_list = convert_tensor_to_list(mean_estimated_rewards)
-        return mean_estimated_rewards_list
+        return convert_tensor_to_list(mean_estimated_rewards)
 
-    def get_num_generations(self) -> int:
-        """Return the number of generations per prompt."""
-        return typing.cast("int", self.num_generations)
+    def _compute_sample_weights(
+        self, rewards: list[float], batch_size: int
+    ) -> list[float]:
+        num_generations = self.get_num_generations()
+        sample_weights = [1.0] * batch_size
+        num_groups = batch_size // num_generations
+        for group_idx in range(num_groups):
+            start = group_idx * num_generations
+            end = start + num_generations
+            group_rewards = rewards[start:end]
+            if len(group_rewards) == num_generations:
+                incorrect_weight, correct_weight = get_class_weights_for_single_group(
+                    group_rewards
+                )
+                for i, reward in enumerate(group_rewards):
+                    sample_weights[start + i] = (
+                        correct_weight if reward == 1.0 else incorrect_weight
+                    )
+        return sample_weights
 
-    def get_original_group_for_index(self, global_index: int) -> int:
-        """Get the original generation group index for a global sample index."""
-        return global_index // self.get_num_generations()
+    def _log_ordered_metrics(
+        self,
+        rewards: list[float],
+        mean_estimated_rewards: list[float],
+        answers: list[Answer],
+    ) -> None:
+        confidences = (
+            mean_estimated_rewards
+            if self.is_confidence_trained()
+            else [get_default_confidence_score()] * len(answers)
+        )
+        answers_with_confidence = get_answers_with_confidence(answers, confidences)
 
-    def group_batch_by_original_groups(
-        self, indices: list[int], values: list[float]
-    ) -> dict[int, list[tuple[int, float]]]:
-        """Group batch samples by their original generation groups."""
-        groups: dict[int, list[tuple[int, float]]] = {}
-        for batch_idx, global_idx in enumerate(indices):
-            group_id = self.get_original_group_for_index(global_idx)
-            if group_id not in groups:
-                groups[group_id] = []
-            groups[group_id].append((batch_idx, values[batch_idx]))
-        return groups
+        bc_metrics = compute_binary_classification_metrics(
+            rewards, mean_estimated_rewards
+        )
+        self.add_metrics(get_confidence_namespace(), bc_metrics)
 
-    def get_confidence_loss(
-        self, inputs: dict[str, torch.Tensor], indices: list[int]
+        num_generations = self.get_num_generations()
+        answer_metrics = compute_answer_metrics(
+            answers_with_confidence, self.config.temperature, num_generations
+        )
+        self.add_metrics(get_answer_namespace(), answer_metrics)
+
+        if self.eval_mode:
+            self.eval_binary_classification_metrics_inputs.append(
+                (rewards, mean_estimated_rewards)
+            )
+            self.eval_binary_classification_metrics_outputs.append(bc_metrics)
+            self.eval_answer_metrics_inputs.append(
+                (answers_with_confidence, self.config.temperature, num_generations)
+            )
+            self.eval_answer_metrics_outputs.append(answer_metrics)
+
+    @staticmethod
+    def _compute_advantages_from_rewards(
+        rewards: list[float],
+        num_generations: int,
+        eps: float = get_default_eps(),
+    ) -> list[float]:
+        rewards_np = np.array(rewards)
+        num_groups = len(rewards) // num_generations
+        all_advantages: list[float] = []
+        for group_idx in range(num_groups):
+            start = group_idx * num_generations
+            end = start + num_generations
+            group_rewards = rewards_np[start:end]
+            group_advantages = (group_rewards - np.mean(group_rewards)) / (
+                float(np.std(group_rewards)) + eps
+            )
+            all_advantages.extend(group_advantages.tolist())
+        return all_advantages
+
+    def _blend_advantages(
+        self,
+        advantages: torch.Tensor,
+        mean_estimated_rewards: list[float],
     ) -> torch.Tensor:
-        """Compute the confidence loss based on the last rewards and confidence logits."""
+        if not (
+            self.is_confidence_trained()
+            and self.config.use_confidence_reward
+            and (self.state.global_step >= self.config.confidence_loss_warmup_steps)
+        ):
+            return advantages
+        num_generations = self.get_num_generations()
+        batch_size = len(mean_estimated_rewards)
+        percentage = self.config.confidence_reward_percentage
+        blended = advantages.clone()
+        num_groups = batch_size // num_generations
+        for group_idx in range(num_groups):
+            start = group_idx * num_generations
+            end = start + num_generations
+            group_estimated = mean_estimated_rewards[start:end]
+            group_std = (
+                statistics.stdev(group_estimated) if len(group_estimated) > 1 else 0.0
+            )
+            if group_std > self.config.minimum_confidence_std:
+                group_est_advantages = self._compute_advantages_from_rewards(
+                    group_estimated, num_generations
+                )
+                for i in range(num_generations):
+                    idx = start + i
+                    blended[idx] = (1 - percentage) * advantages[
+                        idx
+                    ] + percentage * group_est_advantages[i]
+        return blended
+
+    def _generate_and_score_completions(
+        self, inputs: list[dict[str, torch.Tensor | typing.Any]]
+    ) -> dict[str, torch.Tensor | typing.Any]:
+        self.answers = []
+        self.register_hook(unwrap_model=True)
+        output = super()._generate_and_score_completions(inputs)
+        device = output["advantages"].device
+        mask = output["completion_mask"].bool()
+
+        mean_estimated_rewards = self._compute_mean_estimated_rewards(mask)
+        rewards = [answer.reward for answer in self.answers]
+
+        output["mean_estimated_rewards"] = torch.tensor(
+            mean_estimated_rewards, device=device
+        )
+        output["rewards"] = torch.tensor(rewards, device=device)
+        output["sample_weights"] = torch.tensor(
+            self._compute_sample_weights(rewards, len(self.answers)), device=device
+        )
+
+        output["advantages"] = self._blend_advantages(
+            output["advantages"], mean_estimated_rewards
+        )
+
+        self._log_ordered_metrics(rewards, mean_estimated_rewards, self.answers)
+        self.remove_hook()
+        return output
+
+    def _compute_confidence_loss(self, inputs: dict[str, torch.Tensor]) -> torch.Tensor:
         if self.all_confidence_logits_excluding_last is None:
             raise ValueError
         estimated_rewards = get_confidence_token_logit_sigmoid(
@@ -238,13 +313,8 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         mask = inputs["completion_mask"].bool()
         sequence_lengths = mask.sum(dim=-1)
         maximum_sequence_length = estimated_rewards.shape[-1]
-        last_rewards = convert_tensor_to_list(inputs["rewards"])
         real_rewards = (
-            torch.tensor(last_rewards)
-            .unsqueeze(-1)
-            .expand(-1, maximum_sequence_length)
-            .to(estimated_rewards.device)
-            .float()
+            inputs["rewards"].unsqueeze(-1).expand(-1, maximum_sequence_length).float()
         )
         if mask.sum().item() == 0:
             raise ValueError
@@ -254,107 +324,10 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             )
             * mask
         )
-        sample_weights_tensor = inputs["sample_weights"]
         per_rollout_loss_weighted = (
             per_sample_loss_masked.sum(dim=-1) / sequence_lengths
-        ) * sample_weights_tensor
-        mean_rollout_loss = per_rollout_loss_weighted.mean()
-        mean_estimated_rewards_list = convert_tensor_to_list(
-            inputs["mean_estimated_rewards"]
-        )
-        binary_classification_metrics = compute_binary_classification_metrics(
-            last_rewards, mean_estimated_rewards_list
-        )
-        self.add_metrics(get_confidence_namespace(), binary_classification_metrics)
-        batch_answers = [self.answers[i] for i in indices]
-        answers_with_confidence = get_answers_with_confidence(
-            batch_answers,
-            mean_estimated_rewards_list
-            if self.is_confidence_trained()
-            else [get_default_confidence_score()] * len(batch_answers),
-        )
-        answer_metrics = compute_answer_metrics(
-            answers_with_confidence, self.config.temperature, num_generations=None
-        )
-        self.add_metrics(get_answer_namespace(), answer_metrics)
-        if self.eval_mode:
-            self.eval_binary_classification_metrics_inputs.append(
-                (last_rewards, mean_estimated_rewards_list)
-            )
-            self.eval_binary_classification_metrics_outputs.append(
-                binary_classification_metrics
-            )
-            self.eval_answer_metrics_inputs.append(
-                (
-                    answers_with_confidence,
-                    self.config.temperature,
-                    self.get_num_generations(),
-                )
-            )
-            self.eval_answer_metrics_outputs.append(answer_metrics)
-        return mean_rollout_loss
-
-    @staticmethod
-    def compute_advantages_from_rewards(
-        rewards: list[float],
-        num_generations: int,
-        eps: float = get_default_eps(),
-    ) -> list[float]:
-        """Compute normalized advantages from rewards, per-group."""
-        rewards_np = np.array(rewards)
-        num_groups = len(rewards) // num_generations
-        all_advantages = []
-        for group_idx in range(num_groups):
-            start_idx = group_idx * num_generations
-            end_idx = start_idx + num_generations
-            group_rewards = rewards_np[start_idx:end_idx]
-            group_advantages = (group_rewards - np.mean(group_rewards)) / (
-                float(np.std(group_rewards)) + eps
-            )
-            all_advantages.extend(group_advantages.tolist())
-        return all_advantages
-
-    def blend_advantages(
-        self,
-        inputs: dict[str, torch.Tensor],
-        indices: list[int],
-    ) -> None:
-        """Blend real advantages with estimated reward advantages per-group if stddev is above threshold."""
-        if not (
-            self.is_confidence_trained()
-            and self.config.use_confidence_reward
-            and (self.state.global_step >= self.config.confidence_loss_warmup_steps)
-        ):
-            return
-        mean_estimated_rewards = convert_tensor_to_list(
-            inputs["mean_estimated_rewards"]
-        )
-        num_generations = self.get_num_generations()
-        percentage = self.config.confidence_reward_percentage
-        blended_advantages = inputs["advantages"].clone()
-        original_groups = self.group_batch_by_original_groups(
-            indices, mean_estimated_rewards
-        )
-        for group_samples in original_groups.values():
-            if len(group_samples) != num_generations:
-                continue
-            group_samples_sorted = sorted(group_samples, key=lambda x: x[0])
-            batch_indices = [batch_idx for batch_idx, _ in group_samples_sorted]
-            group_estimated_rewards = [reward for _, reward in group_samples_sorted]
-            group_std = (
-                statistics.stdev(group_estimated_rewards)
-                if len(group_estimated_rewards) > 1
-                else 0.0
-            )
-            if group_std > self.config.minimum_confidence_std:
-                group_estimated_advantages = self.compute_advantages_from_rewards(
-                    group_estimated_rewards, num_generations
-                )
-                for i, batch_idx in enumerate(batch_indices):
-                    blended_advantages[batch_idx] = (1 - percentage) * inputs[
-                        "advantages"
-                    ][batch_idx] + percentage * group_estimated_advantages[i]
-        inputs["advantages"] = blended_advantages
+        ) * inputs["sample_weights"]
+        return per_rollout_loss_weighted.mean()
 
     def compute_loss(
         self,
@@ -364,7 +337,6 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         num_items_in_batch: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Compute the combined GRPO loss and confidence loss."""
-        indices = list(map(int, convert_tensor_to_list(inputs["indices"])))
         self.register_hook(unwrap_model=False)
         grpo_loss = typing.cast(
             "torch.Tensor",
@@ -375,8 +347,8 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
                 num_items_in_batch=num_items_in_batch,
             ),
         )
-        confidence_loss = self.confidence_loss_factor * self.get_confidence_loss(
-            inputs, indices
+        confidence_loss = self.confidence_loss_factor * self._compute_confidence_loss(
+            inputs
         )
         self.remove_hook()
         total_loss = grpo_loss + confidence_loss
@@ -405,10 +377,6 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         self.eval_answer_metrics_inputs.clear()
         self.eval_answer_metrics_outputs.clear()
 
-    def is_confidence_trained(self) -> bool:
-        """Check if the confidence loss is being used for training."""
-        return self.confidence_loss_factor > 0.0
-
     def evaluate(
         self,
         eval_dataset: Dataset | dict[str, Dataset] | None = None,
@@ -416,12 +384,11 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         metric_key_prefix: str = "eval",
     ) -> dict[str, float]:
         """Evaluate the model and return evaluation metrics."""
-        self.save_model_to_eval_folder(metric_key_prefix)
-        self.load_model_from_eval_folder(metric_key_prefix)
+        self._save_checkpoint_to_disk(metric_key_prefix)
         self.eval_mode = True
         eval_output = super().evaluate(eval_dataset, ignore_keys, metric_key_prefix)
         self.eval_mode = False
-        self.merge_eval_metrics(metric_key_prefix)
+        self._merge_eval_metrics(metric_key_prefix)
         self.clear_eval_inputs_and_outputs()
         return eval_output
 
@@ -431,8 +398,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             return "base"
         return self.config.get_config_shorthand()
 
-    def get_model_output_dir(self, model_identifier: str) -> pathlib.Path:
-        """Get the model output directory for saving/loading."""
+    def _get_model_output_dir(self, model_identifier: str) -> pathlib.Path:
         shorthand = self.get_config_shorthand()
         standardized_hf_model_id = (
             self.config.hf_model_id.replace("/", "_")
@@ -440,53 +406,33 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             .replace(".", "_")
             .lower()
         )
-        model_output_dir = (
+        return (
             get_evaluation_metric_dir()
             / f"{standardized_hf_model_id}_{model_identifier}_{shorthand}"
         )
-        return model_output_dir
 
-    def save_model_to_eval_folder(
-        self,
-        model_identifier: str,
-    ) -> None:
-        """Save the model to disk."""
-        model_output_dir = self.get_model_output_dir(model_identifier)
+    def _save_checkpoint_to_disk(self, model_identifier: str) -> None:
+        model_output_dir = self._get_model_output_dir(model_identifier)
         shutil.rmtree(model_output_dir, ignore_errors=True)
         model_output_dir.mkdir(parents=True, exist_ok=True)
         self.save_model(str(model_output_dir))
 
-    def load_model_from_eval_folder(self, model_identifier: str) -> None:
-        """Load the model from disk."""
-        model_output_dir = self.get_model_output_dir(model_identifier)
-        if self.config.enable_lora:
-            peft_model = typing.cast("PeftModel", self.model)
-            adapter_name = f"adapter_{model_identifier}"
-            peft_model.load_adapter(str(model_output_dir), adapter_name=adapter_name)
-            peft_model.set_adapter(adapter_name)
-        else:
-            self.model = typing.cast("PreTrainedModel", self.model).from_pretrained(
-                model_output_dir
-            )
-
-    def merge_eval_metrics(self, metric_key_prefix: str) -> None:
-        """Merge evaluation metrics from multiple evaluation runs."""
-        concatenated_eval_binary_classification_metrics_inputs = tuple(
+    def _merge_eval_metrics(self, metric_key_prefix: str) -> None:
+        concatenated_bc_inputs = tuple(
             list(chain.from_iterable(x))
             for x in zip(*self.eval_binary_classification_metrics_inputs, strict=True)
         )
-        concatenated_eval_binary_classification_metrics_outputs = change_metric_keys(
+        concatenated_bc_outputs = change_metric_keys(
             compute_binary_classification_metrics(
-                *concatenated_eval_binary_classification_metrics_inputs  # type: ignore[arg-type]
+                *concatenated_bc_inputs  # type: ignore[arg-type]
             ),
             prefix=(metric_key_prefix, get_confidence_namespace()),
-            postfix=(),
         )
-        aggregated_eval_binary_classification_metrics_outputs = change_metric_keys(
+        aggregated_bc_outputs = change_metric_keys(
             aggregate_metrics(self.eval_binary_classification_metrics_outputs),
             prefix=(metric_key_prefix, get_confidence_namespace()),
-            postfix=(),
         )
+
         answers_with_confidence, temperatures, num_generations_list = zip(
             *self.eval_answer_metrics_inputs, strict=True
         )
@@ -496,57 +442,49 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             raise ValueError
         temperature = temperatures[0]
         num_generations = num_generations_list[0]
-        concatenated_eval_answer_metrics_inputs = (
-            list(chain.from_iterable(answers_with_confidence)),
-            temperature,
-            num_generations,
-        )
-        concatenated_eval_answer_metrics_outputs = change_metric_keys(
-            compute_answer_metrics(*concatenated_eval_answer_metrics_inputs),
+
+        concatenated_answer_outputs = change_metric_keys(
+            compute_answer_metrics(
+                list(chain.from_iterable(answers_with_confidence)),
+                temperature,
+                num_generations,
+            ),
             prefix=(metric_key_prefix, get_answer_namespace()),
-            postfix=(),
         )
-        aggregated_eval_answer_metrics_outputs = change_metric_keys(
+        aggregated_answer_outputs = change_metric_keys(
             aggregate_metrics(self.eval_answer_metrics_outputs),
             prefix=(metric_key_prefix, get_answer_namespace()),
-            postfix=(),
         )
-        concatenated_eval_binary_classification_metrics_df = get_df_from_metrics(
-            concatenated_eval_binary_classification_metrics_outputs
-        )
+
         shorthand = self.get_config_shorthand()
-        store_eval_df(
-            get_eval_metrics_df_name(
-                metric_key_prefix, is_aggregated=False, is_bc=True
-            ),
-            concatenated_eval_binary_classification_metrics_df,
+        self._store_eval_metrics(
+            metric_key_prefix,
             shorthand,
+            concatenated_bc_outputs,
+            aggregated_bc_outputs,
+            concatenated_answer_outputs,
+            aggregated_answer_outputs,
         )
-        aggregated_eval_binary_classification_metrics_df = get_df_from_metrics(
-            aggregated_eval_binary_classification_metrics_outputs
-        )
-        store_eval_df(
-            get_eval_metrics_df_name(metric_key_prefix, is_aggregated=True, is_bc=True),
-            aggregated_eval_binary_classification_metrics_df,
-            shorthand,
-        )
-        concatenated_eval_answer_metrics_df = get_df_from_metrics(
-            concatenated_eval_answer_metrics_outputs
-        )
-        store_eval_df(
-            get_eval_metrics_df_name(
-                metric_key_prefix, is_aggregated=False, is_bc=False
-            ),
-            concatenated_eval_answer_metrics_df,
-            shorthand,
-        )
-        aggregated_eval_answer_metrics_df = get_df_from_metrics(
-            aggregated_eval_answer_metrics_outputs
-        )
-        store_eval_df(
-            get_eval_metrics_df_name(
-                metric_key_prefix, is_aggregated=True, is_bc=False
-            ),
-            aggregated_eval_answer_metrics_df,
-            shorthand,
-        )
+
+    @staticmethod
+    def _store_eval_metrics(
+        prefix: str,
+        shorthand: str,
+        concat_bc: dict[tuple[str, ...], float],
+        agg_bc: dict[tuple[str, ...], float],
+        concat_answer: dict[tuple[str, ...], float],
+        agg_answer: dict[tuple[str, ...], float],
+    ) -> None:
+        for is_aggregated, is_bc, data in [
+            (False, True, concat_bc),
+            (True, True, agg_bc),
+            (False, False, concat_answer),
+            (True, False, agg_answer),
+        ]:
+            store_eval_df(
+                get_eval_metrics_df_name(
+                    prefix, is_aggregated=is_aggregated, is_bc=is_bc
+                ),
+                get_df_from_metrics(data),
+                shorthand,
+            )
