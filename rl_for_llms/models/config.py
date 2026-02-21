@@ -1,3 +1,4 @@
+import time
 from typing import Literal
 
 from peft import TaskType
@@ -27,6 +28,7 @@ from rl_for_llms.utils.torch_utils import (
 class Config(BaseModel):
     """Configuration for the program."""
 
+    started_at: float = Field(default_factory=time.time)
     hf_model_id: str = Field(
         default=get_cuda_default_value(
             "Qwen/Qwen2.5-3B-Instruct", "Qwen/Qwen2.5-0.5B-Instruct"

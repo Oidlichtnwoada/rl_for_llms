@@ -46,6 +46,18 @@ def get_evaluation_metric_dir() -> pathlib.Path:
     return get_evaluation_data_dir() / "metrics"
 
 
+def delete_csv_files_in_evaluation_metric_dir(
+    created_before: float | None = None,
+) -> None:
+    """Delete CSV files in the evaluation metrics directory, optionally only those modified before the given timestamp."""
+    metric_dir = get_evaluation_metric_dir()
+    if not metric_dir.is_dir():
+        return
+    for csv_file in metric_dir.glob("*.csv"):
+        if created_before is None or csv_file.stat().st_mtime < created_before:
+            csv_file.unlink()
+
+
 def get_evaluation_final_dir() -> pathlib.Path:
     """Return the final evaluation data directory path."""
     return get_evaluation_data_dir() / "final"

@@ -45,7 +45,10 @@ from rl_for_llms.utils.evaluation_utils import (
 )
 from rl_for_llms.utils.group_utils import iter_groups
 from rl_for_llms.utils.llm_utils import get_confidence_token_id
-from rl_for_llms.utils.path_utils import get_evaluation_metric_dir
+from rl_for_llms.utils.path_utils import (
+    delete_csv_files_in_evaluation_metric_dir,
+    get_evaluation_metric_dir,
+)
 from rl_for_llms.utils.reward_utils import get_class_weights_for_single_group
 from rl_for_llms.utils.torch_utils import convert_tensor_to_list, get_mode
 
@@ -377,6 +380,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         metric_key_prefix: str = "eval",
     ) -> dict[str, float]:
         """Evaluate the model and return evaluation metrics."""
+        delete_csv_files_in_evaluation_metric_dir(self.config.started_at)
         self._save_checkpoint_to_disk(metric_key_prefix)
         self.eval_mode = True
         eval_output = super().evaluate(eval_dataset, ignore_keys, metric_key_prefix)
