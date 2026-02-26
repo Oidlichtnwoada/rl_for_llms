@@ -240,6 +240,14 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             all_advantages.extend(group_advantages.tolist())
         return all_advantages
 
+    def _get_total_samples_processed(self) -> int:
+        """Return the total number of samples processed based on the global step and config."""
+        return (
+            self.state.global_step
+            * self.config.gradient_accumulation_steps
+            * self.config.per_device_rollouts_per_batch
+        )
+
     def _blend_advantages(
         self,
         advantages: torch.Tensor,
@@ -248,7 +256,10 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         if not (
             self.is_confidence_trained()
             and self.config.use_confidence_reward
-            and (self.state.global_step >= self.config.confidence_loss_warmup_steps)
+            and (
+                self._get_total_samples_processed()
+                >= self.config.confidence_loss_warmup_samples
+            )
         ):
             return advantages
         num_generations = self.get_num_generations()
