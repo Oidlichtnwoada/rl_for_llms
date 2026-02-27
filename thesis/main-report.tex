@@ -184,7 +184,7 @@ The core component is the \texttt{ConfidenceGRPOTrainer}, a custom subclass of \
 					\foreach \x in {0.3, 0.6, 0.9} \draw (\x, 0.20) -- (\x, 0.35);
 					\draw[fill=gray!30, rounded corners=1pt] (0, -0.05) rectangle (2.7, 0.10);
 					\foreach \x in {0.3, 0.6, 0.9, 1.2, 1.5, 1.8, 2.1, 2.4} \draw (\x, -0.05) -- (\x, 0.10);
-				}\\Variable Lengths};
+				}\\[2pt]\small{Variable Token Amounts}};
 
 			% External Verifier (Separated text and inner boxes for clean layout)
 			\node[box, fill=red!5, minimum height=2.6cm, text width=4.5cm] (ext) at (0, -10.5) {};
@@ -267,8 +267,8 @@ The core component is the \texttt{ConfidenceGRPOTrainer}, a custom subclass of \
 			\node[anchor=south] at (3.0, -22.9) {Advantages $A_i$};
 
 			% Correctness ONLY to BCE Validation (Elegant routing entering from the right)
-			\draw[arr] (corr.east) -- (18.2, -11.35) |- (loss_conf.east);
-			\node[anchor=south] at (11.0, -11.35) {Targets $r_{c,i}$};
+			\draw[arr] (corr.east) -- (5.0, -11.35) -- (5.0, -13.2) -- (18.2, -13.2) |- (loss_conf.east);
+			\node[anchor=south] at (3.5, -11.35) {Targets $r_{c,i}$};
 
 			% Hook2 to BCE Validation
 			\draw[arr] (hook2.south) -- (loss_conf.north);
