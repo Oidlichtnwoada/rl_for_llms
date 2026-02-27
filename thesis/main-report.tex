@@ -331,20 +331,13 @@ Each training run was carried out on a single \textbf{NVIDIA Quadro GV100} GPU w
 
 \subsection{Software Stack and Tooling}
 \label{sec:software}
-At the time of execution, all Python and library dependencies were set to the latest available versions. The project dependencies are specified declaratively in the repository's \texttt{pyproject.toml} and reproduced below for reference:
-
-\lstinputlisting[
-	firstline=1,
-	lastline=20,
-	caption={Project dependencies from \texttt{pyproject.toml}. All versions were the latest available at the time of execution.},
-	label={lst:deps}
-]{../pyproject.toml}
+At the time of execution, all Python and library dependencies were set to the latest available versions. The complete project configuration is reproduced in \autoref{app:pyproject}.
 
 \textbf{Experiment Tracking.} We used \textit{Weights \& Biases} (\texttt{wandb}) to log all training metrics, loss curves, and generated completions. This tooling was instrumental for debugging training dynamics and iteratively tuning hyperparameters to stable configurations, such as identifying the critical sensitivity of $\beta_{\mathrm{conf}}$ described in \autoref{sec:conf_loss_sensitivity}.
 
 \subsubsection{Note on vLLM}
 \label{sec:vllm}
-We chose not to use \texttt{vLLM} for inference acceleration, despite its potential throughput benefits. A primary motivation for this decision was the desire to work with the newest versions of all libraries and Python itself: \texttt{vLLM} is notably slow in updating its dependencies to newer versions, and at the time of execution, it was incompatible with the library versions listed in Listing~\ref{lst:deps}. Additionally, \texttt{vLLM} lacks full support for Metal Performance Shaders (\textit{MPS}) required for local debugging on macOS. While the \texttt{LogitsProcessor} interface of \texttt{vLLM} could in principle be used to extract confidence logits during rollout generation, no gradient flow is possible through the inference engine, necessitating a separate PyTorch forward pass for training in any case.
+We chose not to use \texttt{vLLM} for inference acceleration, despite its potential throughput benefits. A primary motivation for this decision was the desire to work with the newest versions of all libraries and Python itself: \texttt{vLLM} is notably slow in updating its dependencies to newer versions, and at the time of execution, it was incompatible with the library versions listed in \autoref{app:pyproject}. Additionally, \texttt{vLLM} lacks full support for Metal Performance Shaders (\textit{MPS}) required for local debugging on macOS. While the \texttt{LogitsProcessor} interface of \texttt{vLLM} could in principle be used to extract confidence logits during rollout generation, no gradient flow is possible through the inference engine, necessitating a separate PyTorch forward pass for training in any case.
 
 \section{Results and Interpretation}
 \label{sec:results}
@@ -547,6 +540,19 @@ Table~\ref{tab:hyperparams} lists all hyperparameters referenced in the text by 
 		\bottomrule
 	\end{tabular}
 \end{table}
+
+\cleardoubleoddpage
+
+\section{Project Configuration}
+\label{app:pyproject}
+
+Listing~\ref{lst:pyproject} reproduces the complete \texttt{pyproject.toml} used in all experiments. All dependency versions were the latest available at the time of execution.
+
+\lstinputlisting[
+	language={},
+	caption={Complete \texttt{pyproject.toml} project configuration.},
+	label={lst:pyproject}
+]{../pyproject.toml}
 
 \cleardoubleoddpage
 
