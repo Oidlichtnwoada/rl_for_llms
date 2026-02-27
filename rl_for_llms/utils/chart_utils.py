@@ -77,11 +77,11 @@ def configure_matplotlib_fonts() -> None:
             "font.serif": ["Merriweather", "DejaVu Serif", "Times New Roman"],
             "font.sans-serif": ["Public Sans", "DejaVu Sans", "Helvetica"],
             "mathtext.fontset": "dejavuserif",
-            "axes.titlesize": 12,
-            "axes.labelsize": 10,
-            "xtick.labelsize": 9,
-            "ytick.labelsize": 9,
-            "legend.fontsize": 9,
+            "axes.titlesize": 11,
+            "axes.labelsize": 9,
+            "xtick.labelsize": 8,
+            "ytick.labelsize": 8,
+            "legend.fontsize": 8,
         }
     )
 
@@ -176,7 +176,7 @@ def add_bar_labels(
                 label_text,
                 ha="center",
                 va="bottom",
-                fontsize=6,
+                fontsize=5,
             )
 
 
