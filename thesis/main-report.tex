@@ -173,11 +173,11 @@ The core component is the \texttt{ConfidenceGRPOTrainer}, a custom subclass of \
 				dasharr/.style={thick, ->, dashed},
 			]
 			% Center elements
-			\node[db] (dataset) at (7, 3.5) {\textbf{\texttt{GSM8K} Dataset}\\Prompts $q$};
+			\node[db] (dataset) at (7, 3.5) {\textbf{Dataset}\\Prompts $q$, Answers $a$};
 
 			% Left column: Generation
-			\node[box, fill=blue!5] (policy1) at (0, 0) {\textbf{\textit{LLM} Policy}\\1. Generation Phase\\(No Gradients)};
-			\node[box] (traj) at (0, -5.5) {\textbf{Sampled Trajectories}\\2. $\{o_1, \dots, o_G\}$\\[4pt] \tikz[baseline=0ex]{
+			\node[box, fill=blue!5] (policy1) at (0, 0) {\textbf{\textit{LLM} Policy}\\Generation Phase\\(No Gradients)};
+			\node[box] (traj) at (0, -5.5) {\textbf{Sampled Trajectories}\\$\{o_1, \dots, o_G\}$\\[4pt] \tikz[baseline=0ex]{
 					\draw[fill=gray!30, rounded corners=1pt] (0, 0.45) rectangle (2.2, 0.60);
 					\draw[fill=gray!30, rounded corners=1pt] (0, 0.20) rectangle (1.4, 0.35);
 					\draw[fill=gray!30, rounded corners=1pt] (0, -0.05) rectangle (2.8, 0.10);
@@ -185,7 +185,7 @@ The core component is the \texttt{ConfidenceGRPOTrainer}, a custom subclass of \
 
 			% External Verifier (Separated text and inner boxes for clean layout)
 			\node[box, fill=red!5, minimum height=2.6cm, text width=4.5cm] (ext) at (0, -10.5) {};
-			\node[align=center] at ($(ext.north) + (0, -0.6)$) {\textbf{External Verifier}\\4a. Evaluate Trace};
+			\node[align=center] at ($(ext.north) + (0, -0.6)$) {\textbf{External Verifier}\\Evaluate Trace};
 
 			% Inner Verifier Sub-blocks inside ext node
 			\node[draw, rectangle, fill=white, rounded corners=2pt, minimum height=0.55cm, minimum width=1.9cm, align=center] (form) at ($(ext.south) + (-1.05, 0.45)$) {\scriptsize Format};
@@ -195,27 +195,27 @@ The core component is the \texttt{ConfidenceGRPOTrainer}, a custom subclass of \
 			\node[draw, circle, inner sep=2pt, fill=white] (plus) at (0, -13.1) {$+$};
 
 			% Right column: Generation
-			\node[box, fill=orange!5, text width=4.5cm] (hook1) at (14, 0) {\textbf{\texttt{lm\_head} Forward Hook}\\3. Capture Logits $l_{i,t}^{\text{conf}}$ at every step};
+			\node[box, fill=orange!5, text width=4.5cm] (hook1) at (14, 0) {\textbf{Forward Hook}\\Capture Logits $l_{i,t}^{\text{conf}}$ at every step};
 
 			% Internal Verifier (Same exact size as External Verifier)
 			\node[box, fill=red!5, minimum height=2.6cm, text width=4.5cm] (int) at (14, -10.5) {};
-			\node[align=center] at ($(int.north) + (0, -0.9)$) {\textbf{Internal Verifier}\\[4pt]4b. Sigmoid Transformation\\[4pt]$\Rightarrow$ Mean Confidence $\bar{c}_i$};
+			\node[align=center] at ($(int.north) + (0, -1.0)$) {\textbf{Internal Verifier}\\[4pt]Sigmoid Transformation\\[4pt]$\bar{c}_i = \frac{1}{T_i}\sum_{t=1}^{T_i} c_{i,t}$};
 
 			% Center lower elements: Advantage
-			\node[box, fill=purple!5, text width=6cm] (adv) at (7, -15.5) {\textbf{\textit{GRPO} Advantage Computation}\\5. Blending: $r_i$ and optionally $\bar{c}_i$\\$\Rightarrow$ Blended Advantage $A_i$};
+			\node[box, fill=purple!5, text width=6cm] (adv) at (7, -15.5) {\textbf{\textit{RL} Advantage Computation}\\Blending: $r_i$ and optionally $\bar{c}_i$\\$\Rightarrow$ Blended Advantage $A_i$};
 
 			% Left Column lower: Policy 2
-			\node[box, fill=blue!5, text width=4.5cm] (policy2) at (0, -19.5) {\textbf{\textit{LLM} Policy}\\6. Re-evaluation Phase\\(With Gradients)};
+			\node[box, fill=blue!5, text width=4.5cm] (policy2) at (0, -19.5) {\textbf{\textit{LLM} Policy}\\Re-evaluation Phase\\(With Gradients)};
 
 			% Right component: Hook2
-			\node[box, fill=orange!5, text width=4.5cm] (hook2) at (14, -19.5) {\textbf{\texttt{lm\_head} Forward Hook}\\7. Capture Logits $l_{i,t}^{\text{conf}}$ at every step};
+			\node[box, fill=orange!5, text width=4.5cm] (hook2) at (14, -19.5) {\textbf{Forward Hook}\\Capture Logits $l_{i,t}^{\text{conf}}$ at every step};
 
 			% Bottom row: Losses
-			\node[box, fill=yellow!5, text width=4.5cm] (loss_grpo) at (0, -24.5) {\textbf{\textit{GRPO} Surrogate Loss}\\8a. Maximize Policy\\$\mathcal{J}(\theta)$};
-			\node[box, fill=yellow!5, text width=4.5cm] (loss_conf) at (14, -24.5) {\textbf{\textit{BCE} Confidence Loss}\\8b. Train Predictor\\$L_{\text{conf}}(\theta)$};
+			\node[box, fill=yellow!5, text width=4.5cm] (loss_rl) at (0, -24.5) {\textbf{\textit{RL} Surrogate Loss}\\Maximize Policy\\$\mathcal{J}(\theta)$};
+			\node[box, fill=yellow!5, text width=4.5cm] (loss_conf) at (14, -24.5) {\textbf{\textit{BCE} Confidence Loss}\\Train Predictor\\$L_{\text{conf}}(\theta)$};
 
 			% Final Update
-			\node[box, fill=green!5, text width=7.0cm] (update) at (7, -29.0) {\textbf{Loss \& Gradient Descent Update}\\9. $-\mathcal{J}(\theta) + \beta_{\text{conf}} L_{\text{conf}}(\theta)$\\$\longrightarrow$ \textbf{Update} $\Delta \theta$};
+			\node[box, fill=green!5, text width=7.0cm] (update) at (7, -29.0) {\textbf{Loss \& Gradient Descent Update}\\$-\mathcal{J}(\theta) + \beta_{\text{conf}} L_{\text{conf}}(\theta)$\\$\longrightarrow$ \textbf{Update} $\Delta \theta$};
 
 			% ---------------- EDGES ----------------
 
@@ -227,16 +227,25 @@ The core component is the \texttt{ConfidenceGRPOTrainer}, a custom subclass of \
 
 			\draw[arr] (traj.south) -- (ext.north);
 			\draw[arr] (hook1.south) -- (int.north);
+			\node[anchor=west] at (14, -5.5) {Captured Logits};
+
+			% Dataset expected answer to correctness
+			\draw[arr, dashed, color=black!60] (dataset.west) -- (3.3, 3.5) -- (3.3, -9.5) -| (corr.north);
+			\node[anchor=west, text=black!60, align=left] at (3.3, -2) {Expected\\Answer $a$};
 
 			% Sub-blocks to Plus fork
 			\draw[arr] (form.south) |- (plus.west);
+			\node[anchor=north] at (-0.55, -13.1) {\scriptsize $r_{f,i}$};
+
 			\draw[arr] (corr.south) |- (plus.east);
+			\node[anchor=north] at (0.55, -13.1) {\scriptsize $r_{c,i}$};
 
 			% Verifiers to Advantage
 			\draw[arr] (plus.south) |- (adv.west);
-			\node[anchor=south, fill=white, inner sep=1pt] at (3.5, -15.5) {$r_i$};
+			\node[anchor=south, fill=white, inner sep=1pt] at (2.0, -15.5) {$r_i$};
 
 			\draw[arr] (int.south) |- (adv.east);
+			\node[anchor=south, fill=white, inner sep=1pt] at (12.0, -15.5) {$\bar{c}_i$};
 
 			% Trajectory logic loop (Far-left routing)
 			\draw[arr] (traj.west) -- (-3.2, -5.5) -- (-3.2, -19.5) -- (policy2.west);
@@ -246,24 +255,24 @@ The core component is the \texttt{ConfidenceGRPOTrainer}, a custom subclass of \
 			\draw[dasharr] (policy2.east) -- (hook2.west);
 			\node[anchor=south] at (7, -19.3) {Forward Pass Extraction};
 
-			% Policy 2 to Loss GRPO
-			\draw[arr] (policy2.south) -- (loss_grpo.north);
+			% Policy 2 to Loss RL
+			\draw[arr] (policy2.south) -- (loss_rl.north);
 			\node[anchor=east] at (-0.1, -22) {Logprobs $\pi_\theta(o|q)$};
 
-			% Advantage to Loss GRPO
-			\draw[arr] (adv.south) -- (7, -23.1) -- (1.5, -23.1) -- ([xshift=1.5cm]loss_grpo.north);
+			% Advantage to Loss RL
+			\draw[arr] (adv.south) -- (7, -23.1) -- (1.5, -23.1) -- ([xshift=1.5cm]loss_rl.north);
 			\node[anchor=south] at (4.5, -22.9) {Advantages $A_i$};
 
-			% Correctness ONLY to BCE Validation (Elegant top right routing to minimize crossings)
-			\draw[arr] (corr.east) -- (2.5, -11.35) -- (2.5, -13.5) -- (10.8, -13.5) -- (10.8, -21.5) -- (13.5, -21.5) -- ([xshift=-0.5cm]loss_conf.north);
-			\node[anchor=south] at (6.6, -13.4) {Targets $r_i$ (Correctness Only)};
+			% Correctness ONLY to BCE Validation (Elegant top right routing to minimize crossings, slightly more right)
+			\draw[arr] (corr.east) -- (11.4, -11.35) -- (11.4, -21.5) -- (13.5, -21.5) -- ([xshift=-0.5cm]loss_conf.north);
+			\node[anchor=south] at (6.5, -11.35) {Targets $r_{c,i}$};
 
 			% Hook2 to BCE Validation
 			\draw[arr] (hook2.south) -- (loss_conf.north);
-			\node[anchor=west] at (14.2, -22) {Recaptured Logits};
+			\node[anchor=west] at (14, -22) {Captured Logits};
 
 			% Final losses to update
-			\draw[arr] (loss_grpo.south) |- (update.west);
+			\draw[arr] (loss_rl.south) |- (update.west);
 			\draw[arr] (loss_conf.south) |- (update.east);
 		\end{tikzpicture}
 	}
