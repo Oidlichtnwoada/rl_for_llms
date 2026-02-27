@@ -70,6 +70,16 @@ def get_confidence_answer_metrics() -> tuple[str, ...]:
     )
 
 
+def get_variant_color_map() -> dict[Variant, str]:
+    """Return a mapping from variant to consistent color string."""
+    return {
+        Variant.BASE: "C0",
+        Variant.GRPO: "C1",
+        Variant.ONLY_CONFLOSS: "C2",
+        Variant.WITH_CONFREW: "C3",
+    }
+
+
 def configure_matplotlib_fonts() -> None:
     """Configure matplotlib fonts to match the LaTeX report."""
     font_families = get_chart_font_families()
@@ -231,6 +241,7 @@ def create_answer_accuracy_chart(*, add_stddev_to_label: bool = False) -> None:
         v: load_agg_metrics_from_csv(v, "answer", all_metric_keys) for v in variants
     }
 
+    color_map = get_variant_color_map()
     _, ax = plt.subplots(figsize=(14, 7))
     width = 0.18
     all_max_values = []
@@ -247,7 +258,11 @@ def create_answer_accuracy_chart(*, add_stddev_to_label: bool = False) -> None:
         ]
         all_max_values.extend(means)
         bars = ax.bar(
-            x_common + offsets[i] * width, means, width, label=variant.get_shorthand()
+            x_common + offsets[i] * width,
+            means,
+            width,
+            label=variant.get_shorthand(),
+            color=color_map[variant],
         )
         add_bar_labels(ax, bars, means, stds, add_stddev=add_stddev_to_label)
 
@@ -268,7 +283,7 @@ def create_answer_accuracy_chart(*, add_stddev_to_label: bool = False) -> None:
                     x_pos + conf_offsets[i] * width,
                     mean,
                     width,
-                    color=f"C{variants.index(variant)}",
+                    color=color_map[variant],
                 )
                 add_bar_labels(ax, bar, [mean], [std], add_stddev=add_stddev_to_label)
 
@@ -309,6 +324,7 @@ def create_confidence_chart() -> None:
 
     all_metrics = {v: load_all_concat_metrics_from_csv(v, "bc") for v in variants}
 
+    color_map = get_variant_color_map()
     _, ax = plt.subplots(figsize=(14, 7))
     width = 0.25
     x = np.arange(len(percentage_keys))
@@ -325,7 +341,13 @@ def create_confidence_chart() -> None:
             mcc_value = metrics[mcc_key]
             legend_label = f"{legend_label} (MCC: {mcc_value:.2f})"
 
-        bars = ax.bar(x + offsets[i] * width, means, width, label=legend_label)
+        bars = ax.bar(
+            x + offsets[i] * width,
+            means,
+            width,
+            label=legend_label,
+            color=color_map[variant],
+        )
         add_bar_labels(ax, bars, means, [0.0] * len(means))
 
     labels = [format_metric_label(k) for k in percentage_keys]
