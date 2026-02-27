@@ -312,12 +312,12 @@ The validity of the intrinsic signal depends on the model's ability to accuratel
 
 \subsection{Dataset and Preprocessing}
 \label{sec:dataset}
-We utilize the \texttt{GSM8K} (Grade School Math 8K) dataset \citep{gsm8k}, a widely-used benchmark for evaluating the mathematical reasoning capabilities of language models. The dataset comprises grade-school-level math word problems requiring multi-step arithmetic reasoning. The full training split contains $7{,}473$ samples. After length filtering, the effective training set was $7{,}012$ samples, and the evaluation set was $512$ samples.
+We utilize the \texttt{GSM8K} (Grade School Math 8K) dataset \citep{gsm8k}, a widely-used benchmark for evaluating the mathematical reasoning capabilities of language models. The dataset comprises grade-school-level math word problems requiring multi-step arithmetic reasoning. The full training split contains $7{,}473$ samples and the full evaluation split contains $1{,}319$ samples. After length filtering, the effective training set was $7{,}012$ samples, and the effective evaluation set was $512$ samples.
 
 We apply the following preprocessing:
 \begin{itemize}
 	\item \textbf{Prompt Formatting.} Each problem is wrapped in the chat template of the target \textit{LLM} (\textit{user} and \textit{system} roles). The system message instructs the model to reason step by step and enclose the final answer in a \texttt{\textbackslash boxed\{\}} command. The last boxed expression is extracted as the prediction for the \texttt{math-verify} library, avoiding any stochastic reward model.
-	\item \textbf{Length Filtering.} Prompts exceeding $T_{\mathrm{prompt}}$ tokens (including the system message) are removed to ensure all generations fit within the compute budget. This filter is applied identically to training and evaluation splits, resulting in an effective training set size $N_{\mathrm{train}} < 7{,}473$.
+	\item \textbf{Length Filtering.} Prompts exceeding $T_{\mathrm{prompt}}$ tokens (including the system message) are removed to ensure all generations fit within the compute budget. This filter is applied identically to training and evaluation splits, resulting in an effective training set size $N_{\mathrm{train}} < 7{,}473$ and an effective evaluation set size $N_{\mathrm{eval}} < 1{,}319$.
 	\item \textbf{Answer Extraction.} For \texttt{GSM8K}, the ground-truth answer is extracted from the dataset's annotation format (\texttt{\#\#\#\# <answer>}).
 \end{itemize}
 The maximum generation length is restricted to $T_{\mathrm{gen}}$ tokens.
@@ -510,8 +510,8 @@ Future research should investigate (i) scaling to frontier-class models to evalu
 		\midrule
 		\multicolumn{4}{l}{\textit{Dataset}}                                                                                                                 \\
 		Dataset                   & Dataset                                & \texttt{GSM8K} \citep{gsm8k}        &                                           \\
-		$N_{\mathrm{train}}$      & Training Set Size (after filtering)    & $7{,}012$                           &                                           \\
-		$N_{\mathrm{eval}}$       & Evaluation Set Size                    & $512$                               &                                           \\
+		$N_{\mathrm{train}}$      & Training Set Size (after length filtering) & $7{,}012$                           &                                           \\
+		$N_{\mathrm{eval}}$       & Evaluation Set Size (after length filtering) & $512$                               &                                           \\
 		$T_{\mathrm{prompt}}$     & Max Prompt Length (incl.\ system msg.) & $128$ tokens                        &                                           \\
 		$T_{\mathrm{gen}}$        & Max Completion Length                  & $1{,}024$ tokens                    &                                           \\
 	\end{longtable}
