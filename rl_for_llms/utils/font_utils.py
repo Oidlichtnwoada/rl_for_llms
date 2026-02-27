@@ -3,12 +3,12 @@ from matplotlib import font_manager
 from rl_for_llms.utils.path_utils import get_thesis_fonts_dir
 
 
-def get_thesis_font_families() -> dict[str, list[str]]:
-    """Return the default thesis font families for serif, sans-serif, and monospace."""
+def get_chart_font_families() -> dict[str, list[str]]:
+    """Return Computer Modern font families for chart rendering."""
     return {
-        "serif": ["Merriweather", "DejaVu Serif", "Times New Roman"],
-        "sans-serif": ["Public Sans", "DejaVu Sans", "Helvetica"],
-        "monospace": ["Inconsolata", "DejaVu Sans Mono"],
+        "serif": ["cmr10"],
+        "sans-serif": ["cmss10"],
+        "monospace": ["cmtt10"],
     }
 
 

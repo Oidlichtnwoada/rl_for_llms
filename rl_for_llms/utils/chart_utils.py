@@ -14,7 +14,7 @@ from rl_for_llms.utils.constant_utils import (
     get_eval_after_train_prefix,
     get_eval_before_train_prefix,
 )
-from rl_for_llms.utils.font_utils import get_thesis_font_families, load_thesis_fonts
+from rl_for_llms.utils.font_utils import get_chart_font_families
 from rl_for_llms.utils.path_utils import get_charts_dir, get_evaluation_final_dir
 
 
@@ -72,15 +72,15 @@ def get_confidence_answer_metrics() -> tuple[str, ...]:
 
 def configure_matplotlib_fonts() -> None:
     """Configure matplotlib fonts to match the LaTeX report."""
-    load_thesis_fonts()
-    font_families = get_thesis_font_families()
+    font_families = get_chart_font_families()
     plt.rcParams.update(
         {
             "font.family": "serif",
             "font.serif": font_families["serif"],
             "font.sans-serif": font_families["sans-serif"],
             "font.monospace": font_families["monospace"],
-            "mathtext.fontset": "dejavuserif",
+            "mathtext.fontset": "cm",
+            "axes.formatter.use_mathtext": True,
             "axes.titlesize": 11,
             "axes.labelsize": 9,
             "xtick.labelsize": 8,
