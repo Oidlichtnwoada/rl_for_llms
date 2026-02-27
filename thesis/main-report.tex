@@ -51,6 +51,7 @@
 \usepackage{multirow}
 \usepackage{pdflscape}
 \usepackage{caption}
+\usepackage{longtable}
 
 \lstset{
 	basicstyle=\ttfamily\footnotesize,
@@ -464,19 +465,25 @@ Future research should investigate (i) scaling to frontier-class models to evalu
 \appendix
 \clearpage
 
-\section{Hyperparameters}
-\label{app:hyperparams}
+\begin{landscape}
+	\section{Hyperparameters}
+	\label{app:hyperparams}
 
-Table~\ref{tab:hyperparams} lists all hyperparameters referenced in the text by their symbols, together with the exact values used in all experiments. Unless noted otherwise, values are identical across all four experimental variants.
+	Table~\ref{tab:hyperparams} lists all hyperparameters referenced in the text by their symbols, together with the exact values used in all experiments. Unless noted otherwise, values are identical across all four experimental variants.
 
-\begin{table}[ht]
-	\centering
-	\caption{Complete hyperparameter specification for all experiments. All variants share identical settings except where noted.}
-	\label{tab:hyperparams}
-	\begin{tabular}{llll}
+	\begin{longtable}{llll}
+		\caption{Complete hyperparameter specification for all experiments. All variants share identical settings except where noted.}
+		\label{tab:hyperparams}                                                                                                                              \\
 		\toprule
 		\textbf{Symbol}           & \textbf{Parameter}                     & \textbf{Value}                      & \textbf{Note}                             \\
 		\midrule
+		\endfirsthead
+		\toprule
+		\textbf{Symbol}           & \textbf{Parameter}                     & \textbf{Value}                      & \textbf{Note}                             \\
+		\midrule
+		\endhead
+		\bottomrule
+		\endlastfoot
 		\multicolumn{4}{l}{\textit{Model and Training}}                                                                                                      \\
 		Model                     & Model                                  & \texttt{Qwen/Qwen2.5-0.5B-Instruct} &                                           \\
 		$\eta$                    & Learning Rate                          & $2 \times 10^{-5}$                  &                                           \\
@@ -484,8 +491,6 @@ Table~\ref{tab:hyperparams} lists all hyperparameters referenced in the text by 
 		$\tau$                    & Sampling Temperature                   & $1.0$                               &                                           \\
 		$K_{\mathrm{grad}}$       & Gradient Accumulation Steps            & $4$                                 &                                           \\
 		$G$                       & Group Size (Generations/Prompt)        & $4$                                 &                                           \\
-		\midrule
-		\multicolumn{4}{l}{\textit{\textit{GRPO} Configuration}}                                                                                             \\
 		$\beta_{\mathrm{KL}}$     & KL Divergence Coefficient              & $0.0$                               &                                           \\
 		\midrule
 		\multicolumn{4}{l}{\textit{Dense Confidence}}                                                                                                        \\
@@ -495,7 +500,7 @@ Table~\ref{tab:hyperparams} lists all hyperparameters referenced in the text by 
 		$\alpha_{\mathrm{blend}}$ & Blending Factor                        & $0.1$                               & Active only in \textit{Self-Rewarding}    \\
 		$\delta_{\mathrm{min}}$   & Min.\ Confidence Std Threshold         & $0.1$                               &                                           \\
 		$N_{\mathrm{warmup}}$     & Warmup Samples                         & $4{,}096$                           & $\approx$ first half of epoch             \\
-		\midrule
+		\pagebreak
 		\multicolumn{4}{l}{\textit{LoRA}}                                                                                                                    \\
 		$r_{\mathrm{LoRA}}$       & Rank                                   & $16$                                &                                           \\
 		$\alpha_{\mathrm{LoRA}}$  & Alpha ($2 \times r_{\mathrm{LoRA}}$)   & $32$                                &                                           \\
@@ -509,9 +514,8 @@ Table~\ref{tab:hyperparams} lists all hyperparameters referenced in the text by 
 		$N_{\mathrm{eval}}$       & Evaluation Set Size                    & $512$                               &                                           \\
 		$T_{\mathrm{prompt}}$     & Max Prompt Length (incl.\ system msg.) & $128$ tokens                        &                                           \\
 		$T_{\mathrm{gen}}$        & Max Completion Length                  & $1{,}024$ tokens                    &                                           \\
-		\bottomrule
-	\end{tabular}
-\end{table}
+	\end{longtable}
+\end{landscape}
 
 \cleardoubleoddpage
 
