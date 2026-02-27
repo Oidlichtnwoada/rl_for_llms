@@ -49,6 +49,7 @@
 \usepackage{acronym}
 \usepackage{listings}
 \usepackage{multirow}
+\usepackage{pdflscape}
 
 \lstset{
 	basicstyle=\ttfamily\footnotesize,
@@ -353,12 +354,14 @@ All reported results are derived from the evaluation runs stored in the \texttt{
 \subsection{Answer Accuracy Metrics}
 \label{sec:answer_results}
 
-\begin{figure}[ht]
-	\centering
-	\includegraphics[width=\textwidth]{charts/answer_accuracy_chart.pdf}
-	\caption{Answer accuracy metrics across all four variants. Values are aggregated per-group means with standard deviations (where available). The data is sourced from the aggregated answer metric CSV files in \texttt{data/evaluation/final}.}
-	\label{fig:answer_accuracy}
-\end{figure}
+\begin{landscape}
+	\begin{figure}[p]
+		\centering
+		\includegraphics[width=\linewidth]{charts/answer_accuracy_chart.pdf}
+		\caption{Answer accuracy metrics across all four variants. Values are aggregated per-group means with standard deviations (where available). The data is sourced from the aggregated answer metric CSV files in \texttt{data/evaluation/final}.}
+		\label{fig:answer_accuracy}
+	\end{figure}
+\end{landscape}
 
 \paragraph{Effective \textit{RLVR} Training Pipeline.}
 All three trained variants demonstrate a substantial and consistent improvement over the untrained Base model: \textit{Pass@1} increases from $31.35\%$ to approximately $53\%$ (a relative improvement of $\approx 70\%$), and \textit{Pass@4} increases from $59.18\%$ to the range of $73\%$--$75\%$. This confirms that the \textit{RLVR} training pipeline is effective across all experimental conditions, including those augmented with the auxiliary confidence objective.
@@ -375,12 +378,14 @@ Critically, the confidence token inclusion percentage is exactly $0.0\%$ for \te
 \subsection{Confidence Prediction Quality}
 \label{sec:confidence_results}
 
-\begin{figure}[ht]
-	\centering
-	\includegraphics[width=\textwidth]{charts/confidence_chart.pdf}
-	\caption{Binary classification metrics for confidence prediction. Only the two variants with trained confidence (\textit{Auxiliary}, \textit{Self-Rewarding}) are shown. Values are computed on the full concatenated evaluation set from the \texttt{data/evaluation/final} directory.}
-	\label{fig:confidence_chart}
-\end{figure}
+\begin{landscape}
+	\begin{figure}[p]
+		\centering
+		\includegraphics[width=\linewidth]{charts/confidence_chart.pdf}
+		\caption{Binary classification metrics for confidence prediction. Only the two variants with trained confidence (\textit{Auxiliary}, \textit{Self-Rewarding}) are shown. Values are computed on the full concatenated evaluation set from the \texttt{data/evaluation/final} directory.}
+		\label{fig:confidence_chart}
+	\end{figure}
+\end{landscape}
 
 \paragraph{Robust Classification Performance.}
 The confidence-trained variants demonstrate robust binary classification performance, especially given the capacity constraints of a $0.5\,$B parameter model with only $1.75\%$ trainable parameters. The \textit{Self-Rewarding} variant attains an \textit{MCC} of $0.58$ and a balanced accuracy of $77.89\%$, while the \textit{Auxiliary} variant achieves an \textit{MCC} of $0.49$ and a balanced accuracy of $74.03\%$.
