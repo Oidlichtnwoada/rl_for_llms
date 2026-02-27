@@ -360,25 +360,6 @@ All reported results are derived from the evaluation runs stored in the \texttt{
 	\label{fig:answer_accuracy}
 \end{figure}
 
-\begin{table}[ht]
-	\centering
-	\caption{Answer accuracy metrics on the \texttt{GSM8K} evaluation set (concatenated values). Bold indicates best per-metric. Confidence-guided methods (Highest Confidence, Conf.\ Weighted MV) are only meaningfully applicable to variants with trained confidence (\textit{Auxiliary}, \textit{Self-Rewarding}).}
-	\label{tab:answer_results}
-	\begin{tabular}{lcccc}
-		\toprule
-		\textbf{Metric}             & \textbf{Base} & \textbf{\textit{GRPO}} & \textbf{\textit{Auxiliary}} & \textbf{\textit{Self-Rewarding}} \\
-		\midrule
-		\textit{Pass@1} ($\%$)      & $31.35$       & \textbf{$53.27$}       & $52.73$                     & $52.59$                          \\
-		\textit{Pass@4} ($\%$)      & $59.18$       & \textbf{$74.61$}       & $73.05$                     & $72.46$                          \\
-		Majority Voting ($\%$)      & $35.35$       & \textbf{$60.55$}       & $57.81$                     & $58.40$                          \\
-		Highest Confidence ($\%$)   & $29.69$       & $52.54$                & \textbf{$60.16$}            & $59.18$                          \\
-		Conf.\ Weighted MV ($\%$)   & $36.13$       & $59.57$                & \textbf{$60.35$}            & $59.57$                          \\
-		Truncation ($\%$)           & $0.20$        & $0.20$                 & \textbf{$0.10$}             & $0.24$                           \\
-		Conf.\ Token Sampled ($\%$) & $0.00$        & $0.00$                 & $0.00$                      & $0.00$                           \\
-		\bottomrule
-	\end{tabular}
-\end{table}
-
 \paragraph{Effective \textit{RLVR} Training Pipeline.}
 All three trained variants demonstrate a substantial and consistent improvement over the untrained Base model: \textit{Pass@1} increases from $31.35\%$ to approximately $53\%$ (a relative improvement of $\approx 70\%$), and \textit{Pass@4} increases from $59.18\%$ to the range of $73\%$--$75\%$. This confirms that the \textit{RLVR} training pipeline is effective across all experimental conditions, including those augmented with the auxiliary confidence objective.
 
@@ -400,29 +381,6 @@ Critically, the confidence token inclusion percentage is exactly $0.0\%$ for \te
 	\caption{Binary classification metrics for confidence prediction. Only the two variants with trained confidence (\textit{Auxiliary}, \textit{Self-Rewarding}) are shown. Values are computed on the full concatenated evaluation set from the \texttt{data/evaluation/final} directory.}
 	\label{fig:confidence_chart}
 \end{figure}
-
-\begin{table}[ht]
-	\centering
-	\caption{Confidence prediction metrics (binary classification) on the evaluation set. Only variants with trained confidence are shown. Bold indicates the better value.}
-	\label{tab:confidence_results}
-	\begin{tabular}{lcc}
-		\toprule
-		\textbf{Metric}                   & \textbf{\textit{Auxiliary}} & \textbf{\textit{Self-Rewarding}} \\
-		\midrule
-		Accuracy ($\%$)                   & $74.61$                     & \textbf{$78.47$}                 \\
-		Balanced Accuracy ($\%$)          & $74.03$                     & \textbf{$77.89$}                 \\
-		Harmonic Balanced Accuracy ($\%$) & $72.51$                     & \textbf{$76.29$}                 \\
-		F1 Score ($\%$)                   & $77.85$                     & \textbf{$81.31$}                 \\
-		TPR / Sensitivity ($\%$)          & $84.63$                     & \textbf{$89.04$}                 \\
-		TNR / Specificity ($\%$)          & $63.43$                     & \textbf{$66.74$}                 \\
-		PPV / Precision ($\%$)            & $72.08$                     & \textbf{$74.80$}                 \\
-		NPV ($\%$)                        & $78.72$                     & \textbf{$84.60$}                 \\
-		\textit{MCC}                      & $0.49$                      & \textbf{$0.58$}                  \\
-		ROC AUC ($\%$)                    & $83.81$                     & \textbf{$87.88$}                 \\
-		PR AUC ($\%$)                     & $85.18$                     & \textbf{$88.59$}                 \\
-		\bottomrule
-	\end{tabular}
-\end{table}
 
 \paragraph{Robust Classification Performance.}
 The confidence-trained variants demonstrate robust binary classification performance, especially given the capacity constraints of a $0.5\,$B parameter model with only $1.75\%$ trainable parameters. The \textit{Self-Rewarding} variant attains an \textit{MCC} of $0.58$ and a balanced accuracy of $77.89\%$, while the \textit{Auxiliary} variant achieves an \textit{MCC} of $0.49$ and a balanced accuracy of $74.03\%$.
