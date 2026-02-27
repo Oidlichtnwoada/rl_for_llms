@@ -99,7 +99,7 @@
 \abstract{
 	We present \textbf{Dense Confidence}, a novel extension of the \textit{LaSeR} framework \citep{laser} designed to address the sparsity of reward signals in logical reasoning tasks. Unlike prior approaches that rely on a scalar confidence score at the sequence termination, our architecture compels the policy to estimate the validity of its reasoning trace at \textit{every} token step. By overloading a specialized control token (the confidence token) and applying a scaled sigmoid projection on its raw logit, rather than its probability, we map latent representations to interpretable confidence scores while structurally avoiding interference with the sampling distribution.
 
-	We evaluate this method on a filtered subset of the \texttt{\textit{GSM8K}} dataset \citep{gsm8k} using a $0.5\,$B parameter policy model. While the proposed dense confidence mechanism is agnostic to the specific reinforcement learning algorithm, we employ Group Relative Policy Optimization (\textit{GRPO}) \citep{deepseekmath} for our experiments. We define three experimental conditions: a pure \textit{GRPO} baseline, an Auxiliary-Loss-Only variant, and a Self-Rewarding configuration, alongside an untrained base model reference. All trained variants demonstrate a consistent and substantial improvement in answer accuracy (\textit{Pass@1} rising from approximately $31\%$ to $53\%$), while the confidence-trained variants additionally acquire a strong binary classification capability (Matthews Correlation Coefficient up to $0.58$) with zero observed instances of the confidence token being sampled during generation. The code is available at \url{https://github.com/Oidlichtnwoada/rl_for_llms}.
+	We evaluate this method on a filtered subset of the \texttt{GSM8K} dataset \citep{gsm8k} using a $0.5\,$B parameter policy model. While the proposed dense confidence mechanism is agnostic to the specific reinforcement learning algorithm, we employ Group Relative Policy Optimization (\textit{GRPO}) \citep{deepseekmath} for our experiments. We define three experimental conditions: a \textit{GRPO} variant, an \textit{Auxiliary Loss} variant, and a \textit{Self-Rewarding} variant, alongside an untrained Base model. All trained variants demonstrate a consistent and substantial improvement in answer accuracy (\textit{Pass@1} rising from approximately $31\%$ to $53\%$), while the confidence-trained variants additionally acquire a strong binary classification capability (Matthews Correlation Coefficient up to $0.58$) with zero observed instances of the confidence token being sampled during generation. The code is available at \url{https://github.com/Oidlichtnwoada/rl_for_llms}.
 }
 
 \maketitle
@@ -138,7 +138,7 @@ We introduce a modified \textit{LaSeR} architecture with the following objective
 \begin{enumerate}
 	\item \textbf{Framework Reimplementation:} Establish a robust implementation of the self-rewarding loop leveraging modern open-weights models, the latest library versions, and specialized reinforcement learning algorithms.
 	\item \textbf{Dense Signal Extension:} Extend the methodology from \textit{last-token} to \textit{trajectory-wide} confidence monitoring via a custom token hook mechanism, formulated on raw logits rather than probabilities to avoid interference with the sampling distribution.
-	\item \textbf{Ablation Analysis:} Systematically quantify the contribution of both the auxiliary confidence objective and the blended intrinsic reward through controlled experimentation on the \texttt{\textit{GSM8K}} dataset \citep{gsm8k}.
+	\item \textbf{Ablation Analysis:} Systematically quantify the contribution of both the auxiliary confidence objective and the blended intrinsic reward through controlled experimentation on the \texttt{GSM8K} dataset \citep{gsm8k}.
 \end{enumerate}
 
 \subsection{Structure of the Report}
@@ -157,7 +157,7 @@ The core component is the \texttt{ConfidenceGRPOTrainer}, a custom subclass of \
 	\centering
 	\fbox{\parbox[c][9cm]{0.85\textwidth}{\centering \textbf{[PLACEHOLDER: System Architecture Diagram]} \\[6pt]
 			Schema showing the Dense Confidence RL pipeline: \\[4pt]
-			1. Prompts sampled from \texttt{\textit{GSM8K}} dataset \\
+			1. Prompts sampled from \texttt{GSM8K} dataset \\
 			$\rightarrow$ 2. \textit{LoRA}-adapted \textit{LLM} Policy (\textit{Qwen}2.5-$0.5$B-Instruct) \\
 			$\rightarrow$ 3. Trajectory generation (no gradients); \texttt{lm\_head} hook captures confidence logits at every step \\
 			$\rightarrow$ 4. Reward computation: correctness via \texttt{math-verify} + format via \texttt{\textbackslash boxed\{\}} check \\
@@ -171,11 +171,11 @@ The core component is the \texttt{ConfidenceGRPOTrainer}, a custom subclass of \
 \end{figure}
 
 \subsubsection{Policy Model and RL Algorithm}
-We utilize a $0.5\,$B parameter policy model (\texttt{\textit{Qwen}/\textit{Qwen}2.5-0.5B-Instruct}) to verify the concept within significant resource constraints, serving as a precursor to scaling to larger architectures. This contrasts with the original \textit{LaSeR} study \citep{laser}, which utilized larger models with approximately $7\,$B parameters.
+We utilize a $0.5\,$B parameter policy model (\texttt{Qwen/Qwen2.5-0.5B-Instruct}) to verify the concept within significant resource constraints, serving as a precursor to scaling to larger architectures. This contrasts with the original \textit{LaSeR} study \citep{laser}, which utilized larger models with approximately $7\,$B parameters.
 
-\textbf{Reward Agnosticism.} The proposed Dense Confidence formulation is fundamentally a reward shaping mechanism. Since the confidence alignment loss is additive to the standard RL surrogate loss, our method is robustly compatible with various reinforcement learning algorithms, including \textit{PPO} \citep{ppo} or \textit{A2C}. For this implementation, we select \textbf{Group Relative Policy Optimization (\textit{GRPO})} \citep{deepseekmath}. The key advantage of \textit{GRPO} is the elimination of a separate value network (critic), which typically doubles memory requirements. While other efficient fine-tuning methods like Direct Preference Optimization \citep{directpreferenceopt} bypass the reward model by implicitly optimizing preferences, \textit{GRPO} allows us to optimize arbitrary non-differentiable reward functions directly. It estimates the advantage baseline using group statistics---computing the mean reward of a group of $G$ outputs $\{o_1, \dots, o_G\}$ generated from the same prompt $q$---rather than relying on an external value network.
+\textbf{Reward Agnosticism.} The proposed Dense Confidence formulation is fundamentally a reward shaping mechanism. Since the confidence alignment loss is additive to the standard RL surrogate loss, our method is robustly compatible with various reinforcement learning algorithms, including \textit{PPO} \citep{ppo} or \textit{A2C}. For this implementation, we select \textbf{Group Relative Policy Optimization (\textit{GRPO})} \citep{deepseekmath}. The key advantage of \textit{GRPO} is the elimination of a separate value network (critic), which typically doubles memory requirements. While other efficient fine-tuning methods like Direct Preference Optimization \citep{directpreferenceopt} bypass the reward model by implicitly optimizing preferences, \textit{GRPO} allows us to optimize arbitrary non-differentiable reward functions directly. It estimates the advantage baseline using group statistics, computing the mean reward of a group of $G$ outputs $\{o_1, \dots, o_G\}$ generated from the same prompt $q$, rather than relying on an external value network.
 
-In our configuration, the KL-divergence coefficient $\beta_{\mathrm{KL}}$ is set to $0$. This eliminates the KL penalty term entirely, meaning no frozen reference model is needed for regularization during training. Consequently, training stability relies exclusively on the clipping mechanism of the surrogate objective and a small learning rate $\eta$. While a nonzero $\beta_{\mathrm{KL}}$ would provide additional regularization against policy drift, we found that the combination of clipping and a conservative learning rate sufficed for stable training on the \texttt{\textit{GSM8K}} domain. We note that setting $\beta_{\mathrm{KL}} = 0$ amplifies the importance of properly tuning the confidence loss factor $\beta_{\mathrm{conf}}$, as discussed in \autoref{sec:conf_loss_sensitivity}.
+In our configuration, the KL-divergence coefficient $\beta_{\mathrm{KL}}$ is set to $0$. This eliminates the KL penalty term entirely, meaning no frozen reference model is needed for regularization during training. Consequently, training stability relies exclusively on the clipping mechanism of the surrogate objective and a small learning rate $\eta$. While a nonzero $\beta_{\mathrm{KL}}$ would provide additional regularization against policy drift, we found that the combination of clipping and a conservative learning rate sufficed for stable training on the \texttt{GSM8K} domain. We note that setting $\beta_{\mathrm{KL}} = 0$ amplifies the importance of properly tuning the confidence loss factor $\beta_{\mathrm{conf}}$, as discussed in \autoref{sec:conf_loss_sensitivity}.
 
 \subsection{Parameter-Efficient Fine-Tuning with \textit{LoRA}}
 \label{sec:lora}
@@ -185,7 +185,7 @@ We employ Low-Rank Adaptation (\textit{LoRA}) \citep{lora} to reduce the number 
 
 \subsubsection{Confidence Token Embedding Training}
 \label{sec:embedding_training}
-A critical design decision is the explicit full fine-tuning of the confidence token's embedding vector, enabled via the \texttt{trainable\_token\_indices} mechanism of the \textit{LoRA} configuration. In weight-tied transformer architectures---such as the one employed here---the token embedding matrix and the output projection layer (language model head) share identical weight parameters. Consequently, updating the embedding vector of the confidence token directly modifies the computation of its output logit, providing the single most impactful lever for aligning the otherwise untrained token's logit to the desired confidence range.
+A critical design decision is the explicit full fine-tuning of the confidence token's embedding vector, enabled via the \texttt{trainable\_token\_indices} mechanism of the \textit{LoRA} configuration. In weight-tied transformer architectures, such as the one employed here, the token embedding matrix and the output projection layer (language model head) share identical weight parameters. Consequently, updating the embedding vector of the confidence token directly modifies the computation of its output logit, providing the single most impactful lever for aligning the otherwise untrained token's logit to the desired confidence range.
 
 Without this mechanism, the model would be forced to adjust all intermediate hidden representations through the low-rank adapter updates alone to compensate for an output projection producing essentially random logits for a token never seen during pre-training. Direct embedding training provides a dramatically more efficient optimization path: the output layer can rapidly adapt to the shifted sigmoid center (see \autoref{sec:interference}), making the confidence mapping both faster to learn and more robust to initialize.
 
@@ -309,13 +309,13 @@ The validity of the intrinsic signal depends on the model's ability to accuratel
 
 \subsection{Dataset and Preprocessing}
 \label{sec:dataset}
-We utilize the \texttt{\textit{GSM8K}} (Grade School Math 8K) dataset \citep{gsm8k}, a widely-used benchmark for evaluating the mathematical reasoning capabilities of language models. The dataset comprises grade-school-level math word problems requiring multi-step arithmetic reasoning. The full training split contains $7{,}473$ samples. After length filtering, the effective training set was $7{,}012$ samples, and the evaluation set was $512$ samples.
+We utilize the \texttt{GSM8K} (Grade School Math 8K) dataset \citep{gsm8k}, a widely-used benchmark for evaluating the mathematical reasoning capabilities of language models. The dataset comprises grade-school-level math word problems requiring multi-step arithmetic reasoning. The full training split contains $7{,}473$ samples. After length filtering, the effective training set was $7{,}012$ samples, and the evaluation set was $512$ samples.
 
 We apply the following preprocessing:
 \begin{itemize}
 	\item \textbf{Prompt Formatting.} Each problem is wrapped in the chat template of the target \textit{LLM} (\textit{user} and \textit{system} roles). The system message instructs the model to reason step by step and enclose the final answer in a \texttt{\textbackslash boxed\{\}} command. The last boxed expression is extracted as the prediction for the \texttt{math-verify} library, avoiding any stochastic reward model.
 	\item \textbf{Length Filtering.} Prompts exceeding $T_{\mathrm{prompt}}$ tokens (including the system message) are removed to ensure all generations fit within the compute budget. This filter is applied identically to training and evaluation splits, resulting in an effective training set size $N_{\mathrm{train}} < 7{,}473$.
-	\item \textbf{Answer Extraction.} For \texttt{\textit{GSM8K}}, the ground-truth answer is extracted from the dataset's annotation format (\texttt{\#\#\#\# <answer>}).
+	\item \textbf{Answer Extraction.} For \texttt{GSM8K}, the ground-truth answer is extracted from the dataset's annotation format (\texttt{\#\#\#\# <answer>}).
 \end{itemize}
 The maximum generation length is restricted to $T_{\mathrm{gen}}$ tokens.
 
@@ -323,27 +323,27 @@ The maximum generation length is restricted to $T_{\mathrm{gen}}$ tokens.
 \label{sec:variants}
 To ensure scientific rigor, we define four controlled settings, configured via environment variables:
 \begin{itemize}
-	\item \textbf{BASE (\texttt{base}):} The untouched base model without any fine-tuning. This serves as a lower-bound reference. No confidence training is performed.
+	\item \textbf{Base model (\texttt{base}):} The untouched Base model without any fine-tuning. This serves as a lower-bound reference. No confidence training is performed.
 	\item \textbf{\textit{GRPO} (\texttt{-l-r}):} Standard \textit{RLVR} training with \textit{GRPO}. No confidence loss, no confidence reward. Confidence token embedding training is disabled (the environment variable \texttt{USE\_CONFIDENCE\_LOSS} is set to $0$).
-	\item \textbf{Auxiliary-Loss-Only (\texttt{+l-r}):} RL training augmented with the auxiliary confidence loss $\beta_{\mathrm{conf}} L_{\mathrm{conf}}$. The model is optimized for both the RL objective and confidence prediction, but the predicted confidence is \textit{not} used in the advantage function (the environment variable \texttt{USE\_CONFIDENCE\_REWARD} is set to $0$). Confidence token embedding training is enabled.
-	\item \textbf{Self-Rewarding (\texttt{+l+r}):} Full pipeline: RL training + auxiliary confidence loss + self-reward integration via advantage blending. No additional environment variable changes beyond the defaults. Confidence token embedding training is enabled.
+	\item \textbf{Auxiliary Loss variant (\texttt{+l-r}):} RL training augmented with the auxiliary confidence loss $\beta_{\mathrm{conf}} L_{\mathrm{conf}}$. The model is optimized for both the RL objective and confidence prediction, but the predicted confidence is \textit{not} used in the advantage function (the environment variable \texttt{USE\_CONFIDENCE\_REWARD} is set to $0$). Confidence token embedding training is enabled.
+	\item \textbf{Self-Rewarding variant (\texttt{+l+r}):} Full pipeline: RL training + auxiliary confidence loss + self-reward integration via advantage blending. No additional environment variable changes beyond the defaults. Confidence token embedding training is enabled.
 \end{itemize}
 All training runs use the same mode (\texttt{MODE=LOCAL}), the same hyperparameters (see \autoref{app:hyperparams}), and the same data splits.
 
 \subsection{Hardware and Compute}
 \label{sec:hardware}
 Each training run was performed on a single \textbf{NVIDIA Quadro GV100} GPU with $5{,}120$ CUDA cores, $32$ GB HBM2 memory, and a peak FP32 performance of $14.8\,$TFLOPS. We thank the \textit{JKU Institute for Machine Learning} for providing the student GPU server. The server operated on CUDA $13$. The GV100 GPU, released in $2018$, is based on NVIDIA's Volta architecture and has a Compute Capability of $7.0$. Consequently, it lacks hardware support for the \texttt{bfloat16} (\texttt{BF16}) data type, which is the native precision of the employed \textit{LLM}. Therefore, all computations were strictly performed using the \texttt{float32} data type to avoid numerical instability. We note that \texttt{bfloat16} is common for modern LLMs, being cheaper in compute while offering the same value range as \texttt{float32}.
-Furthermore, we note that there are several architecture generations between Volta and the current Blackwell architecture. Training on modern hardware would execute substantially faster. Training of one epoch required approximately $13\,$hours per variant. Evaluation of the full evaluation dataset ($N_{\mathrm{eval}}$ samples) took approximately $2\,$hours per run (one pre-training evaluation for the base model and one post-training evaluation per variant). During training, GPU memory utilization was approximately $29\,$GB, and average compute utilization was approximately $50\%$. These numbers are reported for reproducibility, as most publications omit such practical details.
+Furthermore, we note that there are several architecture generations between Volta and the current Blackwell architecture. Training on modern hardware would execute substantially faster. Training of one epoch required approximately $13\,$hours per variant. Evaluation of the full evaluation dataset ($N_{\mathrm{eval}}$ samples) took approximately $2\,$hours per run (one pre-training evaluation for the Base model and one post-training evaluation per variant). During training, GPU memory utilization was approximately $29\,$GB, and average compute utilization was approximately $50\%$. These numbers are reported for reproducibility, as most publications omit such practical details.
 
 \subsection{Software Stack and Tooling}
 \label{sec:software}
 At the time of execution, all Python and library dependencies were set to the latest available versions. The complete project configuration is reproduced in \autoref{app:pyproject}.
 
-\textbf{Experiment Tracking.} We used \textit{Weights \& Biases} (\textit{WANDB}) to log all training metrics, loss curves, and generated completions. This tooling was instrumental for debugging training dynamics and iteratively tuning hyperparameters to stable configurations, identifying the critical sensitivity of $\beta_{\mathrm{conf}}$ described in \autoref{sec:conf_loss_sensitivity}.
+\textbf{Experiment Tracking.} We used \texttt{Weights \& Biases} (\texttt{WANDB}) to log all training metrics, loss curves, and generated completions. This tooling was instrumental for debugging training dynamics and iteratively tuning hyperparameters to stable configurations, identifying the critical sensitivity of $\beta_{\mathrm{conf}}$ described in \autoref{sec:conf_loss_sensitivity}.
 
-\subsubsection{Note on \textit{vLLM}}
+\subsubsection{Note on \texttt{vLLM}}
 \label{sec:vllm}
-We chose not to use \texttt{\textit{vLLM}} for inference acceleration, despite its potential throughput benefits. A primary motivation was the desire to work with the newest tools and library versions: \texttt{\textit{vLLM}} lags in updating dependencies, and at the time of execution, was incompatible with the library versions listed in \autoref{app:pyproject}. Additionally, \texttt{\textit{vLLM}} lacks full support for Metal Performance Shaders (\textit{MPS}) required for local debugging on macOS. While the \texttt{LogitsProcessor} interface of \texttt{\textit{vLLM}} could in principle be used to extract confidence logits during rollout generation, no gradient flow is possible through the inference engine. This necessitates a separate PyTorch forward pass for training in any case.
+We chose not to use \texttt{vLLM} for inference acceleration, despite its potential throughput benefits. A primary motivation was the desire to work with the newest tools and library versions: \texttt{vLLM} lags in updating dependencies, and at the time of execution, was incompatible with the library versions listed in \autoref{app:pyproject}. Additionally, \texttt{vLLM} lacks full support for Metal Performance Shaders (\textit{MPS}) required for local debugging on macOS. While the \texttt{LogitsProcessor} interface of \texttt{vLLM} could in principle be used to extract confidence logits during rollout generation, no gradient flow is possible through the inference engine. This necessitates a separate PyTorch forward pass for training in any case.
 While \texttt{vLLM} would offer faster generation of rollouts, it would also consume considerably more GPU VRAM. The used GPU was already at its limit.
 
 \section{Results and Interpretation}
@@ -362,34 +362,34 @@ All reported results are derived from the evaluation runs stored in the \texttt{
 
 \begin{table}[ht]
 	\centering
-	\caption{Answer accuracy metrics on the \texttt{\textit{GSM8K}} evaluation set (concatenated values). Bold indicates best per-metric. Confidence-guided methods (Highest Confidence, Conf.\ Weighted MV) are only meaningfully applicable to variants with trained confidence (\texttt{+l-r}, \texttt{+l+r}).}
+	\caption{Answer accuracy metrics on the \texttt{GSM8K} evaluation set (concatenated values). Bold indicates best per-metric. Confidence-guided methods (Highest Confidence, Conf.\ Weighted MV) are only meaningfully applicable to variants with trained confidence (\textit{Auxiliary}, \textit{Self-Rewarding}).}
 	\label{tab:answer_results}
 	\begin{tabular}{lcccc}
 		\toprule
-		\textbf{Metric}          & \textbf{BASE} & \textbf{\textit{GRPO}} & \textbf{+l-r} & \textbf{+l+r}  \\
+		\textbf{Metric}          & \textbf{Base} & \textbf{\textit{GRPO}} & \textbf{\textit{Auxiliary}} & \textbf{\textit{Self-Rewarding}}  \\
 		\midrule
-		\textit{Pass@1} (\%)              & $31.35$         & \textbf{$53.27$}         & $52.73$          & $52.59$          \\
-		\textit{Pass@4} (\%)            & $59.18$         & \textbf{$74.61$}         & $73.05$          & $72.46$          \\
-		Majority Voting (\%)     & $35.35$         & \textbf{$60.55$}         & $57.81$          & $58.40$          \\
-		Highest Confidence (\%)  & $29.69$         & $52.54$         & \textbf{$60.16$} & $59.18$          \\
-		Conf.\ Weighted MV (\%) & $36.13$         & $59.57$         & \textbf{$60.35$} & $59.57$          \\
-		Truncation (\%)          & $0.20$          & $0.20$          & \textbf{$0.10$}  & $0.24$           \\
-		Conf.\ Token Sampled (\%)& $0.00$          & $0.00$          & $0.00$           & $0.00$           \\
+		\textit{Pass@1} ($\%$)              & $31.35$         & \textbf{$53.27$}         & $52.73$          & $52.59$          \\
+		\textit{Pass@4} ($\%$)            & $59.18$         & \textbf{$74.61$}         & $73.05$          & $72.46$          \\
+		Majority Voting ($\%$)     & $35.35$         & \textbf{$60.55$}         & $57.81$          & $58.40$          \\
+		Highest Confidence ($\%$)  & $29.69$         & $52.54$         & \textbf{$60.16$} & $59.18$          \\
+		Conf.\ Weighted MV ($\%$) & $36.13$         & $59.57$         & \textbf{$60.35$} & $59.57$          \\
+		Truncation ($\%$)          & $0.20$          & $0.20$          & \textbf{$0.10$}  & $0.24$           \\
+		Conf.\ Token Sampled ($\%$)& $0.00$          & $0.00$          & $0.00$           & $0.00$           \\
 		\bottomrule
 	\end{tabular}
 \end{table}
 
 \paragraph{Effective \textit{RLVR} Training Pipeline.}
-All three trained variants demonstrate a substantial and consistent improvement over the untrained BASE model: \textit{Pass@1} increases from $31.35\%$ to approximately $53\%$ (a relative improvement of $\approx 70\%$), and \textit{Pass@4} increases from $59.18\%$ to the range of $73\%$--$75\%$. This confirms that the \textit{RLVR} training pipeline is effective across all experimental conditions, including those augmented with the auxiliary confidence objective.
+All three trained variants demonstrate a substantial and consistent improvement over the untrained Base model: \textit{Pass@1} increases from $31.35\%$ to approximately $53\%$ (a relative improvement of $\approx 70\%$), and \textit{Pass@4} increases from $59.18\%$ to the range of $73\%$--$75\%$. This confirms that the \textit{RLVR} training pipeline is effective across all experimental conditions, including those augmented with the auxiliary confidence objective.
 
 \paragraph{\textit{GRPO} vs.\ Condition Variants.}
-The pure \textit{GRPO} variant achieves marginally higher \textit{Pass@1} ($53.27\%$) than the Auxiliary-Loss-Only ($52.73\%$) and Self-Rewarding ($52.59\%$) variants. This is expected, as the auxiliary confidence loss consumes a fraction of the model's limited capacity ($0.5\,$B parameters, $1.75\%$ trainable via \textit{LoRA}), diverting some gradient signal from the primary reasoning objective. However, the difference is negligible ($< 1$ percentage point), indicating that the multi-task learning setup imposes minimal cost on answer quality.
+The pure \textit{GRPO} variant achieves marginally higher \textit{Pass@1} ($53.27\%$) than the \textit{Auxiliary} ($52.73\%$) and \textit{Self-Rewarding} ($52.59\%$) variants. This is expected, as the auxiliary confidence loss consumes a fraction of the model's limited capacity ($0.5\,$B parameters, $1.75\%$ trainable via \textit{LoRA}), diverting some gradient signal from the primary reasoning objective. However, the difference is negligible ($< 1$ percentage point), indicating that the multi-task learning setup imposes minimal cost on answer quality.
 
 \paragraph{Near-Zero Truncation.}
-Across all variants, the truncation rate is below $0.25\%$, meaning that virtually all generated completions terminated naturally within the $T_{\mathrm{gen}}$ token budget. This validates the adequacy of the generation length setting for the \texttt{\textit{GSM8K}} domain.
+Across all variants, the truncation rate is below $0.25\%$, meaning that virtually all generated completions terminated naturally within the $T_{\mathrm{gen}}$ token budget. This validates the adequacy of the generation length setting for the \texttt{GSM8K} domain.
 
 \paragraph{Confidence Token Never Sampled.}
-Critically, the confidence token inclusion percentage is exactly $0.0\%$ for \textit{every} variant, including those with trained confidence. This empirically validates the theoretical argument of \autoref{sec:interference}: the sigmoid-based logit formulation, combined with the naturally low initial logit magnitude of the untrained token, prevents the confidence token from ever reaching the sampling threshold. Both issues identified in the original \textit{LaSeR} paper \citep{laser}---the necessity of a non-standard additional forward pass and the risk of confidence token sampling---are effectively resolved by our approach.
+Critically, the confidence token inclusion percentage is exactly $0.0\%$ for \textit{every} variant, including those with trained confidence. This empirically validates the theoretical argument of \autoref{sec:interference}: the sigmoid-based logit formulation, combined with the naturally low initial logit magnitude of the untrained token, prevents the confidence token from ever reaching the sampling threshold. Both issues identified in the original \textit{LaSeR} paper \citep{laser} (the necessity of a non-standard additional forward pass and the risk of confidence token sampling) are effectively resolved by our approach.
 
 \subsection{Confidence Prediction Quality}
 \label{sec:confidence_results}
@@ -397,7 +397,7 @@ Critically, the confidence token inclusion percentage is exactly $0.0\%$ for \te
 \begin{figure}[ht]
 	\centering
 	\includegraphics[width=\textwidth]{charts/confidence_chart.pdf}
-	\caption{Binary classification metrics for confidence prediction. Only the two variants with trained confidence (\texttt{+l-r}, \texttt{+l+r}) are shown. Values are computed on the full concatenated evaluation set from the \texttt{data/evaluation/final} directory.}
+	\caption{Binary classification metrics for confidence prediction. Only the two variants with trained confidence (\textit{Auxiliary}, \textit{Self-Rewarding}) are shown. Values are computed on the full concatenated evaluation set from the \texttt{data/evaluation/final} directory.}
 	\label{fig:confidence_chart}
 \end{figure}
 
@@ -407,67 +407,67 @@ Critically, the confidence token inclusion percentage is exactly $0.0\%$ for \te
 	\label{tab:confidence_results}
 	\begin{tabular}{lcc}
 		\toprule
-		\textbf{Metric}                  & \textbf{+l-r} & \textbf{+l+r}  \\
+		\textbf{Metric}                  & \textbf{\textit{Auxiliary}} & \textbf{\textit{Self-Rewarding}}  \\
 		\midrule
-		Accuracy (\%)                     & $74.61$          & \textbf{$78.47$} \\
-		Balanced Accuracy (\%)            & $74.03$          & \textbf{$77.89$} \\
-		Harmonic Balanced Accuracy (\%)   & $72.51$          & \textbf{$76.29$} \\
-		F1 Score (\%)                     & $77.85$          & \textbf{$81.31$} \\
-		TPR / Sensitivity (\%)            & $84.63$          & \textbf{$89.04$} \\
-		TNR / Specificity (\%)            & $63.43$          & \textbf{$66.74$} \\
-		PPV / Precision (\%)              & $72.08$          & \textbf{$74.80$} \\
-		NPV (\%)                          & $78.72$          & \textbf{$84.60$} \\
+		Accuracy ($\%$)                     & $74.61$          & \textbf{$78.47$} \\
+		Balanced Accuracy ($\%$)            & $74.03$          & \textbf{$77.89$} \\
+		Harmonic Balanced Accuracy ($\%$)   & $72.51$          & \textbf{$76.29$} \\
+		F1 Score ($\%$)                     & $77.85$          & \textbf{$81.31$} \\
+		TPR / Sensitivity ($\%$)            & $84.63$          & \textbf{$89.04$} \\
+		TNR / Specificity ($\%$)            & $63.43$          & \textbf{$66.74$} \\
+		PPV / Precision ($\%$)              & $72.08$          & \textbf{$74.80$} \\
+		NPV ($\%$)                          & $78.72$          & \textbf{$84.60$} \\
 		\textit{MCC}                               & $0.49$           & \textbf{$0.58$}  \\
-		ROC AUC (\%)                      & $83.81$          & \textbf{$87.88$} \\
-		PR AUC (\%)                       & $85.18$          & \textbf{$88.59$} \\
+		ROC AUC ($\%$)                      & $83.81$          & \textbf{$87.88$} \\
+		PR AUC ($\%$)                       & $85.18$          & \textbf{$88.59$} \\
 		\bottomrule
 	\end{tabular}
 \end{table}
 
 \paragraph{Robust Classification Performance.}
-The confidence-trained variants demonstrate robust binary classification performance, especially given the capacity constraints of a $0.5\,$B parameter model with only $1.75\%$ trainable parameters. The Self-Rewarding variant (\texttt{+l+r}) attains an \textit{MCC} of $0.58$ and a balanced accuracy of $77.89\%$, while the Auxiliary-Loss-Only variant (\texttt{+l-r}) achieves an \textit{MCC} of $0.49$ and a balanced accuracy of $74.03\%$.
+The confidence-trained variants demonstrate robust binary classification performance, especially given the capacity constraints of a $0.5\,$B parameter model with only $1.75\%$ trainable parameters. The \textit{Self-Rewarding} variant attains an \textit{MCC} of $0.58$ and a balanced accuracy of $77.89\%$, while the \textit{Auxiliary} variant achieves an \textit{MCC} of $0.49$ and a balanced accuracy of $74.03\%$.
 
 \paragraph{Efficacy of Self-Reward Integration.}
-Across all binary classification metrics, the Self-Rewarding variant consistently outperforms the Auxiliary-Loss-Only variant. We hypothesize that this stems from a mutual reinforcement dynamic. By integrating the confidence signal into the advantage function, the Self-Rewarding variant preferentially reinforces trajectories that the model can assess with high certainty. This creates an optimization pressure toward solutions whose correctness is distinct and verifiable by the model itself. This improves both policy quality and confidence calibration. In contrast, the Auxiliary-Loss-Only variant trains the confidence head on stochastic trajectories generated by the policy without this closed-loop feedback mechanism.
+Across all binary classification metrics, the \textit{Self-Rewarding} variant consistently outperforms the \textit{Auxiliary} variant. We hypothesize that this stems from a mutual reinforcement dynamic. By integrating the confidence signal into the advantage function, the \textit{Self-Rewarding} variant preferentially reinforces trajectories that the model can assess with high certainty. This creates an optimization pressure toward solutions whose correctness is distinct and verifiable by the model itself. This improves both policy quality and confidence calibration. In contrast, the \textit{Auxiliary} variant trains the confidence head on stochastic trajectories generated by the policy without this closed-loop feedback mechanism.
 
 \paragraph{Clarification on Metric Definitions.}
-We note that the metric termed ``F1 score'' in the original \textit{LaSeR} paper \citep{laser} corresponds to \textit{harmonic balanced accuracy}---the harmonic mean of sensitivity (TPR) and specificity (TNR)---rather than the standard F1 score (harmonic mean of precision and recall). To ensure transparency, we report both metrics. The harmonic balanced accuracy of $76.29\%$ for \texttt{+l+r} confirms a balanced classifier performance across both positive and negative classes.
+We note that the metric termed ``F1 score'' in the original \textit{LaSeR} paper \citep{laser} corresponds to \textit{harmonic balanced accuracy} (the harmonic mean of sensitivity (TPR) and specificity (TNR)), rather than the standard F1 score (harmonic mean of precision and recall). To ensure transparency, we report both metrics. The harmonic balanced accuracy of $76.29\%$ for the \textit{Self-Rewarding} variant confirms a balanced classifier performance across both positive and negative classes.
 
 \paragraph{Alignment of Binary Classification Approach.}
-Our formulation of confidence as a binary classification problem (via sigmoid activation and \textit{BCE} loss) is structurally aligned with the discrete nature of verifiability in reasoning tasks. This contrasts with the continuous MSE-based reward regression in \textit{LaSeR} \citep{laser}. The high ROC AUC ($87.88\%$ for \texttt{+l+r}) indicates strong discriminative capability across decision thresholds.
+Our formulation of confidence as a binary classification problem (via sigmoid activation and \textit{BCE} loss) is structurally aligned with the discrete nature of verifiability in reasoning tasks. This contrasts with the continuous MSE-based reward regression in \textit{LaSeR} \citep{laser}. The high ROC AUC ($87.88\%$ for \textit{Self-Rewarding}) indicates strong discriminative capability across decision thresholds.
 
 \subsection{Confidence-Guided Answer Selection}
 \label{sec:confidence_selection}
 When investing additional test-time compute by generating $G$ candidate answers per prompt, confidence-guided selection strategies become relevant:
 
 \begin{itemize}
-	\item \textbf{Highest Confidence:} Select the answer with the highest mean confidence score. The Auxiliary-Loss-Only variant achieves $60.16\%$ via this method, substantially higher than \textit{GRPO}'s $52.54\%$. This demonstrates that a well-trained confidence head can effectively identify the most likely correct answer among multiple candidates.
-	\item \textbf{Confidence-Weighted Majority Voting:} Weight each answer's vote by its confidence score. This yields $60.35\%$ for \texttt{+l-r} and $59.57\%$ for \texttt{+l+r}. This compares to $59.57\%$ for unweighted \textit{GRPO} majority voting.
+	\item \textbf{Highest Confidence:} Select the answer with the highest mean confidence score. The \textit{Auxiliary} variant achieves $60.16\%$ via this method, substantially higher than \textit{GRPO}'s $52.54\%$. This demonstrates that a well-trained confidence head can effectively identify the most likely correct answer among multiple candidates.
+	\item \textbf{Confidence-Weighted Majority Voting:} Weight each answer's vote by its confidence score. This yields $60.35\%$ for the \textit{Auxiliary} variant and $59.57\%$ for the \textit{Self-Rewarding} variant. This compares to $59.57\%$ for unweighted \textit{GRPO} majority voting.
 \end{itemize}
 
-These results already show modest improvements over plain majority voting, even with the limited self-assessment capabilities of a $0.5$B model. With stronger confidence calibration in larger \textit{LLMs} ($100$+ billion parameters), confidence-guided selection could yield substantially larger gains. This is particularly true when scaling the number of generations $G$ at test time.
+These results already show modest improvements over plain majority voting, even with the limited self-assessment capabilities of a $0.5\,$B model. With stronger confidence calibration in larger \textit{LLMs} ($100$+ billion parameters), confidence-guided selection could yield substantially larger gains. This is particularly true when scaling the number of generations $G$ at test time.
 
 \subsection{Additional Observations}
 \label{sec:observations}
 
 \paragraph{Answer Length Reduction.}
-We observe that the completion length for the Auxiliary-Loss-Only variant (\texttt{+l-r}) is approximately $25\%$ shorter than for other variants. A potential hypothesis is that the dual objective of confidence minimization and policy optimization induces an implicit regularization toward conciseness. Shorter reasoning chains may be lower-entropy and thus easier for the model to predict with high confidence. Without the countervailing pressure of the self-reward mechanism (which rewards high absolute confidence), the model may converge on more compact representations to minimize the confidence loss.
+We observe that the completion length for the \textit{Auxiliary} variant is approximately $25\%$ shorter than for other variants. A potential hypothesis is that the dual objective of confidence minimization and policy optimization induces an implicit regularization toward conciseness. Shorter reasoning chains may be lower-entropy and thus easier for the model to predict with high confidence. Without the countervailing pressure of the self-reward mechanism (which rewards high absolute confidence), the model may converge on more compact representations to minimize the confidence loss.
 
 \paragraph{Dense Reward Signal and Scaling Potential.}
-A fundamental advantage of the Self-Rewarding variant (\texttt{+l+r}) is the provision of a \textit{continuous} gradient signal blended into the advantage estimator. In standard \textit{RLVR} settings with sparse binary rewards, the policy relies on stochastic exploration to discover correct trajectories. The dense self-reward differentiates between partially correct and entirely incorrect trajectories. This potentially mitigates the sparse reward problem.
+A fundamental advantage of the \textit{Self-Rewarding} variant is the provision of a \textit{continuous} gradient signal blended into the advantage estimator. In standard \textit{RLVR} settings with sparse binary rewards, the policy relies on stochastic exploration to discover correct trajectories. The dense self-reward differentiates between partially correct and entirely incorrect trajectories. This potentially mitigates the sparse reward problem.
 
-We hypothesize that this mechanism's efficacy scales with model size. Larger models possess superior latent self-assessment capabilities. In domains such as code generation, where unit tests provide only binary feedback, a dense self-reward could guide the policy through incremental solution construction. Future work should evaluate the scalability of this approach on frontier-class models ($100$B+ parameters).
+We hypothesize that this mechanism's efficacy scales with model size. Larger models possess superior latent self-assessment capabilities. In domains such as code generation, where unit tests provide only binary feedback, a dense self-reward could guide the policy through incremental solution construction. Future work should evaluate the scalability of this approach on frontier-class models ($100\,$B+ parameters).
 
 \paragraph{Resource Efficiency.}
-These results were obtained with minimal computational resources: $N_{\mathrm{epochs}}$ epoch of fine-tuning on $N_{\mathrm{train}}$ samples using a $0.5\,$B parameter proxy model. The consistent improvements across all variants underscore the method's efficiency. We anticipate that increasing the group size $G$ (typically constrained by memory) would further stabilize the advantage estimates and improve performance.
+These results were obtained with minimal computational resources: $1$ epoch of fine-tuning on $7{,}012$ samples using a $0.5\,$B parameter proxy model. The consistent improvements across all variants underscore the method's efficiency. We anticipate that increasing the group size $G$ (typically constrained by memory) would further stabilize the advantage estimates and improve performance.
 
 \section{Discussion and Conclusion}
 \label{sec:conclusion}
 
 \subsection{Technical Limitations}
-A primary constraint is the $0.5\,$B parameter proxy model, which bounds the upper limit of reasoning complexity and potentially masks emergent self-assessment behaviors observable only at larger scales. Training was restricted to a single epoch to prevent overfitting, differing from the original \textit{LaSeR} protocol \citep{laser} which trained for two epochs. Additionally, the use of \texttt{\textit{vLLM}} for accelerated inference was precluded by its dependency version lag, as discussed in \autoref{sec:vllm}.
+A primary constraint is the $0.5\,$B parameter proxy model, which bounds the upper limit of reasoning complexity and potentially masks emergent self-assessment behaviors observable only at larger scales. Training was restricted to a single epoch to prevent overfitting, differing from the original \textit{LaSeR} protocol \citep{laser} which trained for two epochs. Additionally, the use of \texttt{vLLM} for accelerated inference was precluded by its dependency version lag, as discussed in \autoref{sec:vllm}.
 
-The sensitivity of $\beta_{\mathrm{conf}}$ represents a practical challenge. The risk of policy destruction necessitates careful hyperparameter search and monitoring via tools such as \textit{Weights \& Biases}. Future work could explore adaptive scheduling of $\beta_{\mathrm{conf}}$ or multi-objective optimization techniques to mitigate this fragility.
+The sensitivity of $\beta_{\mathrm{conf}}$ represents a practical challenge. The risk of policy destruction necessitates careful hyperparameter search and monitoring via tools such as \texttt{Weights \& Biases}. Future work could explore adaptive scheduling of $\beta_{\mathrm{conf}}$ or multi-objective optimization techniques to mitigate this fragility.
 
 \subsection{Conclusion and Future Work}
 This study validates the feasibility of \textbf{Dense Confidence} as a mechanism for self-supervised process oversight. We demonstrate that even a $0.5\,$B parameter \textit{LLM}, fine-tuned with \textit{LoRA} adapters on a single workstation-class GPU, can function as a concurrent binary classifier of its own reasoning correctness, achieving an \textit{MCC} of $0.58$ with negligible impact on answer quality. The critical methodological contributions are:
@@ -478,7 +478,7 @@ This study validates the feasibility of \textbf{Dense Confidence} as a mechanism
 	\item \textbf{Dense Trajectory-Wide Monitoring:} Extracting confidence at every generation step, removing the need for a separate forward pass and enabling trajectory-wide self-assessment.
 \end{enumerate}
 
-Future research should investigate (i) scaling to frontier-class models to evaluate the dense reward hypothesis at higher capacity, (ii) training explicit Process Reward Models (\textit{PRM}) \citep{verifystepbystep} from the dense confidence signal, potentially eliminating the dependency on costly human annotations, and (iii) applying the framework to coding tasks where unit-test-based \textit{RLVR} provides only binary signals.
+Future research should investigate (i) scaling to frontier-class models to evaluate the dense reward hypothesis at higher capacity, (ii) training explicit \textit{Process Reward Models} (\textit{PRM}) \citep{verifystepbystep} from the dense confidence signal, potentially eliminating the dependency on costly human annotations, and (iii) applying the framework to coding tasks where unit-test-based \textit{RLVR} provides only binary signals.
 
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -513,7 +513,7 @@ Table~\ref{tab:hyperparams} lists all hyperparameters referenced in the text by 
 		\textbf{Symbol}                  & \textbf{Parameter}                        & \textbf{Value}                     & \textbf{Note}             \\
 		\midrule
 		\multicolumn{4}{l}{\textit{Model and Training}}                                                                                                   \\
-		Model                              & Model                                     & \textit{Qwen}/\textit{Qwen}2.5-$0.5\,$B-Instruct        &                           \\
+		Model                              & Model                                     & \texttt{Qwen/Qwen2.5-0.5B-Instruct}        &                           \\
 		$\eta$                           & Learning Rate                             & $2 \times 10^{-5}$                 &                           \\
 		$N_{\mathrm{epochs}}$            & Number of Epochs                          & $1$                                &                           \\
 		$\tau$                           & Sampling Temperature                      & $1.0$                              &                           \\
@@ -524,10 +524,10 @@ Table~\ref{tab:hyperparams} lists all hyperparameters referenced in the text by 
 		$\beta_{\mathrm{KL}}$            & KL Divergence Coefficient                 & $0.0$                              &                           \\
 		\midrule
 		\multicolumn{4}{l}{\textit{Dense Confidence}}                                                                                                     \\
-		$\beta_{\mathrm{conf}}$          & Confidence Loss Factor                    & $0.01$                             & $0$ for \texttt{-l-r}     \\
+		$\beta_{\mathrm{conf}}$          & Confidence Loss Factor                    & $0.01$                             & $0$ for \textit{Base}, \textit{GRPO}     \\
 		$\mu_{\mathrm{conf}}$            & Confidence Logit Mean                     & $-4.0$                             &                           \\
 		$\sigma_{\mathrm{conf}}$         & Confidence Logit Std                      & $1.5$                              &                           \\
-		$\alpha_{\mathrm{blend}}$        & Blending Factor                           & $0.1$                              & Active only in \texttt{+l+r} \\
+		$\alpha_{\mathrm{blend}}$        & Blending Factor                           & $0.1$                              & Active only in \textit{Self-Rewarding} \\
 		$\delta_{\mathrm{min}}$          & Min.\ Confidence Std Threshold            & $0.1$                              &                           \\
 		$N_{\mathrm{warmup}}$            & Warmup Samples                            & $4{,}096$                          & $\approx$ first half of epoch \\
 		\midrule
@@ -536,10 +536,10 @@ Table~\ref{tab:hyperparams} lists all hyperparameters referenced in the text by 
 		$\alpha_{\mathrm{LoRA}}$         & Alpha ($2 \times r_{\mathrm{LoRA}}$)      & $32$                               &                           \\
 		Dropout                              & Dropout                                   & $0.0$                              &                           \\
 		Target Modules                              & Target Modules                            & All linear layers                  &                           \\
-		Token Embedding                              & Confidence Token Embedding Training       & Enabled                            & Disabled for \texttt{-l-r}\\
+		Token Embedding                              & Confidence Token Embedding Training       & Enabled                            & Disabled for \textit{Base}, \textit{GRPO}\\
 		\midrule
 		\multicolumn{4}{l}{\textit{Dataset}}                                                                                                              \\
-		Dataset                              & Dataset                                   & \textit{GSM8K} \citep{gsm8k}                &                           \\
+		Dataset                              & Dataset                                   & \texttt{GSM8K} \citep{gsm8k}                &                           \\
 		$N_{\mathrm{train}}$             & Training Set Size (after filtering)       & $7{,}012$                          &                           \\
 		$N_{\mathrm{eval}}$              & Evaluation Set Size                       & $512$                              &                           \\
 		$T_{\mathrm{prompt}}$            & Max Prompt Length (incl.\ system msg.)    & $128$ tokens                       &                           \\
