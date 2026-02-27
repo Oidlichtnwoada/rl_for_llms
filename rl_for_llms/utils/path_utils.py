@@ -23,6 +23,11 @@ def get_charts_dir() -> pathlib.Path:
     return get_thesis_dir() / "charts"
 
 
+def get_thesis_fonts_dir() -> pathlib.Path:
+    """Return the thesis fonts directory path."""
+    return get_thesis_dir() / "fonts"
+
+
 def get_checkpoints_data_dir() -> pathlib.Path:
     """Return the checkpoints data directory path."""
     return get_data_dir() / "checkpoints"
