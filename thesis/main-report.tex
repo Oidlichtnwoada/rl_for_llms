@@ -195,24 +195,24 @@ The core component is the \texttt{ConfidenceGRPOTrainer}, a custom subclass of \
 			\node[draw, circle, inner sep=2pt, fill=white] (plus) at (0, -13.1) {$+$};
 
 			% Right column: Generation
-			\node[box, fill=orange!5, text width=4.5cm] (hook1) at (14, 0) {\textbf{Forward Hook}\\Capture Logits $l_{i,t}^{\text{conf}}$ at every step};
+			\node[box, fill=orange!5, text width=5.6cm] (hook1) at (14, 0) {\textbf{Forward Hook}\\Capture Confidence Token\\Logits $l_{i,t}^{\text{conf}}$ at every step};
 
 			% Internal Verifier (Same exact size as External Verifier)
 			\node[box, fill=red!5, minimum height=2.6cm, text width=4.5cm] (int) at (14, -10.5) {};
-			\node[align=center] at ($(int.north) + (0, -1.0)$) {\textbf{Internal Verifier}\\[4pt]Sigmoid Transformation\\[4pt]$\bar{c}_i = \frac{1}{T_i}\sum_{t=1}^{T_i} c_{i,t}$};
+			\node[align=center] at ($(int.north) + (0, -1.3)$) {\textbf{Internal Verifier}\\[5pt]$c_{i,t} = \sigma\!\left( \frac{\pi}{\sigma_{\mathrm{conf}}\sqrt{3}} \left(l_{i,t}^{\mathrm{conf}} - \mu_{\mathrm{conf}}\right) \right)$\\[4pt]$\bar{c}_i = \frac{1}{T_i}\sum_{t=1}^{T_i} c_{i,t}$};
 
 			% Center lower elements: Advantage
-			\node[box, fill=purple!5, text width=6cm] (adv) at (7, -15.5) {\textbf{\textit{RL} Advantage Computation}\\Blending: $r_i$ and optionally $\bar{c}_i$\\$\Rightarrow$ Blended Advantage $A_i$};
+			\node[box, fill=purple!5, text width=7.2cm] (adv) at (7, -15.5) {\textbf{\textit{RL} Advantage Computation}\\[3pt]Blended $A_i = (1 - \alpha_{\mathrm{blend}}) A_{r_i} + \alpha_{\mathrm{blend}} A_{\bar{c}_i}$\\[3pt]\small (Blending guarded by $\sigma_{\bar{c}} > \delta_{\mathrm{min}}$)};
 
 			% Left Column lower: Policy 2
 			\node[box, fill=blue!5, text width=4.5cm] (policy2) at (0, -19.5) {\textbf{\textit{LLM} Policy}\\Re-evaluation Phase\\(With Gradients)};
 
 			% Right component: Hook2
-			\node[box, fill=orange!5, text width=4.5cm] (hook2) at (14, -19.5) {\textbf{Forward Hook}\\Capture Logits $l_{i,t}^{\text{conf}}$ at every step};
+			\node[box, fill=orange!5, text width=5.6cm] (hook2) at (14, -19.5) {\textbf{Forward Hook}\\Capture Confidence Token\\Logits $l_{i,t}^{\text{conf}}$ at every step};
 
 			% Bottom row: Losses
 			\node[box, fill=yellow!5, text width=4.5cm] (loss_rl) at (0, -24.5) {\textbf{\textit{RL} Surrogate Loss}\\Maximize Policy\\$\mathcal{J}(\theta)$};
-			\node[box, fill=yellow!5, text width=4.5cm] (loss_conf) at (14, -24.5) {\textbf{\textit{BCE} Confidence Loss}\\Train Predictor\\$L_{\text{conf}}(\theta)$};
+			\node[box, fill=yellow!5, text width=6.2cm] (loss_conf) at (14, -24.5) {\textbf{\textit{BCE} Confidence Loss}\\Train Predictor\\[3pt]$c_{i,t} = \sigma\!\left( \frac{\pi}{\sigma_{\mathrm{conf}}\sqrt{3}} \left(l_{i,t}^{\mathrm{conf}} - \mu_{\mathrm{conf}}\right) \right)$\\[4pt]$L_{\text{conf}}(\theta) = \frac{1}{T_i}\sum_{t=1}^{T_i} \mathrm{BCE}(c_{i,t}, r_{c,i})$};
 
 			% Final Update
 			\node[box, fill=green!5, text width=7.0cm] (update) at (7, -29.0) {\textbf{Loss \& Gradient Descent Update}\\$-\mathcal{J}(\theta) + \beta_{\text{conf}} L_{\text{conf}}(\theta)$\\$\longrightarrow$ \textbf{Update} $\Delta \theta$};
@@ -220,18 +220,18 @@ The core component is the \texttt{ConfidenceGRPOTrainer}, a custom subclass of \
 			% ---------------- EDGES ----------------
 
 			% Top data flows
-			\draw[arr] (dataset.west) -| (policy1.north);
+			\draw[arr] (dataset.west) -| node[pos=0.15, anchor=south east, xshift=0.2cm] {Prompts $q$} (policy1.north);
 			\draw[arr] (policy1.south) -- (traj.north);
 			\draw[dasharr] (policy1.east) -- (hook1.west);
 			\node[anchor=south] at (7, 0.2) {Forward Pass Extraction};
 
 			\draw[arr] (traj.south) -- (ext.north);
 			\draw[arr] (hook1.south) -- (int.north);
-			\node[anchor=west] at (14, -5.5) {Captured Logits};
+			\node[anchor=west, align=left] at (14, -5.5) {Captured Confidence\\Token Logits};
 
 			% Dataset expected answer to correctness
-			\draw[arr, dashed, color=black!60] (dataset.west) -- (3.3, 3.5) -- (3.3, -9.5) -| (corr.north);
-			\node[anchor=west, text=black!60, align=left] at (3.3, -2) {Expected\\Answer $a$};
+			\draw[arr] (dataset.south) |- (3.3, 2.0) -- (3.3, -10.6) -| (corr.north);
+			\node[anchor=west, align=left] at (3.3, -2) {Expected\\Answer $a$};
 
 			% Sub-blocks to Plus fork
 			\draw[arr] (form.south) |- (plus.west);
@@ -257,19 +257,19 @@ The core component is the \texttt{ConfidenceGRPOTrainer}, a custom subclass of \
 
 			% Policy 2 to Loss RL
 			\draw[arr] (policy2.south) -- (loss_rl.north);
-			\node[anchor=east] at (-0.1, -22) {Logprobs $\pi_\theta(o|q)$};
+			\node[anchor=east] at (-0.1, -22) {Logprobs $\pi_\theta(o_i|q)$};
 
 			% Advantage to Loss RL
 			\draw[arr] (adv.south) -- (7, -23.1) -- (1.5, -23.1) -- ([xshift=1.5cm]loss_rl.north);
 			\node[anchor=south] at (4.5, -22.9) {Advantages $A_i$};
 
 			% Correctness ONLY to BCE Validation (Elegant top right routing to minimize crossings, slightly more right)
-			\draw[arr] (corr.east) -- (11.4, -11.35) -- (11.4, -21.5) -- (13.5, -21.5) -- ([xshift=-0.5cm]loss_conf.north);
+			\draw[arr] (corr.east) -- (11.05, -11.35) -- (11.05, -21.5) -- (13.5, -21.5) -- ([xshift=-0.5cm]loss_conf.north);
 			\node[anchor=south] at (6.5, -11.35) {Targets $r_{c,i}$};
 
 			% Hook2 to BCE Validation
 			\draw[arr] (hook2.south) -- (loss_conf.north);
-			\node[anchor=west] at (14, -22) {Captured Logits};
+			\node[anchor=west, align=left] at (14, -22) {Captured Confidence\\Token Logits};
 
 			% Final losses to update
 			\draw[arr] (loss_rl.south) |- (update.west);
