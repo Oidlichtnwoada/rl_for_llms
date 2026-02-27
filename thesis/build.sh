@@ -165,8 +165,8 @@ for INPUT_SRC in "${SOURCES[@]}"; do
 
         # Run compilation
         docker run --rm \
-          -v "$(pwd):/work" \
-          -w /work \
+          -v "$(pwd)/..:/work" \
+          -w /work/thesis \
           -u "$(id -u):$(id -g)" \
           "$IMAGE" \
             bash -c "latexmk ${CMD_OPTS} \"${SRC_FILE}\""
