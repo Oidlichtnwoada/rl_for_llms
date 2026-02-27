@@ -179,8 +179,11 @@ The core component is the \texttt{ConfidenceGRPOTrainer}, a custom subclass of \
 			\node[box, fill=blue!5] (policy1) at (0, 0) {\textbf{\textit{LLM} Policy}\\Generation Phase\\(No Gradients)};
 			\node[box] (traj) at (0, -5.5) {\textbf{Sampled Trajectories}\\$\{o_1, \dots, o_G\}$\\[4pt] \tikz[baseline=0ex]{
 					\draw[fill=gray!30, rounded corners=1pt] (0, 0.45) rectangle (2.2, 0.60);
+					\foreach \x in {0.3, 0.6, 0.9, 1.2, 1.5, 1.8, 2.1} \draw (\x, 0.45) -- (\x, 0.60);
 					\draw[fill=gray!30, rounded corners=1pt] (0, 0.20) rectangle (1.4, 0.35);
+					\foreach \x in {0.3, 0.6, 0.9, 1.2} \draw (\x, 0.20) -- (\x, 0.35);
 					\draw[fill=gray!30, rounded corners=1pt] (0, -0.05) rectangle (2.8, 0.10);
+					\foreach \x in {0.3, 0.6, 0.9, 1.2, 1.5, 1.8, 2.1, 2.4, 2.7} \draw (\x, -0.05) -- (\x, 0.10);
 				}\\Variable Lengths};
 
 			% External Verifier (Separated text and inner boxes for clean layout)
@@ -202,7 +205,7 @@ The core component is the \texttt{ConfidenceGRPOTrainer}, a custom subclass of \
 			\node[align=center] at ($(int.north) + (0, -1.3)$) {\textbf{Internal Verifier}\\[5pt]$c_{i,t} = \sigma\!\left( \frac{\pi}{\sigma_{\mathrm{conf}}\sqrt{3}} \left(l_{i,t}^{\mathrm{conf}} - \mu_{\mathrm{conf}}\right) \right)$\\[4pt]$\bar{c}_i = \frac{1}{T_i}\sum_{t=1}^{T_i} c_{i,t}$};
 
 			% Center lower elements: Advantage
-			\node[box, fill=purple!5, text width=7.2cm] (adv) at (7, -15.5) {\textbf{\textit{RL} Advantage Computation}\\[3pt]$A_x = \frac{x_i - \mu_x}{\sigma_x + \epsilon} \quad \text{for } x \in \{r, \bar{c}\}$\\[3pt]Blended $A_i = (1 - \alpha_{\mathrm{blend}}) A_{r_i} + \alpha_{\mathrm{blend}} A_{\bar{c}_i}$\\[3pt]\small (Blending guarded by $\sigma_{\bar{c}} > \delta_{\mathrm{min}}$)};
+			\node[box, fill=purple!5, text width=7.2cm] (adv) at (7, -15.5) {\textbf{\textit{RL} Advantage Computation}\\[3pt]$A_x = \frac{x_i - \mu_x}{\sigma_x + \epsilon} \quad \text{for } x \in \{r, \bar{c}\}$\\[3pt]Blended $A_i = (1 - \alpha_{\mathrm{blend}}) A_{r_i} + \alpha_{\mathrm{blend}} A_{\bar{c}_i}$\\[3pt]\small (Blending if self-rew. active \& $\sigma_{\bar{c}} > \delta_{\mathrm{min}}$)};
 
 			% Left Column lower: Policy 2
 			\node[box, fill=blue!5, text width=4.5cm] (policy2) at (0, -19.5) {\textbf{\textit{LLM} Policy}\\Re-evaluation Phase\\(With Gradients)};
@@ -263,9 +266,9 @@ The core component is the \texttt{ConfidenceGRPOTrainer}, a custom subclass of \
 			\draw[arr] ([xshift=-2.5cm]adv.south) |- (1.5, -23.1) -- ([xshift=1.5cm]loss_rl.north);
 			\node[anchor=south] at (3.0, -22.9) {Advantages $A_i$};
 
-			% Correctness ONLY to BCE Validation (Elegant top right routing to minimize crossings, slightly more right)
-			\draw[arr] (corr.east) -- (17.6, -11.35) -- (17.6, -21.5) -- (14.5, -21.5) -- ([xshift=0.5cm]loss_conf.north);
-			\node[anchor=south] at (6.5, -11.35) {Targets $r_{c,i}$};
+			% Correctness ONLY to BCE Validation (Elegant routing entering from the right)
+			\draw[arr] (corr.east) -- (18.2, -11.35) |- (loss_conf.east);
+			\node[anchor=south] at (11.0, -11.35) {Targets $r_{c,i}$};
 
 			% Hook2 to BCE Validation
 			\draw[arr] (hook2.south) -- (loss_conf.north);
