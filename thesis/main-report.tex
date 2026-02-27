@@ -299,7 +299,7 @@ In the Self-Rewarding variant, the blended advantage $A^{\mathrm{blended}}_i$ fo
 	A^{\mathrm{blended}}_i =
 	\begin{cases}
 		(1 - \alpha_{\mathrm{blend}}) \dfrac{r_i - \mu_r}{\sigma_r + \epsilon} + \alpha_{\mathrm{blend}} \dfrac{\bar{c}_i - \mu_{\bar{c}}}{\sigma_{\bar{c}} + \epsilon} & \text{if } \sigma_{\bar{c}} > \delta_{\mathrm{min}} \\[12pt]
-		\dfrac{r_i - \mu_r}{\sigma_r + \epsilon}                                                                                                                         & \text{otherwise}
+		\dfrac{r_i - \mu_r}{\sigma_r + \epsilon}                                                                                                                        & \text{otherwise}
 	\end{cases}
 \end{equation}
 where $\bar{c}_i = \frac{1}{T_i}\sum_{t=1}^{T_i} c_{i,t}$ is the mean confidence of trajectory $i$, $\alpha_{\mathrm{blend}}$ is the blending factor, and $\delta_{\mathrm{min}}$ gates the intrinsic reward contribution. When the model's confidence standard deviation across the group is below $\delta_{\mathrm{min}}$ (i.e., equal uncertainty about all samples), the intrinsic signal is suppressed to prevent optimization toward noise, a safeguard adopted from \citet{laser}.
@@ -366,15 +366,15 @@ All reported results are derived from the evaluation runs stored in the \texttt{
 	\label{tab:answer_results}
 	\begin{tabular}{lcccc}
 		\toprule
-		\textbf{Metric}          & \textbf{Base} & \textbf{\textit{GRPO}} & \textbf{\textit{Auxiliary}} & \textbf{\textit{Self-Rewarding}}  \\
+		\textbf{Metric}             & \textbf{Base} & \textbf{\textit{GRPO}} & \textbf{\textit{Auxiliary}} & \textbf{\textit{Self-Rewarding}} \\
 		\midrule
-		\textit{Pass@1} ($\%$)              & $31.35$         & \textbf{$53.27$}         & $52.73$          & $52.59$          \\
-		\textit{Pass@4} ($\%$)            & $59.18$         & \textbf{$74.61$}         & $73.05$          & $72.46$          \\
-		Majority Voting ($\%$)     & $35.35$         & \textbf{$60.55$}         & $57.81$          & $58.40$          \\
-		Highest Confidence ($\%$)  & $29.69$         & $52.54$         & \textbf{$60.16$} & $59.18$          \\
-		Conf.\ Weighted MV ($\%$) & $36.13$         & $59.57$         & \textbf{$60.35$} & $59.57$          \\
-		Truncation ($\%$)          & $0.20$          & $0.20$          & \textbf{$0.10$}  & $0.24$           \\
-		Conf.\ Token Sampled ($\%$)& $0.00$          & $0.00$          & $0.00$           & $0.00$           \\
+		\textit{Pass@1} ($\%$)      & $31.35$       & \textbf{$53.27$}       & $52.73$                     & $52.59$                          \\
+		\textit{Pass@4} ($\%$)      & $59.18$       & \textbf{$74.61$}       & $73.05$                     & $72.46$                          \\
+		Majority Voting ($\%$)      & $35.35$       & \textbf{$60.55$}       & $57.81$                     & $58.40$                          \\
+		Highest Confidence ($\%$)   & $29.69$       & $52.54$                & \textbf{$60.16$}            & $59.18$                          \\
+		Conf.\ Weighted MV ($\%$)   & $36.13$       & $59.57$                & \textbf{$60.35$}            & $59.57$                          \\
+		Truncation ($\%$)           & $0.20$        & $0.20$                 & \textbf{$0.10$}             & $0.24$                           \\
+		Conf.\ Token Sampled ($\%$) & $0.00$        & $0.00$                 & $0.00$                      & $0.00$                           \\
 		\bottomrule
 	\end{tabular}
 \end{table}
@@ -407,19 +407,19 @@ Critically, the confidence token inclusion percentage is exactly $0.0\%$ for \te
 	\label{tab:confidence_results}
 	\begin{tabular}{lcc}
 		\toprule
-		\textbf{Metric}                  & \textbf{\textit{Auxiliary}} & \textbf{\textit{Self-Rewarding}}  \\
+		\textbf{Metric}                   & \textbf{\textit{Auxiliary}} & \textbf{\textit{Self-Rewarding}} \\
 		\midrule
-		Accuracy ($\%$)                     & $74.61$          & \textbf{$78.47$} \\
-		Balanced Accuracy ($\%$)            & $74.03$          & \textbf{$77.89$} \\
-		Harmonic Balanced Accuracy ($\%$)   & $72.51$          & \textbf{$76.29$} \\
-		F1 Score ($\%$)                     & $77.85$          & \textbf{$81.31$} \\
-		TPR / Sensitivity ($\%$)            & $84.63$          & \textbf{$89.04$} \\
-		TNR / Specificity ($\%$)            & $63.43$          & \textbf{$66.74$} \\
-		PPV / Precision ($\%$)              & $72.08$          & \textbf{$74.80$} \\
-		NPV ($\%$)                          & $78.72$          & \textbf{$84.60$} \\
-		\textit{MCC}                               & $0.49$           & \textbf{$0.58$}  \\
-		ROC AUC ($\%$)                      & $83.81$          & \textbf{$87.88$} \\
-		PR AUC ($\%$)                       & $85.18$          & \textbf{$88.59$} \\
+		Accuracy ($\%$)                   & $74.61$                     & \textbf{$78.47$}                 \\
+		Balanced Accuracy ($\%$)          & $74.03$                     & \textbf{$77.89$}                 \\
+		Harmonic Balanced Accuracy ($\%$) & $72.51$                     & \textbf{$76.29$}                 \\
+		F1 Score ($\%$)                   & $77.85$                     & \textbf{$81.31$}                 \\
+		TPR / Sensitivity ($\%$)          & $84.63$                     & \textbf{$89.04$}                 \\
+		TNR / Specificity ($\%$)          & $63.43$                     & \textbf{$66.74$}                 \\
+		PPV / Precision ($\%$)            & $72.08$                     & \textbf{$74.80$}                 \\
+		NPV ($\%$)                        & $78.72$                     & \textbf{$84.60$}                 \\
+		\textit{MCC}                      & $0.49$                      & \textbf{$0.58$}                  \\
+		ROC AUC ($\%$)                    & $83.81$                     & \textbf{$87.88$}                 \\
+		PR AUC ($\%$)                     & $85.18$                     & \textbf{$88.59$}                 \\
 		\bottomrule
 	\end{tabular}
 \end{table}
@@ -510,40 +510,40 @@ Table~\ref{tab:hyperparams} lists all hyperparameters referenced in the text by 
 	\label{tab:hyperparams}
 	\begin{tabular}{llll}
 		\toprule
-		\textbf{Symbol}                  & \textbf{Parameter}                        & \textbf{Value}                     & \textbf{Note}             \\
+		\textbf{Symbol}           & \textbf{Parameter}                     & \textbf{Value}                      & \textbf{Note}                             \\
 		\midrule
-		\multicolumn{4}{l}{\textit{Model and Training}}                                                                                                   \\
-		Model                              & Model                                     & \texttt{Qwen/Qwen2.5-0.5B-Instruct}        &                           \\
-		$\eta$                           & Learning Rate                             & $2 \times 10^{-5}$                 &                           \\
-		$N_{\mathrm{epochs}}$            & Number of Epochs                          & $1$                                &                           \\
-		$\tau$                           & Sampling Temperature                      & $1.0$                              &                           \\
-		$K_{\mathrm{grad}}$              & Gradient Accumulation Steps               & $4$                                &                           \\
-		$G$                              & Group Size (Generations/Prompt)            & $4$                                &                           \\
+		\multicolumn{4}{l}{\textit{Model and Training}}                                                                                                      \\
+		Model                     & Model                                  & \texttt{Qwen/Qwen2.5-0.5B-Instruct} &                                           \\
+		$\eta$                    & Learning Rate                          & $2 \times 10^{-5}$                  &                                           \\
+		$N_{\mathrm{epochs}}$     & Number of Epochs                       & $1$                                 &                                           \\
+		$\tau$                    & Sampling Temperature                   & $1.0$                               &                                           \\
+		$K_{\mathrm{grad}}$       & Gradient Accumulation Steps            & $4$                                 &                                           \\
+		$G$                       & Group Size (Generations/Prompt)        & $4$                                 &                                           \\
 		\midrule
-		\multicolumn{4}{l}{\textit{\textit{GRPO} Configuration}}                                                                                                   \\
-		$\beta_{\mathrm{KL}}$            & KL Divergence Coefficient                 & $0.0$                              &                           \\
+		\multicolumn{4}{l}{\textit{\textit{GRPO} Configuration}}                                                                                             \\
+		$\beta_{\mathrm{KL}}$     & KL Divergence Coefficient              & $0.0$                               &                                           \\
 		\midrule
-		\multicolumn{4}{l}{\textit{Dense Confidence}}                                                                                                     \\
-		$\beta_{\mathrm{conf}}$          & Confidence Loss Factor                    & $0.01$                             & $0$ for \textit{Base}, \textit{GRPO}     \\
-		$\mu_{\mathrm{conf}}$            & Confidence Logit Mean                     & $-4.0$                             &                           \\
-		$\sigma_{\mathrm{conf}}$         & Confidence Logit Std                      & $1.5$                              &                           \\
-		$\alpha_{\mathrm{blend}}$        & Blending Factor                           & $0.1$                              & Active only in \textit{Self-Rewarding} \\
-		$\delta_{\mathrm{min}}$          & Min.\ Confidence Std Threshold            & $0.1$                              &                           \\
-		$N_{\mathrm{warmup}}$            & Warmup Samples                            & $4{,}096$                          & $\approx$ first half of epoch \\
+		\multicolumn{4}{l}{\textit{Dense Confidence}}                                                                                                        \\
+		$\beta_{\mathrm{conf}}$   & Confidence Loss Factor                 & $0.01$                              & $0$ for \textit{Base}, \textit{GRPO}      \\
+		$\mu_{\mathrm{conf}}$     & Confidence Logit Mean                  & $-4.0$                              &                                           \\
+		$\sigma_{\mathrm{conf}}$  & Confidence Logit Std                   & $1.5$                               &                                           \\
+		$\alpha_{\mathrm{blend}}$ & Blending Factor                        & $0.1$                               & Active only in \textit{Self-Rewarding}    \\
+		$\delta_{\mathrm{min}}$   & Min.\ Confidence Std Threshold         & $0.1$                               &                                           \\
+		$N_{\mathrm{warmup}}$     & Warmup Samples                         & $4{,}096$                           & $\approx$ first half of epoch             \\
 		\midrule
-		\multicolumn{4}{l}{\textit{LoRA}}                                                                                                                 \\
-		$r_{\mathrm{LoRA}}$              & Rank                                      & $16$                               &                           \\
-		$\alpha_{\mathrm{LoRA}}$         & Alpha ($2 \times r_{\mathrm{LoRA}}$)      & $32$                               &                           \\
-		Dropout                              & Dropout                                   & $0.0$                              &                           \\
-		Target Modules                              & Target Modules                            & All linear layers                  &                           \\
-		Token Embedding                              & Confidence Token Embedding Training       & Enabled                            & Disabled for \textit{Base}, \textit{GRPO}\\
+		\multicolumn{4}{l}{\textit{LoRA}}                                                                                                                    \\
+		$r_{\mathrm{LoRA}}$       & Rank                                   & $16$                                &                                           \\
+		$\alpha_{\mathrm{LoRA}}$  & Alpha ($2 \times r_{\mathrm{LoRA}}$)   & $32$                                &                                           \\
+		Dropout                   & Dropout                                & $0.0$                               &                                           \\
+		Target Modules            & Target Modules                         & All linear layers                   &                                           \\
+		Token Embedding           & Confidence Token Embedding Training    & Enabled                             & Disabled for \textit{Base}, \textit{GRPO} \\
 		\midrule
-		\multicolumn{4}{l}{\textit{Dataset}}                                                                                                              \\
-		Dataset                              & Dataset                                   & \texttt{GSM8K} \citep{gsm8k}                &                           \\
-		$N_{\mathrm{train}}$             & Training Set Size (after filtering)       & $7{,}012$                          &                           \\
-		$N_{\mathrm{eval}}$              & Evaluation Set Size                       & $512$                              &                           \\
-		$T_{\mathrm{prompt}}$            & Max Prompt Length (incl.\ system msg.)    & $128$ tokens                       &                           \\
-		$T_{\mathrm{gen}}$               & Max Completion Length                      & $1{,}024$ tokens                   &                           \\
+		\multicolumn{4}{l}{\textit{Dataset}}                                                                                                                 \\
+		Dataset                   & Dataset                                & \texttt{GSM8K} \citep{gsm8k}        &                                           \\
+		$N_{\mathrm{train}}$      & Training Set Size (after filtering)    & $7{,}012$                           &                                           \\
+		$N_{\mathrm{eval}}$       & Evaluation Set Size                    & $512$                               &                                           \\
+		$T_{\mathrm{prompt}}$     & Max Prompt Length (incl.\ system msg.) & $128$ tokens                        &                                           \\
+		$T_{\mathrm{gen}}$        & Max Completion Length                  & $1{,}024$ tokens                    &                                           \\
 		\bottomrule
 	\end{tabular}
 \end{table}
@@ -556,9 +556,9 @@ Table~\ref{tab:hyperparams} lists all hyperparameters referenced in the text by 
 Listing~\ref{lst:pyproject} reproduces the complete \texttt{pyproject.toml} used in all experiments. All dependency versions were the latest available at the time of execution.
 
 \lstinputlisting[
-    language={},
-    caption={Complete \texttt{pyproject.toml} project configuration.},
-    label={lst:pyproject}
+	language={},
+	caption={Complete \texttt{pyproject.toml} project configuration.},
+	label={lst:pyproject}
 ]{../pyproject.toml}
 
 \cleardoubleoddpage
