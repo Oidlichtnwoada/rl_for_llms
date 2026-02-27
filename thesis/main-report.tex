@@ -183,7 +183,7 @@ In our configuration, the KL-divergence coefficient $\beta_{\mathrm{KL}}$ is set
 \label{sec:lora}
 We employ Low-Rank Adaptation (\textit{LoRA}) \citep{lora} to reduce the number of trainable parameters. \textit{LoRA} decomposes the weight update $\Delta W$ of a pre-trained weight matrix $W_0 \in \mathbb{R}^{d \times k}$ into two low-rank matrices $A \in \mathbb{R}^{d \times r_{\mathrm{LoRA}}}$ and $B \in \mathbb{R}^{r_{\mathrm{LoRA}} \times k}$. The adapted forward pass computes $h = W_0 x + \frac{\alpha_{\mathrm{LoRA}}}{r_{\mathrm{LoRA}}} B A x$, where $r_{\mathrm{LoRA}} \ll \min(d,k)$ is the rank and $\alpha_{\mathrm{LoRA}}$ is a scaling factor. This reduces the trainable parameters from $d \times k$ to $(d + k) \times r_{\mathrm{LoRA}}$ per adapted layer.
 
-\textit{LoRA} adapters are applied to \textbf{all linear layers} of the transformer (both attention and feed-forward modules), yielding approximately $8.8 \times 10^6$ trainable parameters out of $\approx 503 \times 10^6$ total, corresponding to roughly $1.75\%$ of the model. This distinguishes our work from the original \textit{LaSeR} implementation \citep{laser}, which relied on full-parameter fine-tuning.
+\textit{LoRA} adapters are applied to \textbf{all linear layers} of the transformer (both attention and feed-forward modules), yielding approximately $8.8 \times 10^6$ trainable parameters out of $\approx 503 \times 10^6$ total, corresponding to roughly $1.75\%$ of the model. Importantly, the embedding and output linear layer weights are not adapted by \textit{LoRA}. This distinguishes our work from the original \textit{LaSeR} implementation \citep{laser}, which relied on full-parameter fine-tuning.
 
 \subsubsection{Confidence Token Embedding Training}
 \label{sec:embedding_training}
