@@ -327,10 +327,10 @@ To ensure scientific rigor, we define four controlled settings, configured via e
 \begin{itemize}
 	\item \textbf{Base model (\texttt{base}):} The untouched Base model without any fine-tuning. This serves as a lower-bound reference. No confidence training is performed.
 	\item \textbf{\textit{GRPO} (\texttt{-l-r}):} Standard \textit{RLVR} training with \textit{GRPO}. No confidence loss, no confidence reward. Confidence token embedding training is disabled (the environment variable \texttt{USE\_CONFIDENCE\_LOSS} is set to $0$).
-	\item \textbf{Auxiliary Loss variant (\texttt{+l-r}):} RL training augmented with the auxiliary confidence loss $\beta_{\mathrm{conf}} L_{\mathrm{conf}}$. The model is optimized for both the RL objective and confidence prediction, but the predicted confidence is \textit{not} used in the advantage function (the environment variable \texttt{USE\_CONFIDENCE\_REWARD} is set to $0$). Confidence token embedding training is enabled.
-	\item \textbf{Self-Rewarding variant (\texttt{+l+r}):} Full pipeline: RL training + auxiliary confidence loss + self-reward integration via advantage blending. No additional environment variable changes beyond the defaults. Confidence token embedding training is enabled.
+	\item \textbf{Auxiliary Loss variant (\texttt{+l-r}):} RL training augmented with the auxiliary confidence loss $\beta_{\mathrm{conf}} L_{\mathrm{conf}}$. The model is optimized for both the RL objective and confidence prediction, but the predicted confidence is \textit{not} used in the advantage function (the environment variable \texttt{USE\_CONFIDENCE\_REWARD} is set to $0$). Confidence token embedding training is enabled via the environment variable \texttt{LORA\_TRAIN\_CONFIDENCE\_TOKEN\_EMBEDDING=1}.
+	\item \textbf{Self-Rewarding variant (\texttt{+l+r}):} Full pipeline: RL training + auxiliary confidence loss + self-reward integration via advantage blending. No additional environment variable changes beyond the defaults. Confidence token embedding training is enabled via the environment variable \texttt{LORA\_TRAIN\_CONFIDENCE\_TOKEN\_EMBEDDING=1}.
 \end{itemize}
-All training runs use the same mode (\texttt{MODE=LOCAL}), the same hyperparameters (see \autoref{app:hyperparams}), and the same data splits.
+All training runs use the same mode (\texttt{MODE=LOCAL}), which is a configuration that uses significantly fewer computational resources than the default distributed setup, the same hyperparameters (see \autoref{app:hyperparams}), and the same data splits.
 
 \subsection{Hardware and Compute}
 \label{sec:hardware}
