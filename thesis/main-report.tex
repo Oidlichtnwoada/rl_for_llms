@@ -50,6 +50,7 @@
 \usepackage{listings}
 \usepackage{multirow}
 \usepackage{pdflscape}
+\usepackage{caption}
 
 \lstset{
 	basicstyle=\ttfamily\footnotesize,
@@ -356,12 +357,10 @@ All reported results are derived from the evaluation runs stored in the \texttt{
 \begin{landscape}
 	\subsection{Answer Accuracy Metrics}
 	\label{sec:answer_results}
-	\begin{figure}[ht]
-		\centering
-		\includegraphics[height=0.85\textheight, width=\linewidth, keepaspectratio]{charts/answer_accuracy_chart.pdf}
-		\caption{Answer accuracy metrics across all four variants. Values are aggregated per-group means with standard deviations (where available). The data is sourced from the aggregated answer metric CSV files in \texttt{data/evaluation/final}.}
-		\label{fig:answer_accuracy}
-	\end{figure}
+	\centering
+	\includegraphics[height=0.5\textheight, width=\linewidth, keepaspectratio]{charts/answer_accuracy_chart.pdf}
+	\captionof{figure}{Answer accuracy metrics across all four variants. Values are aggregated per-group means with standard deviations (where available). The data is sourced from the aggregated answer metric CSV files in \texttt{data/evaluation/final}.}
+	\label{fig:answer_accuracy}
 \end{landscape}
 
 \paragraph{Effective \textit{RLVR} Training Pipeline.}
@@ -381,12 +380,10 @@ Critically, the confidence token inclusion percentage is exactly $0.0\%$ for \te
 \begin{landscape}
 	\subsection{Confidence Prediction Metrics}
 	\label{sec:confidence_results}
-	\begin{figure}[ht]
-		\centering
-		\includegraphics[height=0.85\textheight, width=\linewidth, keepaspectratio]{charts/confidence_chart.pdf}
-		\caption{Binary classification metrics for confidence prediction. Only the two variants with trained confidence (\textit{Auxiliary}, \textit{Self-Rewarding}) are shown. Values are computed on the full concatenated evaluation set from the \texttt{data/evaluation/final} directory.}
-		\label{fig:confidence_chart}
-	\end{figure}
+	\centering
+	\includegraphics[height=0.5\textheight, width=\linewidth, keepaspectratio]{charts/confidence_chart.pdf}
+	\captionof{figure}{Binary classification metrics for confidence prediction. Only the two variants with trained confidence (\textit{Auxiliary}, \textit{Self-Rewarding}) are shown. Values are computed on the full concatenated evaluation set from the \texttt{data/evaluation/final} directory.}
+	\label{fig:confidence_chart}
 \end{landscape}
 
 \paragraph{Robust Classification Performance.}
