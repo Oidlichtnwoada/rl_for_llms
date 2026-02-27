@@ -260,8 +260,8 @@ The core component is the \texttt{ConfidenceGRPOTrainer}, a custom subclass of \
 			\node[anchor=east] at (-0.1, -22) {Logprobs $\pi_\theta(o_i|q)$};
 
 			% Advantage to Loss RL
-			\draw[arr] (adv.south) -- (7, -23.1) -- (1.5, -23.1) -- ([xshift=1.5cm]loss_rl.north);
-			\node[anchor=south] at (4.5, -22.9) {Advantages $A_i$};
+			\draw[arr] ([xshift=-2.5cm]adv.south) |- (1.5, -23.1) -- ([xshift=1.5cm]loss_rl.north);
+			\node[anchor=south] at (3.0, -22.9) {Advantages $A_i$};
 
 			% Correctness ONLY to BCE Validation (Elegant top right routing to minimize crossings, slightly more right)
 			\draw[arr] (corr.east) -- (11.05, -11.35) -- (11.05, -21.5) -- (13.5, -21.5) -- ([xshift=-0.5cm]loss_conf.north);
