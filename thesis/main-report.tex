@@ -351,13 +351,14 @@ While \texttt{vLLM} would offer faster generation of rollouts, it would also con
 \label{sec:results}
 All reported results are derived from the evaluation runs stored in the \texttt{data/evaluation/final} directory of the accompanying repository. The answer accuracy chart (\autoref{fig:answer_accuracy}) displays the aggregated per-group mean and standard deviation of the answer metrics. The confidence prediction chart (\autoref{fig:confidence_chart}) displays the concatenated (full-dataset) binary classification metrics.
 
-\subsection{Answer Accuracy Metrics}
-\label{sec:answer_results}
+
 
 \begin{landscape}
-	\begin{figure}[p]
+	\subsection{Answer Accuracy Metrics}
+	\label{sec:answer_results}
+	\begin{figure}[ht]
 		\centering
-		\includegraphics[width=\linewidth]{charts/answer_accuracy_chart.pdf}
+		\includegraphics[height=0.85\textheight, width=\linewidth, keepaspectratio]{charts/answer_accuracy_chart.pdf}
 		\caption{Answer accuracy metrics across all four variants. Values are aggregated per-group means with standard deviations (where available). The data is sourced from the aggregated answer metric CSV files in \texttt{data/evaluation/final}.}
 		\label{fig:answer_accuracy}
 	\end{figure}
@@ -375,13 +376,14 @@ Across all variants, the truncation rate is below $0.25\%$, meaning that virtual
 \paragraph{Confidence Token Never Sampled.}
 Critically, the confidence token inclusion percentage is exactly $0.0\%$ for \textit{every} variant, including those with trained confidence. This empirically validates the theoretical argument of \autoref{sec:interference}: the sigmoid-based logit formulation, combined with the naturally low initial logit magnitude of the untrained token, prevents the confidence token from ever reaching the sampling threshold. Both issues identified in the original \textit{LaSeR} paper \citep{laser} (the necessity of a non-standard additional forward pass and the risk of confidence token sampling) are effectively resolved by our approach.
 
-\subsection{Confidence Prediction Quality}
-\label{sec:confidence_results}
+
 
 \begin{landscape}
-	\begin{figure}[p]
+	\subsection{Confidence Prediction Metrics}
+	\label{sec:confidence_results}
+	\begin{figure}[ht]
 		\centering
-		\includegraphics[width=\linewidth]{charts/confidence_chart.pdf}
+		\includegraphics[height=0.85\textheight, width=\linewidth, keepaspectratio]{charts/confidence_chart.pdf}
 		\caption{Binary classification metrics for confidence prediction. Only the two variants with trained confidence (\textit{Auxiliary}, \textit{Self-Rewarding}) are shown. Values are computed on the full concatenated evaluation set from the \texttt{data/evaluation/final} directory.}
 		\label{fig:confidence_chart}
 	\end{figure}
