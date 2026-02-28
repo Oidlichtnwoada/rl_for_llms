@@ -13,6 +13,7 @@ from rl_for_llms.utils.constant_utils import (
 )
 from rl_for_llms.utils.environment_utils import (
     get_base_num_generations,
+    get_base_num_train_epochs,
     get_lora_train_confidence_token_embedding,
     get_per_device_rollouts_per_batch,
     get_skip_eval_before_train,
@@ -45,7 +46,11 @@ class Config(BaseModel):
     minimum_confidence_std: float = Field(default=0.1)
     confidence_reward_percentage: float = Field(default=0.1)
     learning_rate: float = Field(default=2e-5)
-    num_train_epochs: int = Field(default=get_cuda_default_value(2, 1))
+    num_train_epochs: int = Field(
+        default=get_cuda_default_value(
+            2 * get_base_num_train_epochs(), get_base_num_train_epochs()
+        )
+    )
     use_vllm: bool = Field(default=False)
     vllm_gpu_memory_utilization: float = Field(default=0.4)
     vllm_split_model_across_gpus: bool = Field(default=False)

@@ -32,6 +32,11 @@ def get_base_num_generations() -> int:
     return int(os.getenv("BASE_NUM_GENERATIONS", "4"))
 
 
+def get_base_num_train_epochs() -> int:
+    """Return the base number of training epochs from environment variable."""
+    return int(os.getenv("BASE_NUM_TRAIN_EPOCHS", "1"))
+
+
 def get_skip_eval_before_train() -> bool:
     """Check if evaluation should be skipped before training via environment variable."""
     return os.getenv(f"SKIP_{get_eval_before_train_prefix().upper()}", "0") == "1"
