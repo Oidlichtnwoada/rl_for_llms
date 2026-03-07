@@ -37,6 +37,7 @@ def get_mean_and_std_of_confidence_token_logit(
         config.train_dataset_rows,
         tokenizer,
         config.max_prompt_length,
+        config.seed,
     )
     messages = [
         row["prompt"][-1]["content"] for row in dataset.select(range(sample_size))

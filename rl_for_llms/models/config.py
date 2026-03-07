@@ -17,6 +17,7 @@ from rl_for_llms.utils.environment_utils import (
     get_lora_train_confidence_token_embedding,
     get_per_device_rollouts_per_batch,
     get_skip_eval_before_train,
+    get_seed,
     use_confidence_loss,
     use_confidence_reward,
 )
@@ -29,6 +30,7 @@ from rl_for_llms.utils.torch_utils import (
 class Config(BaseModel):
     """Configuration for the program."""
 
+    seed: int = Field(default_factory=get_seed)
     started_at: float = Field(default_factory=time.time)
     hf_model_id: str = Field(
         default=get_cuda_default_value(

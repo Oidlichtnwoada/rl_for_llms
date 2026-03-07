@@ -62,3 +62,8 @@ def is_debug_mode() -> bool:
     first_check = sys.gettrace() is not None
     second_check = any(x in sys.modules for x in get_python_debug_modules())
     return first_check or second_check
+
+
+def get_seed() -> int:
+    """Return the seed from environment variable."""
+    return int(os.getenv("SEED", "42"))
