@@ -113,7 +113,9 @@ def get_confidence_grpo_trainer(config: Config) -> ConfidenceGRPOTrainer:
     tokenizer = get_tokenizer(config.hf_model_id)
 
     def _load_and_trim(dataset: datasets.Dataset, max_rows: int) -> datasets.Dataset:
-        return trim_dataset(dataset, max_rows, tokenizer, config.max_prompt_length, config.seed)
+        return trim_dataset(
+            dataset, max_rows, tokenizer, config.max_prompt_length, config.seed
+        )
 
     train_dataset = _load_and_trim(
         load_training_data_from_disk(config), config.train_dataset_rows
