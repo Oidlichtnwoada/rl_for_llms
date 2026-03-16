@@ -1,13 +1,17 @@
 import pathlib
 from typing import Literal
 
+import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.axes import Axes
+from matplotlib.collections import LineCollection
 from matplotlib.container import BarContainer
+from matplotlib.figure import Figure
 
 from rl_for_llms.models.config import Config
+from rl_for_llms.models.response_confidence import ResponseConfidenceResult
 from rl_for_llms.models.variant import Variant
 from rl_for_llms.utils.config_utils import get_config
 from rl_for_llms.utils.constant_utils import (
@@ -359,3 +363,205 @@ def create_confidence_chart() -> None:
         title="Confidence Prediction Metrics By Variant",
         filename="confidence_chart.pdf",
     )
+
+
+def get_confidence_colormap() -> mcolors.LinearSegmentedColormap:
+    """Return a red-to-green colormap for confidence values in [0, 1]."""
+    return mcolors.LinearSegmentedColormap.from_list(
+        "confidence_rg", ["#d62728", "#f0e442", "#2ca02c"]
+    )
+
+
+def escape_latex(text: str) -> str:
+    """Escape characters that matplotlib interprets as LaTeX markup."""
+    for char in ("\\", "$", "_", "^", "{", "}", "%", "#", "&", "~"):
+        text = text.replace(char, f"\\{char}")
+    return text
+
+
+def add_gradient_line(
+    ax: Axes,
+    x: list[float],
+    y: list[float],
+) -> None:
+    """Add a line colored by confidence value using a red-to-green gradient."""
+    cmap = get_confidence_colormap()
+    points = np.column_stack([x, y])
+    segments = np.array([[points[i], points[i + 1]] for i in range(len(points) - 1)])
+    segment_colors = np.array([(y[i] + y[i + 1]) / 2 for i in range(len(y) - 1)])
+    lc = LineCollection(segments.tolist(), cmap=cmap, norm=mcolors.Normalize(0, 1))
+    lc.set_array(segment_colors)
+    lc.set_linewidth(1.0)
+    ax.add_collection(lc)
+    scatter_colors = np.array(y)
+    ax.scatter(
+        x,
+        y,
+        c=scatter_colors,
+        cmap=cmap,
+        norm=mcolors.Normalize(0, 1),
+        s=8,
+        zorder=5,
+        edgecolors="none",
+    )
+
+
+def _configure_token_row_axes(
+    ax: Axes,
+    row_tokens: list[str],
+    row_confs: list[float],
+    row_len: int,
+    row_height: float,
+    fig_height: float,
+    full_width: float,
+    margin_left: float,
+    tokens_per_row: int,
+    y_cursor: float,
+) -> float:
+    """Configure a single row of token axes and return the updated y_cursor."""
+    h = row_height / fig_height
+    row_width = full_width * (row_len / tokens_per_row)
+    y_cursor -= h
+    ax.set_position((margin_left, y_cursor, row_width, h * 0.85))
+
+    x_positions = list(range(row_len))
+    add_gradient_line(ax, [float(x) for x in x_positions], row_confs)
+
+    ax.set_ylim(-0.05, 1.05)
+    ax.set_xlim(-0.5, row_len - 0.5)
+    ax.set_xticks(x_positions)
+    ax.set_xticklabels(
+        row_tokens,
+        fontsize=3,
+        fontfamily="monospace",
+        rotation=10,
+        ha="right",
+    )
+    ax.tick_params(axis="x", length=2, pad=1)
+    ax.set_ylabel("Confidence", fontsize=5, labelpad=2)
+    ax.tick_params(axis="y", labelsize=4)
+    ax.axhline(y=0.5, color="gray", linestyle="--", linewidth=0.3, alpha=0.5)
+    ax.grid(axis="y", alpha=0.2, linewidth=0.3)
+    return y_cursor
+
+
+def _compute_fig_height_and_axes(
+    result: ResponseConfidenceResult,
+    tokens_per_row: int,
+    row_height: float,
+    title_height: float,
+    sample_gap: float,
+) -> tuple[float, Figure, list[list[Axes]]]:
+    """Compute figure height, create figure and allocate axes per sample."""
+    num_samples = len(result.samples)
+    total_height = 0.0
+    for sample in result.samples:
+        n_tokens = max(len(sample.steps), 1)
+        total_height += (
+            title_height + ((n_tokens - 1) // tokens_per_row + 1) * row_height
+        )
+    total_height += max(num_samples - 1, 0) * sample_gap
+
+    fig_height = total_height + 0.5
+    fig = plt.figure(figsize=(14, fig_height))
+
+    sample_axes: list[list[Axes]] = []
+    for sample in result.samples:
+        n_tokens = max(len(sample.steps), 1)
+        n_rows = (n_tokens - 1) // tokens_per_row + 1
+        axes_for_sample: list[Axes] = []
+        for _ in range(n_rows):
+            ax = fig.add_axes((0.0, 0.0, 1.0, 1.0))
+            axes_for_sample.append(ax)
+        sample_axes.append(axes_for_sample)
+
+    return fig_height, fig, sample_axes
+
+
+def create_confidence_evolution_chart(
+    result: ResponseConfidenceResult,
+    variant: Variant,
+    tokens_per_row: int = 80,
+) -> None:
+    """Generate a PDF chart showing confidence evolution for each sample."""
+    configure_matplotlib_fonts()
+
+    if len(result.samples) == 0:
+        return
+
+    row_height = 0.9
+    title_height = 0.25
+    sample_gap = 0.4
+    fig_height, fig, sample_axes = _compute_fig_height_and_axes(
+        result,
+        tokens_per_row,
+        row_height,
+        title_height,
+        sample_gap,
+    )
+
+    margin_left = 0.06
+    full_width = 0.98 - margin_left
+    y_cursor = 1.0 - 0.3 / fig_height
+
+    for idx, sample in enumerate(result.samples):
+        if idx > 0:
+            y_cursor -= sample_gap / fig_height
+
+        if not sample.steps:
+            for ax in sample_axes[idx]:
+                ax.set_visible(False)
+            continue
+
+        n_tokens = len(sample.steps)
+        n_rows = (n_tokens - 1) // tokens_per_row + 1
+
+        correctness_label = "Correct" if sample.is_correct else "Incorrect"
+        title_text = (
+            f"Sample {idx + 1} [{correctness_label}]\n"
+            f"Mean Confidence: {sample.mean_confidence_sigmoid:.3f}\n"
+            f"Question: {escape_latex(sample.question)}"
+        )
+        title_h = title_height / fig_height
+        y_cursor -= title_h
+        fig.text(
+            margin_left,
+            y_cursor + title_h * 0.5,
+            title_text,
+            fontsize=5,
+            va="center",
+            ha="left",
+            wrap=True,
+        )
+
+        token_texts = [
+            step.token_text.replace("\n", "\\n").replace("\r", "\\r")
+            for step in sample.steps
+        ]
+        confidence_values = [step.confidence_sigmoid for step in sample.steps]
+
+        for row_idx in range(n_rows):
+            start = row_idx * tokens_per_row
+            end = min(start + tokens_per_row, n_tokens)
+            y_cursor = _configure_token_row_axes(
+                sample_axes[idx][row_idx],
+                token_texts[start:end],
+                confidence_values[start:end],
+                len(token_texts[start:end]),
+                row_height,
+                fig_height,
+                full_width,
+                margin_left,
+                tokens_per_row,
+                y_cursor,
+            )
+
+    fig.text(
+        0.5,
+        1.0 - 0.1 / fig_height,
+        f"Confidence Evolution [Variant: {variant.get_shorthand()}]",
+        fontsize=10,
+        ha="center",
+        va="top",
+    )
+    save_chart("confidence_evolution_chart.pdf")

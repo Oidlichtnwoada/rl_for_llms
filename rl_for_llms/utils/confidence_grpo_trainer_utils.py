@@ -48,6 +48,7 @@ from rl_for_llms.utils.llm_utils import get_confidence_token_id
 from rl_for_llms.utils.path_utils import (
     delete_csv_files_in_evaluation_metric_dir,
     get_evaluation_metric_dir,
+    standardize_model_id,
 )
 from rl_for_llms.utils.reward_utils import get_class_weights_for_single_group
 from rl_for_llms.utils.torch_utils import convert_tensor_to_list, get_mode
@@ -408,12 +409,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
 
     def _get_model_output_dir(self, model_identifier: str) -> pathlib.Path:
         shorthand = self.get_config_shorthand()
-        standardized_hf_model_id = (
-            self.config.hf_model_id.replace("/", "_")
-            .replace("-", "_")
-            .replace(".", "_")
-            .lower()
-        )
+        standardized_hf_model_id = standardize_model_id(self.config.hf_model_id)
         return (
             get_evaluation_metric_dir()
             / f"{standardized_hf_model_id}_{model_identifier}_{shorthand}"

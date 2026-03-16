@@ -68,6 +68,11 @@ def get_evaluation_final_dir() -> pathlib.Path:
     return get_evaluation_data_dir() / "final"
 
 
+def standardize_model_id(model_id: str) -> str:
+    """Return a standardized, filesystem-safe version of the model ID."""
+    return model_id.replace("/", "_").replace("-", "_").replace(".", "_").lower()
+
+
 def is_folder_empty(
     folder_path: pathlib.Path, ignore_file_names: tuple[str, ...] = ()
 ) -> bool:

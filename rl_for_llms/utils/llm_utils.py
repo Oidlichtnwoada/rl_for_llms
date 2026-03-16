@@ -56,8 +56,9 @@ def get_llm_output_with_step_data(
     top_k: int | None = None,
     *,
     do_sampling: bool = False,
-) -> tuple[str, list[dict[int, dict[str, float]]]]:
-    """Return the LLM output along with step data for the specified target token IDs."""
+    skip_special_tokens: bool = False,
+) -> tuple[str, list[dict[int, dict[str, float]]], list[int], list[str]]:
+    """Return LLM output, step data, generated token IDs, and per-token texts."""
     pipe = get_pipeline(model_id)
     model = pipe.model
     tokenizer = typing.cast("PreTrainedTokenizer", pipe.tokenizer)
@@ -80,8 +81,13 @@ def get_llm_output_with_step_data(
     )
     generated_ids = outputs.sequences[0][len(inputs["input_ids"][0]) :]
     output_message = str(
-        tokenizer.decode(generated_ids, skip_special_tokens=True)
+        tokenizer.decode(generated_ids, skip_special_tokens=skip_special_tokens)
     ).strip()
+    token_ids = [int(tid) for tid in generated_ids]
+    token_texts = [
+        str(tokenizer.decode([tid], skip_special_tokens=skip_special_tokens))
+        for tid in generated_ids
+    ]
     step_data = []
     for step_tensor in outputs.logits:
         step_probs = torch.softmax(step_tensor / temperature, dim=-1)
@@ -91,7 +97,7 @@ def get_llm_output_with_step_data(
             prob_val = step_probs[0, tid].item()
             step_vals[tid] = {"logit": logit_val, "prob": prob_val}
         step_data.append(step_vals)
-    return output_message, step_data
+    return output_message, step_data, token_ids, token_texts
 
 
 def get_model_representation(model_id: str) -> str:
@@ -155,6 +161,14 @@ def get_tokenizer(
     return typing.cast("PreTrainedTokenizerBase", tokenizer)
 
 
+def check_contains_confidence_token(
+    token_ids: list[int],
+    config: Config,
+) -> bool:
+    """Return whether the given token IDs contain the confidence token."""
+    return get_confidence_token_id(config) in token_ids
+
+
 def check_model_output_for_completion(
     completion_ids: list[int],
     prompt: str,
@@ -176,9 +190,12 @@ def check_model_output_for_completion(
         is_completed = False
     else:
         is_completed = True
-    confidence_token_count = completion_ids.count(get_confidence_token_id(config))
-    contains_confidence_token = confidence_token_count > 0
+    contains_confidence_token = check_contains_confidence_token(
+        completion_ids,
+        config,
+    )
     if contains_confidence_token:
+        confidence_token_count = completion_ids.count(get_confidence_token_id(config))
         log_msg(
             f'model output for prompt ("{prompt}") with ID ("{prompt_id}") contains {confidence_token_count} confidence token(s), which should not be sampled by the model during generation',
             level=logging.WARNING,

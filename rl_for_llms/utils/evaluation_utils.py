@@ -1,13 +1,25 @@
-import itertools
-import json
 import random
 import statistics
 from collections import defaultdict
 
 import pandas as pd
-from scipy.stats import skew
+import torch
+from accelerate.utils import is_peft_model
+from peft import PeftModel, set_peft_model_state_dict
+from peft.utils import load_peft_weights
 
 from rl_for_llms.models.answer import AnswerWithConfidence
+from rl_for_llms.models.response_confidence import (
+    ResponseConfidenceResult,
+    SampleResult,
+    TokenStep,
+)
+from rl_for_llms.models.variant import Variant
+from rl_for_llms.utils.chart_utils import (
+    create_confidence_evolution_chart,
+    get_eval_prefix,
+)
+from rl_for_llms.utils.confidence_utils import get_confidence_token_logit_sigmoid
 from rl_for_llms.utils.config_utils import get_config
 from rl_for_llms.utils.constant_utils import (
     get_default_confidence_score,
@@ -16,17 +28,37 @@ from rl_for_llms.utils.constant_utils import (
 from rl_for_llms.utils.dataset_utils import load_training_data_from_disk, trim_dataset
 from rl_for_llms.utils.group_utils import iter_groups
 from rl_for_llms.utils.llm_utils import (
+    check_contains_confidence_token,
     get_llm_output_with_step_data,
+    get_pipeline,
     get_token_to_id_mapping,
     get_tokenizer,
 )
-from rl_for_llms.utils.path_utils import get_evaluation_metric_dir
+from rl_for_llms.utils.path_utils import (
+    get_evaluation_final_dir,
+    get_evaluation_metric_dir,
+    standardize_model_id,
+)
+from rl_for_llms.utils.reward_utils import get_math_verification_answer
 
 
-def get_mean_and_std_of_confidence_token_logit(
-    sample_size: int = 16,
-) -> tuple[float, float, float]:
-    """Return the mean and standard deviation of the confidence token logit."""
+def _get_variant_checkpoint_dir(variant: Variant, config_hf_model_id: str) -> str:
+    """Return the checkpoint directory path for a variant in data/evaluation/final."""
+    standardized_hf_model_id = standardize_model_id(config_hf_model_id)
+    prefix = get_eval_prefix(variant)
+    return str(
+        get_evaluation_final_dir()
+        / f"{standardized_hf_model_id}_{prefix}_{variant.value}"
+    )
+
+
+def get_response_and_confidence_tokens_for_answers(
+    variant: Variant,
+    sample_size: int = 1,
+    *,
+    generate_chart: bool = True,
+) -> ResponseConfidenceResult:
+    """Return response and confidence data for sampled answers using a specific variant."""
     config = get_config()
     confidence_token_id = get_token_to_id_mapping(config.hf_model_id)[
         config.confidence_token
@@ -39,29 +71,88 @@ def get_mean_and_std_of_confidence_token_logit(
         config.max_prompt_length,
         config.seed,
     )
-    messages = [
-        row["prompt"][-1]["content"] for row in dataset.select(range(sample_size))
-    ]
-    step_data = [
-        get_llm_output_with_step_data(
-            message,
-            config.hf_model_id,
-            (confidence_token_id,),
-        )[1]
-        for message in messages
-    ]
-    logit_values = [
-        [x[confidence_token_id]["logit"] for x in message_logits]
-        for message_logits in step_data
-    ]
-    flattened_logit_values = list(itertools.chain.from_iterable(logit_values))
-    file_path = get_evaluation_metric_dir() / "confidence_logit_values.json"
-    with file_path.open("w") as file:
-        file.write(json.dumps(flattened_logit_values))
-    mean_value = statistics.mean(flattened_logit_values)
-    std_value = statistics.stdev(flattened_logit_values)
-    skewness = skew(flattened_logit_values, bias=False)
-    return mean_value, std_value, skewness
+
+    pipe = get_pipeline(config.hf_model_id)
+
+    checkpoint_dir = _get_variant_checkpoint_dir(variant, config.hf_model_id)
+
+    model = pipe.model
+    if is_peft_model(model):
+        adapter_weights = load_peft_weights(checkpoint_dir)
+        set_peft_model_state_dict(model, adapter_weights, adapter_name="default")
+    else:
+        model = PeftModel.from_pretrained(model, checkpoint_dir)  # type: ignore[assignment]
+        pipe.model = model
+
+    rows = dataset.select(range(sample_size))
+    messages = [row["prompt"][-1]["content"] for row in rows]
+    answers = [row["answer"] for row in rows]
+
+    samples: list[SampleResult] = []
+    all_logit_values: list[float] = []
+
+    for message, correct_answer in zip(messages, answers, strict=True):
+        output_message, step_data, token_ids, token_texts = (
+            get_llm_output_with_step_data(
+                message,
+                config.hf_model_id,
+                (confidence_token_id,),
+            )
+        )
+
+        verification = get_math_verification_answer(
+            correct_answer,
+            output_message,
+            is_truncated=False,
+            contains_confidence_token=check_contains_confidence_token(
+                token_ids, config
+            ),
+        )
+
+        steps: list[TokenStep] = []
+        for i, step_vals in enumerate(step_data):
+            logit_val = step_vals[confidence_token_id]["logit"]
+            sigmoid_val = get_confidence_token_logit_sigmoid(
+                torch.tensor(logit_val), config
+            ).item()
+            steps.append(
+                TokenStep(
+                    token_id=token_ids[i],
+                    token_text=token_texts[i],
+                    confidence_logit=logit_val,
+                    confidence_sigmoid=sigmoid_val,
+                )
+            )
+            all_logit_values.append(logit_val)
+
+        samples.append(
+            SampleResult(
+                question=message,
+                full_response=output_message,
+                correct_answer=verification.correct_answer,
+                model_answer=verification.model_answer,
+                is_correct=verification.is_correct,
+                is_truncated=verification.is_truncated,
+                contains_confidence_token=verification.contains_confidence_token,
+                steps=steps,
+            )
+        )
+
+    overall_mean_logit = statistics.mean(all_logit_values) if all_logit_values else 0.0
+    overall_std_logit = (
+        statistics.stdev(all_logit_values) if len(all_logit_values) > 1 else 0.0
+    )
+
+    result = ResponseConfidenceResult(
+        samples=samples,
+        overall_mean_confidence_logit=overall_mean_logit,
+        overall_std_confidence_logit=overall_std_logit,
+    )
+
+    if generate_chart:
+        create_confidence_evolution_chart(result, variant)
+
+    return result
 
 
 def pick_best_answer(
