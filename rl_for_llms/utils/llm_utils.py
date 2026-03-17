@@ -1,8 +1,14 @@
 import logging
+import os
+import pathlib
 import typing
 from functools import cache
 
+import safetensors.torch
 import torch
+from accelerate.utils import is_peft_model
+from peft import PeftModel, set_peft_model_state_dict
+from peft.utils import load_peft_weights
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
@@ -12,6 +18,7 @@ from transformers import (
     PreTrainedTokenizerBase,
     pipeline,
 )
+from transformers.utils import SAFE_WEIGHTS_NAME
 
 from rl_for_llms.models.config import Config
 from rl_for_llms.utils.logging_utils import log_msg
@@ -201,3 +208,25 @@ def check_model_output_for_completion(
             level=logging.WARNING,
         )
     return is_completed, contains_confidence_token
+
+
+def load_checkpoint_weights(
+    model: torch.nn.Module, checkpoint_dir: str | os.PathLike[str]
+) -> torch.nn.Module:
+    """Load checkpoint weights from the given directory into the model, handling both full-weight and adapter checkpoints."""
+    checkpoint_path = pathlib.Path(checkpoint_dir)
+
+    if is_peft_model(model):
+        adapter_weights = load_peft_weights(str(checkpoint_path))
+        set_peft_model_state_dict(model, adapter_weights, adapter_name="default")
+        return model
+
+    if (checkpoint_path / "adapter_config.json").is_file():
+        return PeftModel.from_pretrained(model, checkpoint_dir)
+
+    weights_path = checkpoint_path / SAFE_WEIGHTS_NAME
+    if not weights_path.is_file():
+        raise FileNotFoundError(weights_path)
+    state_dict = safetensors.torch.load_file(str(weights_path), device="cpu")
+    model.load_state_dict(state_dict, strict=False)
+    return model

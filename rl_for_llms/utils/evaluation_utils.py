@@ -1,12 +1,11 @@
 import random
 import statistics
+import typing
 from collections import defaultdict
 
 import pandas as pd
 import torch
-from accelerate.utils import is_peft_model
-from peft import PeftModel, set_peft_model_state_dict
-from peft.utils import load_peft_weights
+from transformers import PreTrainedModel
 
 from rl_for_llms.models.answer import AnswerWithConfidence
 from rl_for_llms.models.response_confidence import (
@@ -33,6 +32,7 @@ from rl_for_llms.utils.llm_utils import (
     get_pipeline,
     get_token_to_id_mapping,
     get_tokenizer,
+    load_checkpoint_weights,
 )
 from rl_for_llms.utils.path_utils import (
     get_evaluation_final_dir,
@@ -76,13 +76,9 @@ def get_response_and_confidence_tokens_for_answers(
 
     checkpoint_dir = _get_variant_checkpoint_dir(variant, config.hf_model_id)
 
-    model = pipe.model
-    if is_peft_model(model):
-        adapter_weights = load_peft_weights(checkpoint_dir)
-        set_peft_model_state_dict(model, adapter_weights, adapter_name="default")
-    else:
-        model = PeftModel.from_pretrained(model, checkpoint_dir)  # type: ignore[assignment]
-        pipe.model = model
+    pipe.model = typing.cast(
+        "PreTrainedModel", load_checkpoint_weights(pipe.model, checkpoint_dir)
+    )
 
     rows = dataset.select(range(sample_size))
     messages = [row["prompt"][-1]["content"] for row in rows]

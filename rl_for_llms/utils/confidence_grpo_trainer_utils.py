@@ -6,16 +6,11 @@ from functools import partial, update_wrapper
 from itertools import chain
 
 import numpy as np
-import safetensors.torch
 import torch
-from accelerate.utils import is_peft_model
 from datasets import Dataset
-from peft import set_peft_model_state_dict
-from peft.utils import load_peft_weights
 from torch import Tensor
 from torch.nn import Module, functional
 from torch.utils.hooks import RemovableHandle
-from transformers.utils import SAFE_WEIGHTS_NAME
 from trl.trainer.grpo_trainer import GRPOTrainer
 
 from rl_for_llms.models.answer import (
@@ -44,7 +39,7 @@ from rl_for_llms.utils.evaluation_utils import (
     store_eval_df,
 )
 from rl_for_llms.utils.group_utils import iter_groups
-from rl_for_llms.utils.llm_utils import get_confidence_token_id
+from rl_for_llms.utils.llm_utils import get_confidence_token_id, load_checkpoint_weights
 from rl_for_llms.utils.path_utils import (
     delete_csv_files_in_evaluation_metric_dir,
     get_evaluation_metric_dir,
@@ -429,15 +424,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         model = self.accelerator.unwrap_model(
             getattr(self, "model_wrapped", self.model)
         )
-        if is_peft_model(model):
-            adapter_weights = load_peft_weights(str(model_output_dir))
-            set_peft_model_state_dict(model, adapter_weights, adapter_name="default")
-        else:
-            weights_path = model_output_dir / SAFE_WEIGHTS_NAME
-            if not weights_path.is_file():
-                raise FileNotFoundError(weights_path)
-            state_dict = safetensors.torch.load_file(str(weights_path), device="cpu")
-            model.load_state_dict(state_dict, strict=False)
+        load_checkpoint_weights(model, model_output_dir)
 
     def _merge_eval_metrics(self, metric_key_prefix: str) -> None:
         bc_concat, bc_agg = self._compute_eval_bc_metrics(metric_key_prefix)
