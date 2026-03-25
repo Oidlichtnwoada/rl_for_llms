@@ -28,6 +28,7 @@ from rl_for_llms.utils.dataset_utils import load_training_data_from_disk, trim_d
 from rl_for_llms.utils.group_utils import iter_groups
 from rl_for_llms.utils.llm_utils import (
     check_contains_confidence_token,
+    compute_post_eos_confidence_logprob,
     get_llm_output_with_step_data,
     get_pipeline,
     get_token_to_id_mapping,
@@ -86,6 +87,7 @@ def get_response_and_confidence_tokens_for_answers(
 
     samples: list[SampleResult] = []
     all_logit_values: list[float] = []
+    all_confidence_logprob_values: list[float] = []
 
     for message, correct_answer in zip(messages, answers, strict=True):
         output_message, step_data, token_ids, token_texts = (
@@ -93,6 +95,7 @@ def get_response_and_confidence_tokens_for_answers(
                 message,
                 config.hf_model_id,
                 (confidence_token_id,),
+                temperature=config.temperature,
             )
         )
 
@@ -111,15 +114,26 @@ def get_response_and_confidence_tokens_for_answers(
             sigmoid_val = get_confidence_token_logit_sigmoid(
                 torch.tensor(logit_val), config
             ).item()
+            logprob_val = step_vals[confidence_token_id]["logprob"]
             steps.append(
                 TokenStep(
                     token_id=token_ids[i],
                     token_text=token_texts[i],
                     confidence_logit=logit_val,
                     confidence_sigmoid=sigmoid_val,
+                    confidence_logprob=logprob_val,
                 )
             )
             all_logit_values.append(logit_val)
+
+        post_eos_logprob = compute_post_eos_confidence_logprob(
+            message,
+            config.hf_model_id,
+            token_ids,
+            confidence_token_id,
+            temperature=config.temperature,
+        )
+        all_confidence_logprob_values.append(post_eos_logprob)
 
         samples.append(
             SampleResult(
@@ -131,6 +145,7 @@ def get_response_and_confidence_tokens_for_answers(
                 is_truncated=verification.is_truncated,
                 contains_confidence_token=verification.contains_confidence_token,
                 steps=steps,
+                last_token_confidence_logprob=post_eos_logprob,
             )
         )
 
@@ -138,11 +153,17 @@ def get_response_and_confidence_tokens_for_answers(
     overall_std_logit = (
         statistics.stdev(all_logit_values) if len(all_logit_values) > 1 else 0.0
     )
+    overall_mean_logprob = (
+        statistics.mean(all_confidence_logprob_values)
+        if all_confidence_logprob_values
+        else 0.0
+    )
 
     result = ResponseConfidenceResult(
         samples=samples,
         overall_mean_confidence_logit=overall_mean_logit,
         overall_std_confidence_logit=overall_std_logit,
+        overall_mean_confidence_logprob=overall_mean_logprob,
     )
 
     if generate_chart:

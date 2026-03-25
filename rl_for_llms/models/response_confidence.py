@@ -10,6 +10,7 @@ class TokenStep(BaseModel):
     token_text: str
     confidence_logit: float
     confidence_sigmoid: float
+    confidence_logprob: float
 
 
 class SampleResult(BaseModel):
@@ -23,6 +24,7 @@ class SampleResult(BaseModel):
     is_truncated: bool
     contains_confidence_token: bool
     steps: list[TokenStep]
+    last_token_confidence_logprob: float
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -55,3 +57,4 @@ class ResponseConfidenceResult(BaseModel):
     samples: list[SampleResult]
     overall_mean_confidence_logit: float
     overall_std_confidence_logit: float
+    overall_mean_confidence_logprob: float

@@ -98,13 +98,47 @@ def get_llm_output_with_step_data(
     step_data = []
     for step_tensor in outputs.logits:
         step_probs = torch.softmax(step_tensor / temperature, dim=-1)
+        step_log_probs = torch.log_softmax(step_tensor / temperature, dim=-1)
         step_vals = {}
         for tid in target_token_ids:
             logit_val = step_tensor[0, tid].item()
             prob_val = step_probs[0, tid].item()
-            step_vals[tid] = {"logit": logit_val, "prob": prob_val}
+            logprob_val = step_log_probs[0, tid].item()
+            step_vals[tid] = {
+                "logit": logit_val,
+                "prob": prob_val,
+                "logprob": logprob_val,
+            }
         step_data.append(step_vals)
     return output_message, step_data, token_ids, token_texts
+
+
+def compute_post_eos_confidence_logprob(
+    message: str,
+    model_id: str,
+    generated_token_ids: list[int],
+    confidence_token_id: int,
+    temperature: float = 1.0,
+) -> float:
+    """Return the log-probability of the confidence token at the position after the generated sequence."""
+    pipe = get_pipeline(model_id)
+    model = pipe.model
+    tokenizer = typing.cast("PreTrainedTokenizer", pipe.tokenizer)
+    messages = [get_user_message(message)]
+    prompt = tokenizer.apply_chat_template(
+        messages, tokenize=False, add_generation_prompt=True
+    )
+    prompt_encoding = tokenizer(prompt, return_tensors="pt").to(model.device)
+    prompt_ids = prompt_encoding["input_ids"]
+    generated_tensor = torch.tensor(
+        [generated_token_ids], device=model.device, dtype=prompt_ids.dtype
+    )
+    full_ids = torch.cat([prompt_ids, generated_tensor], dim=-1)
+    with torch.no_grad():
+        model_output = model(full_ids)
+    last_logits = model_output.logits[0, -1, :]
+    log_probs = torch.log_softmax(last_logits / temperature, dim=-1)
+    return float(log_probs[confidence_token_id].item())
 
 
 def get_model_representation(model_id: str) -> str:
