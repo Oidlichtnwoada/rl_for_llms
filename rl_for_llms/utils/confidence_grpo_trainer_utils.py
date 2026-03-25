@@ -244,6 +244,20 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             * self.config.per_device_rollouts_per_batch
         )
 
+    def _is_reasoning_warmup_complete(self) -> bool:
+        """Check if the reasoning warmup phase is complete."""
+        return (
+            self._get_total_samples_processed() >= self.config.reasoning_warmup_samples
+        )
+
+    def _is_confidence_warmup_complete(self) -> bool:
+        """Check if the confidence warmup phase is complete."""
+        return (
+            self._get_total_samples_processed()
+            >= self.config.reasoning_warmup_samples
+            + self.config.confidence_warmup_samples
+        )
+
     def _blend_advantages(
         self,
         advantages: torch.Tensor,
@@ -252,10 +266,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         if not (
             self.is_confidence_trained()
             and self.config.use_confidence_reward
-            and (
-                self._get_total_samples_processed()
-                >= self.config.confidence_loss_warmup_samples
-            )
+            and self._is_confidence_warmup_complete()
         ):
             return advantages
         num_generations = self.get_num_generations()
@@ -351,9 +362,9 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
                 num_items_in_batch=num_items_in_batch,
             ),
         )
-        confidence_loss = self.confidence_loss_factor * self._compute_confidence_loss(
-            inputs
-        )
+        confidence_loss = (
+            self.confidence_loss_factor if self._is_reasoning_warmup_complete() else 0.0
+        ) * self._compute_confidence_loss(inputs)
         self.remove_hook()
         total_loss = grpo_loss + confidence_loss
         self.add_metrics(get_grpo_namespace(), {(get_loss_name(),): grpo_loss.item()})
