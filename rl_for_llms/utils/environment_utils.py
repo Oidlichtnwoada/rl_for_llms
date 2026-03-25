@@ -1,6 +1,7 @@
 import os
 import sys
 
+from rl_for_llms.models.method import Method
 from rl_for_llms.utils.constant_utils import (
     get_eval_before_train_prefix,
     get_python_debug_modules,
@@ -20,6 +21,20 @@ def use_confidence_loss() -> bool:
 def use_confidence_reward() -> bool:
     """Check if confidence reward should be used via environment variable."""
     return os.getenv("USE_CONFIDENCE_REWARD", "1") == "1"
+
+
+def get_method() -> Method:
+    """Check if confidence reward should be used via environment variable."""
+    if os.getenv("METHOD", "DENSE") == "DENSE":
+        return Method.DENSE
+    return Method.LASER
+
+
+def get_confidence_loss_factor() -> float:
+    """Return the confidence loss factor according to used method."""
+    if get_method() == Method.DENSE:
+        return 0.01
+    return 0.1
 
 
 def get_per_device_rollouts_per_batch() -> int:

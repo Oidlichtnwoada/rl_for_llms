@@ -5,6 +5,7 @@ from peft import TaskType
 from pydantic import BaseModel, Field
 
 from rl_for_llms.models.dataset import Dataset
+from rl_for_llms.models.method import Method
 from rl_for_llms.models.variant import Variant
 from rl_for_llms.utils.constant_utils import (
     get_confidence_loss_name,
@@ -14,7 +15,9 @@ from rl_for_llms.utils.constant_utils import (
 from rl_for_llms.utils.environment_utils import (
     get_base_num_generations,
     get_base_num_train_epochs,
+    get_confidence_loss_factor,
     get_lora_train_confidence_token_embedding,
+    get_method,
     get_per_device_rollouts_per_batch,
     get_seed,
     get_skip_eval_before_train,
@@ -39,9 +42,12 @@ class Config(BaseModel):
     )
     lm_head_attribute_name: str = Field(default="lm_head")
     confidence_token: str = Field(default="<|vision_pad|>")
+    method: Method = Field(default=get_method())
+    confidence_token_logprob_scale: float = Field(default=0.1)
+    confidence_token_logprob_mean: float = Field(default=-20.0)
     confidence_token_logit_mean: float = Field(default=-4.0)
     confidence_token_logit_std: float = Field(default=1.5)
-    confidence_loss_factor: float = Field(default=0.01)
+    confidence_loss_factor: float = Field(default=get_confidence_loss_factor())
     use_confidence_loss: bool = Field(default=use_confidence_loss())
     use_confidence_reward: bool = Field(default=use_confidence_reward())
     reasoning_warmup_samples: int = Field(default=2048)
