@@ -24,7 +24,7 @@ def use_confidence_reward() -> bool:
 
 
 def get_method() -> Method:
-    """Check if confidence reward should be used via environment variable."""
+    """Return the confidence method via environment variable."""
     if os.getenv("METHOD", "DENSE") == "DENSE":
         return Method.DENSE
     return Method.LASER
