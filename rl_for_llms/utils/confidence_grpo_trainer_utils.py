@@ -18,8 +18,12 @@ from rl_for_llms.models.answer import (
     get_answers_with_confidence,
 )
 from rl_for_llms.models.config import Config
+from rl_for_llms.models.method import Method
 from rl_for_llms.utils.classification_utils import compute_binary_classification_metrics
-from rl_for_llms.utils.confidence_utils import get_confidence_token_logit_sigmoid
+from rl_for_llms.utils.confidence_utils import (
+    compute_laser_self_rewarding_score,
+    get_confidence_token_logit_sigmoid,
+)
 from rl_for_llms.utils.constant_utils import (
     get_answer_namespace,
     get_confidence_namespace,
@@ -75,6 +79,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         self.hook_handle: RemovableHandle | None = None
         self.all_confidence_logits: Tensor | None = None
         self.all_confidence_logits_excluding_last: Tensor | None = None
+        self._laser_full_logits: Tensor | None = None
         self.eval_mode: bool = False
         self.eval_inputs: dict[str, list[typing.Any]] = {"bc": [], "answer": []}
         self.eval_outputs: dict[str, list[dict[tuple[str, ...], float]]] = {
@@ -106,6 +111,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         """Clear confidence logits."""
         self.all_confidence_logits = None
         self.all_confidence_logits_excluding_last = None
+        self._laser_full_logits = None
 
     def remove_hook(self, *, clear_confidence_logits: bool = True) -> None:
         """Remove the registered hook."""
@@ -125,12 +131,28 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         logits = output
         if logits.dim() != 3:  # noqa: PLR2004
             raise ValueError
+        match self.config.method:
+            case Method.DENSE:
+                self._dense_logits_hook(logits)
+            case Method.LASER:
+                self._laser_logits_hook(logits)
+
+    def _dense_logits_hook(self, logits: Tensor) -> None:
+        """Capture raw confidence logit at every position for Dense."""
         confidence_logits = logits[:, :, self.confidence_token_id]
+        self._accumulate_confidence_values(confidence_logits)
+
+    def _laser_logits_hook(self, logits: Tensor) -> None:
+        """Capture full logits for LaSeR (consumed by ``_get_laser_post_response_scores``)."""
+        self._laser_full_logits = logits
+
+    def _accumulate_confidence_values(self, confidence_values: Tensor) -> None:
+        """Accumulate per-position confidence values across decoding steps."""
         if self.all_confidence_logits is None:
-            self.all_confidence_logits = confidence_logits
-        elif confidence_logits.shape[1] == 1:
+            self.all_confidence_logits = confidence_values
+        elif confidence_values.shape[1] == 1:
             self.all_confidence_logits = torch.cat(
-                (self.all_confidence_logits, confidence_logits), dim=1
+                (self.all_confidence_logits, confidence_values), dim=1
             )
         self.all_confidence_logits_excluding_last = self.all_confidence_logits[:, :-1]
 
@@ -142,22 +164,34 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         """Check if the confidence loss is being used."""
         return self.confidence_loss_factor > 0.0
 
-    def _get_masked_estimated_rewards(
-        self, completion_mask: torch.Tensor
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def _get_aligned_confidence_values(self, mask: torch.Tensor) -> torch.Tensor:
+        """Return stored confidence values aligned with the given mask shape."""
         if (
             self.all_confidence_logits is None
             or self.all_confidence_logits_excluding_last is None
         ):
             raise ValueError
+        if self.all_confidence_logits.shape[1] == mask.shape[1]:
+            return self.all_confidence_logits
+        if self.all_confidence_logits_excluding_last.shape[1] == mask.shape[1]:
+            return self.all_confidence_logits_excluding_last
+        raise ValueError
+
+    @staticmethod
+    def _extract_post_response_values(
+        values: torch.Tensor, mask: torch.Tensor
+    ) -> torch.Tensor:
+        """Extract values at the first position after the last non-padding token per sequence."""
+        post_response_positions = mask.sum(dim=-1)
+        batch_indices = torch.arange(values.shape[0], device=values.device)
+        return values[batch_indices, post_response_positions]
+
+    def _get_masked_estimated_rewards(
+        self, completion_mask: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         mask = completion_mask.bool()
         sequence_lengths = mask.sum(dim=-1)
-        if self.all_confidence_logits.shape[1] == mask.shape[1]:
-            confidence_logits = self.all_confidence_logits
-        elif self.all_confidence_logits_excluding_last.shape[1] == mask.shape[1]:
-            confidence_logits = self.all_confidence_logits_excluding_last
-        else:
-            raise ValueError
+        confidence_logits = self._get_aligned_confidence_values(mask)
         estimated_rewards = get_confidence_token_logit_sigmoid(
             confidence_logits, self.config
         ).float()
@@ -166,12 +200,37 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
     def _compute_mean_estimated_rewards(
         self, completion_mask: torch.Tensor
     ) -> list[float]:
+        match self.config.method:
+            case Method.DENSE:
+                return self._compute_dense_mean_rewards(completion_mask)
+            case Method.LASER:
+                return self._compute_laser_mean_scores(completion_mask)
+
+    def _compute_dense_mean_rewards(self, completion_mask: torch.Tensor) -> list[float]:
+        """Compute per-sequence mean confidence for Dense (sigmoid over all positions)."""
         estimated_rewards, mask, sequence_lengths = self._get_masked_estimated_rewards(
             completion_mask
         )
         sum_estimated_rewards = (estimated_rewards * mask).sum(dim=-1)
         mean_estimated_rewards = sum_estimated_rewards / sequence_lengths
         return convert_tensor_to_list(mean_estimated_rewards)
+
+    def _get_laser_post_response_scores(self, mask: torch.Tensor) -> torch.Tensor:
+        """Return per-sequence LaSeR self-rewarding scores at the post-EOS position."""
+        if self._laser_full_logits is None:
+            raise ValueError
+        post_response_logits = self._extract_post_response_values(
+            self._laser_full_logits, mask
+        )
+        return compute_laser_self_rewarding_score(
+            post_response_logits, self.confidence_token_id, self.config
+        )
+
+    def _compute_laser_mean_scores(self, completion_mask: torch.Tensor) -> list[float]:
+        """Compute per-sequence self-rewarding score for LaSeR (last position only)."""
+        mask = completion_mask.bool()
+        scores = self._get_laser_post_response_scores(mask)
+        return convert_tensor_to_list(scores)
 
     def _compute_sample_weights(
         self, rewards: list[float], batch_size: int
@@ -289,6 +348,29 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
                     ] + percentage * group_est_advantages[i]
         return blended
 
+    def _run_post_generation_forward_for_laser(
+        self, output: dict[str, torch.Tensor | typing.Any]
+    ) -> None:
+        """Run an extra teacher-forced forward pass to capture post-EOS logits for LaSeR."""
+        prompt_ids = output["prompt_ids"]
+        prompt_mask = output["prompt_mask"]
+        completion_ids = output["completion_ids"]
+        completion_mask = output["completion_mask"]
+
+        input_ids = torch.cat([prompt_ids, completion_ids], dim=1)
+        attention_mask = torch.cat([prompt_mask, completion_mask], dim=1)
+        logits_to_keep = completion_ids.size(1)
+
+        self.register_hook(unwrap_model=True, clear_confidence_logits=True)
+        with torch.no_grad():
+            self._get_per_token_logps_and_entropies(
+                self.model,
+                input_ids,
+                attention_mask,
+                logits_to_keep,
+                batch_size=input_ids.size(0),
+            )
+
     def _generate_and_score_completions(
         self, inputs: list[dict[str, torch.Tensor | typing.Any]]
     ) -> dict[str, torch.Tensor | typing.Any]:
@@ -297,6 +379,9 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         output = super()._generate_and_score_completions(inputs)
         device = output["advantages"].device
         mask = output["completion_mask"].bool()
+
+        if self.config.method == Method.LASER:
+            self._run_post_generation_forward_for_laser(output)
 
         mean_estimated_rewards = self._compute_mean_estimated_rewards(mask)
         rewards = [answer.reward for answer in self.answers]
@@ -318,6 +403,16 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         return output
 
     def _compute_confidence_loss(self, inputs: dict[str, torch.Tensor]) -> torch.Tensor:
+        match self.config.method:
+            case Method.DENSE:
+                return self._compute_dense_confidence_loss(inputs)
+            case Method.LASER:
+                return self._compute_laser_confidence_loss(inputs)
+
+    def _compute_dense_confidence_loss(
+        self, inputs: dict[str, torch.Tensor]
+    ) -> torch.Tensor:
+        """Compute Dense BCE loss over all token positions."""
         if self.all_confidence_logits_excluding_last is None:
             raise ValueError
         estimated_rewards = get_confidence_token_logit_sigmoid(
@@ -343,6 +438,17 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             per_sample_loss_masked.sum(dim=-1) / sequence_lengths
         ) * inputs["sample_weights"]
         return per_rollout_loss_weighted.mean()
+
+    def _compute_laser_confidence_loss(
+        self, inputs: dict[str, torch.Tensor]
+    ) -> torch.Tensor:
+        """Compute LaSeR MSE loss at the post-EOS position."""
+        mask = inputs["completion_mask"].bool()
+        scores = self._get_laser_post_response_scores(mask)
+        rewards = inputs["rewards"].float()
+        per_sample_loss = functional.mse_loss(scores, rewards, reduction="none")
+        weighted_loss = per_sample_loss * inputs["sample_weights"]
+        return weighted_loss.mean()
 
     def compute_loss(
         self,
