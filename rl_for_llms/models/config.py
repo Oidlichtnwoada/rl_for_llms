@@ -122,6 +122,7 @@ class Config(BaseModel):
 
     def get_config_shorthand(self) -> str:
         """Return a shorthand representation of the config."""
+        method_spec = self.method.value.lower()
         confidence_loss_spec = (
             get_confidence_loss_name()
             if self.use_confidence_loss
@@ -132,5 +133,5 @@ class Config(BaseModel):
             if self.use_confidence_reward and self.use_confidence_loss
             else f"{get_no_name()}{get_confidence_reward_name()}"
         )
-        shorthand = f"{confidence_loss_spec}_{confidence_reward_spec}"
+        shorthand = f"{method_spec}_{confidence_loss_spec}_{confidence_reward_spec}"
         return shorthand
