@@ -182,7 +182,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         values: torch.Tensor, mask: torch.Tensor
     ) -> torch.Tensor:
         """Extract values at the first position after the last non-padding token per sequence."""
-        post_response_positions = mask.sum(dim=-1)
+        post_response_positions = values.shape[1] - mask.shape[1] + mask.sum(dim=-1) - 1
         batch_indices = torch.arange(values.shape[0], device=values.device)
         return values[batch_indices, post_response_positions]
 
