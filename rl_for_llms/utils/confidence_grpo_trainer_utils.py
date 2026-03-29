@@ -444,7 +444,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
     ) -> torch.Tensor:
         """Compute LaSeR MSE loss at the post-EOS position."""
         mask = inputs["completion_mask"].bool()
-        scores = self._get_laser_post_response_scores(mask)
+        scores = self._get_laser_post_response_scores(mask).float()
         rewards = inputs["rewards"].float()
         per_sample_loss = functional.mse_loss(scores, rewards, reduction="none")
         weighted_loss = per_sample_loss * inputs["sample_weights"]
