@@ -222,6 +222,7 @@ def add_bar_labels(
     stds: list[float],
     *,
     add_stddev: bool = False,
+    fontsize: float = 5,
 ) -> None:
     """Add text labels on top of bars."""
     for bar, mean, std in zip(bars, means, stds, strict=False):
@@ -233,7 +234,7 @@ def add_bar_labels(
                 label_text,
                 ha="center",
                 va="bottom",
-                fontsize=5,
+                fontsize=fontsize,
             )
 
 
@@ -406,7 +407,7 @@ def create_confidence_chart() -> None:
             label=legend_label,
             color=color_map[key],
         )
-        add_bar_labels(ax, bars, means, [0.0] * len(means))
+        add_bar_labels(ax, bars, means, [0.0] * len(means), fontsize=4)
 
     labels = [format_metric_label(k) for k in percentage_keys]
     finalize_chart(
