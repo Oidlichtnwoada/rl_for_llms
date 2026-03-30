@@ -5,7 +5,6 @@ import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import torch
 from matplotlib.axes import Axes
 from matplotlib.collections import LineCollection
 from matplotlib.container import BarContainer
@@ -15,7 +14,6 @@ from rl_for_llms.models.config import Config
 from rl_for_llms.models.method import Method
 from rl_for_llms.models.response_confidence import ResponseConfidenceResult
 from rl_for_llms.models.variant import Variant
-from rl_for_llms.utils.confidence_utils import apply_laser_score_transformation
 from rl_for_llms.utils.config_utils import get_config
 from rl_for_llms.utils.constant_utils import (
     get_eval_after_train_prefix,
@@ -535,13 +533,18 @@ def _compute_fig_height_and_axes(
     return fig_height, fig, sample_axes
 
 
-def _create_dense_confidence_evolution_chart(
+def create_confidence_evolution_chart(
     result: ResponseConfidenceResult,
     variant: Variant,
     method: Method,
-    tokens_per_row: int,
+    tokens_per_row: int = 80,
 ) -> None:
-    """Generate the Dense per-token confidence evolution chart."""
+    """Generate a PDF chart showing confidence evolution for each sample."""
+    configure_matplotlib_fonts()
+
+    if len(result.samples) == 0:
+        return
+
     row_height = 0.9
     title_height = 0.25
     sample_gap = 0.4
@@ -619,75 +622,3 @@ def _create_dense_confidence_evolution_chart(
         va="top",
     )
     save_chart("confidence_evolution_chart.pdf")
-
-
-def _create_laser_confidence_evolution_chart(
-    result: ResponseConfidenceResult,
-    variant: Variant,
-    method: Method,
-) -> None:
-    """Generate a LaSeR confidence chart showing a single score per sample."""
-    config = get_config()
-    num_samples = len(result.samples)
-    sample_height = 0.55
-    header_height = 0.5
-    fig_height = header_height + num_samples * sample_height + 0.3
-    fig = plt.figure(figsize=(14, max(fig_height, 2.0)))
-
-    margin_left = 0.06
-    y_cursor = 1.0 - header_height / fig_height
-
-    label = get_variant_method_label(variant, method)
-    fig.text(
-        0.5,
-        1.0 - 0.1 / fig_height,
-        f"Confidence Evolution [Variant: {label}]",
-        fontsize=10,
-        ha="center",
-        va="top",
-    )
-
-    for idx, sample in enumerate(result.samples):
-        correctness_label = "Correct" if sample.is_correct else "Incorrect"
-        laser_score = apply_laser_score_transformation(
-            torch.tensor(sample.last_token_confidence_logprob), config
-        ).item()
-        title_text = (
-            f"Sample {idx + 1} [{correctness_label}]  |  "
-            f"LaSeR Score: {laser_score:.4f}  |  "
-            f"Log-Prob: {sample.last_token_confidence_logprob:.4f}\n"
-            f"Question: {escape_latex(sample.question)}"
-        )
-        block_h = sample_height / fig_height
-        y_cursor -= block_h
-        fig.text(
-            margin_left,
-            y_cursor + block_h * 0.5,
-            title_text,
-            fontsize=6,
-            va="center",
-            ha="left",
-            wrap=True,
-        )
-
-    save_chart("confidence_evolution_chart.pdf")
-
-
-def create_confidence_evolution_chart(
-    result: ResponseConfidenceResult,
-    variant: Variant,
-    method: Method,
-    tokens_per_row: int = 80,
-) -> None:
-    """Generate a PDF chart showing confidence evolution for each sample."""
-    configure_matplotlib_fonts()
-
-    if len(result.samples) == 0:
-        return
-
-    if method == Method.LASER:
-        _create_laser_confidence_evolution_chart(result, variant, method)
-    else:
-        _create_dense_confidence_evolution_chart(
-            result, variant, method, tokens_per_row
-        )

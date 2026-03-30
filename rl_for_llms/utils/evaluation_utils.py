@@ -61,12 +61,12 @@ def _get_variant_checkpoint_dir(
 
 def get_response_and_confidence_tokens_for_answers(
     variant: Variant,
-    method: Method,
     sample_size: int = 1,
     *,
     generate_chart: bool = True,
 ) -> ResponseConfidenceResult:
     """Return response and confidence data for sampled answers using a specific variant."""
+    method = Method.DENSE
     config = get_config()
     confidence_token_id = get_token_to_id_mapping(config.hf_model_id)[
         config.confidence_token
