@@ -119,6 +119,7 @@ class Config(BaseModel):
             Variant.WITH_CONFREW,
         )
     )
+    evaluation_methods: tuple[Method, ...] = Field(default=(Method.DENSE, Method.LASER))
 
     def get_config_shorthand(self) -> str:
         """Return a shorthand representation of the config."""

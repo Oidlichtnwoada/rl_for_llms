@@ -11,6 +11,7 @@ from matplotlib.container import BarContainer
 from matplotlib.figure import Figure
 
 from rl_for_llms.models.config import Config
+from rl_for_llms.models.method import Method
 from rl_for_llms.models.response_confidence import ResponseConfidenceResult
 from rl_for_llms.models.variant import Variant
 from rl_for_llms.utils.config_utils import get_config
@@ -74,14 +75,45 @@ def get_confidence_answer_metrics() -> tuple[str, ...]:
     )
 
 
-def get_variant_color_map() -> dict[Variant, str]:
-    """Return a mapping from variant to consistent color string."""
+def get_variant_method_color_map() -> dict[tuple[Variant, Method | None], str]:
+    """Return a mapping from (variant, method) to consistent color string."""
     return {
-        Variant.BASE: "C0",
-        Variant.GRPO: "C1",
-        Variant.ONLY_CONFLOSS: "C2",
-        Variant.WITH_CONFREW: "C3",
+        (Variant.BASE, None): "#1f77b4",
+        (Variant.GRPO, None): "#ff7f0e",
+        (Variant.ONLY_CONFLOSS, Method.DENSE): "#2ca02c",
+        (Variant.ONLY_CONFLOSS, Method.LASER): "#98df8a",
+        (Variant.WITH_CONFREW, Method.DENSE): "#d62728",
+        (Variant.WITH_CONFREW, Method.LASER): "#ff9896",
     }
+
+
+def get_variant_method_shorthand(variant: Variant, method: Method | None = None) -> str:
+    """Return the file shorthand for a variant and optional method."""
+    if variant.has_trained_confidence() and method is not None:
+        return f"{method.value.lower()}_{variant.value}"
+    return variant.value
+
+
+def get_variant_method_label(variant: Variant, method: Method | None = None) -> str:
+    """Return the display label for a variant and optional method."""
+    shorthand = variant.get_shorthand()
+    if method is not None:
+        return f"{shorthand} ({method.value.lower()})"
+    return shorthand
+
+
+def build_variant_method_keys(
+    variants: tuple[Variant, ...],
+    methods: tuple[Method, ...],
+) -> list[tuple[Variant, Method | None]]:
+    """Build a list of (variant, method) keys, expanding confidence variants by method."""
+    keys: list[tuple[Variant, Method | None]] = []
+    for variant in variants:
+        if variant.has_trained_confidence():
+            keys.extend((variant, method) for method in methods)
+        else:
+            keys.append((variant, None))
+    return keys
 
 
 def configure_matplotlib_fonts() -> None:
@@ -122,31 +154,36 @@ def get_eval_prefix(variant: Variant) -> str:
 
 
 def get_csv_path(
-    variant: Variant, metric_type: str, aggregation: Literal["agg", "concat"]
+    variant: Variant,
+    metric_type: str,
+    aggregation: Literal["agg", "concat"],
+    method: Method | None = None,
 ) -> pathlib.Path:
     """Return the CSV path for metrics of a variant."""
     final_dir = get_evaluation_final_dir()
     prefix = get_eval_prefix(variant)
-    return (
-        final_dir / f"{aggregation}_{prefix}_{metric_type}_metrics_{variant.value}.csv"
-    )
+    shorthand = get_variant_method_shorthand(variant, method)
+    return final_dir / f"{aggregation}_{prefix}_{metric_type}_metrics_{shorthand}.csv"
 
 
 def load_agg_metrics_from_csv(
     variant: Variant,
     metric_type: str,
     metric_keys: tuple[str, ...],
+    method: Method | None = None,
 ) -> dict[str, tuple[float, float]]:
     """Load aggregated metrics (mean, std) from CSV for a variant, filtered to given keys."""
-    all_metrics = load_all_agg_metrics_from_csv(variant, metric_type)
+    all_metrics = load_all_agg_metrics_from_csv(variant, metric_type, method=method)
     return {k: v for k, v in all_metrics.items() if k in metric_keys}
 
 
 def load_all_agg_metrics_from_csv(
-    variant: Variant, metric_type: str
+    variant: Variant,
+    metric_type: str,
+    method: Method | None = None,
 ) -> dict[str, tuple[float, float]]:
     """Load all aggregated metrics (mean, std) from CSV for a variant."""
-    df = pd.read_csv(get_csv_path(variant, metric_type, "agg"))
+    df = pd.read_csv(get_csv_path(variant, metric_type, "agg", method=method))
     prefix = get_eval_prefix(variant)
     metrics: dict[str, tuple[float, float]] = {}
     for col in df.columns:
@@ -159,10 +196,12 @@ def load_all_agg_metrics_from_csv(
 
 
 def load_all_concat_metrics_from_csv(
-    variant: Variant, metric_type: str
+    variant: Variant,
+    metric_type: str,
+    method: Method | None = None,
 ) -> dict[str, float]:
     """Load all concatenated metrics (single values) from CSV for a variant."""
-    df = pd.read_csv(get_csv_path(variant, metric_type, "concat"))
+    df = pd.read_csv(get_csv_path(variant, metric_type, "concat", method=method))
     prefix = get_eval_prefix(variant)
     metrics: dict[str, float] = {}
     for col in df.columns:
@@ -234,7 +273,9 @@ def create_answer_accuracy_chart(*, add_stddev_to_label: bool = False) -> None:
     """Create an answer accuracy chart comparing all variants."""
     configure_matplotlib_fonts()
     config = get_config()
-    variants = config.evaluation_variants
+    all_keys = build_variant_method_keys(
+        config.evaluation_variants, config.evaluation_methods
+    )
     common_metrics = get_common_answer_metrics(config)
     confidence_metrics = get_confidence_answer_metrics()
     all_metric_keys = tuple(
@@ -242,18 +283,21 @@ def create_answer_accuracy_chart(*, add_stddev_to_label: bool = False) -> None:
     )
 
     all_metrics = {
-        v: load_agg_metrics_from_csv(v, "answer", all_metric_keys) for v in variants
+        key: load_agg_metrics_from_csv(key[0], "answer", all_metric_keys, method=key[1])
+        for key in all_keys
     }
 
-    color_map = get_variant_color_map()
+    color_map = get_variant_method_color_map()
     _, ax = plt.subplots(figsize=(14, 7))
-    width = 0.18
-    all_max_values = []
+    n_keys = len(all_keys)
+    width = 0.8 / max(n_keys, 1)
+    all_max_values: list[float] = []
 
     x_common = np.arange(len(common_metrics))
-    offsets = np.arange(len(variants)) - (len(variants) - 1) / 2
-    for i, variant in enumerate(variants):
-        metrics = all_metrics[variant]
+    offsets = np.arange(n_keys) - (n_keys - 1) / 2
+    for i, key in enumerate(all_keys):
+        variant, method = key
+        metrics = all_metrics[key]
         means = [
             metrics.get(f"answer/{m}_t=1.0", (0, 0))[0] * 100 for m in common_metrics
         ]
@@ -265,29 +309,28 @@ def create_answer_accuracy_chart(*, add_stddev_to_label: bool = False) -> None:
             x_common + offsets[i] * width,
             means,
             width,
-            label=variant.get_shorthand(),
-            color=color_map[variant],
+            label=get_variant_method_label(variant, method),
+            color=color_map[key],
         )
         add_bar_labels(ax, bars, means, stds, add_stddev=add_stddev_to_label)
 
-    confidence_variants = [v for v in variants if v.has_trained_confidence()]
+    confidence_keys = [key for key in all_keys if key[0].has_trained_confidence()]
     x_conf_start = len(common_metrics)
-    conf_offsets = (
-        np.arange(len(confidence_variants)) - (len(confidence_variants) - 1) / 2
-    )
+    conf_offsets = np.arange(len(confidence_keys)) - (len(confidence_keys) - 1) / 2
     for j, metric in enumerate(confidence_metrics):
         x_pos = x_conf_start + j
-        for i, variant in enumerate(confidence_variants):
-            metrics = all_metrics[variant]
-            key = f"answer/{metric}_t=1.0"
-            if key in metrics:
-                mean, std = metrics[key][0] * 100, metrics[key][1] * 100
+        for i, key in enumerate(confidence_keys):
+            variant, method = key
+            metrics = all_metrics[key]
+            m_key = f"answer/{metric}_t=1.0"
+            if m_key in metrics:
+                mean, std = metrics[m_key][0] * 100, metrics[m_key][1] * 100
                 all_max_values.append(mean)
                 bar = ax.bar(
                     x_pos + conf_offsets[i] * width,
                     mean,
                     width,
-                    color=color_map[variant],
+                    color=color_map[key],
                 )
                 add_bar_labels(ax, bar, [mean], [std], add_stddev=add_stddev_to_label)
 
@@ -307,12 +350,18 @@ def create_confidence_chart() -> None:
     """Create a confidence prediction metrics chart comparing trained variants."""
     configure_matplotlib_fonts()
     config = get_config()
-    variants = [v for v in config.evaluation_variants if v.has_trained_confidence()]
+    confidence_keys = build_variant_method_keys(
+        tuple(v for v in config.evaluation_variants if v.has_trained_confidence()),
+        config.evaluation_methods,
+    )
 
-    if not variants:
+    if not confidence_keys:
         return
 
-    sample_metrics = load_all_concat_metrics_from_csv(variants[0], "bc")
+    first_key = confidence_keys[0]
+    sample_metrics = load_all_concat_metrics_from_csv(
+        first_key[0], "bc", method=first_key[1]
+    )
     all_metric_keys = [k for k in sample_metrics if k.startswith("confidence/")]
 
     metric_order = [name for name, _ in get_metric_units()]
@@ -326,21 +375,26 @@ def create_confidence_chart() -> None:
     )
     mcc_key = next((k for k in all_metric_keys if not is_percentage_metric(k)), None)
 
-    all_metrics = {v: load_all_concat_metrics_from_csv(v, "bc") for v in variants}
+    all_metrics = {
+        key: load_all_concat_metrics_from_csv(key[0], "bc", method=key[1])
+        for key in confidence_keys
+    }
 
-    color_map = get_variant_color_map()
+    color_map = get_variant_method_color_map()
     _, ax = plt.subplots(figsize=(14, 7))
-    width = 0.25
+    n_keys = len(confidence_keys)
+    width = 0.8 / max(n_keys, 1)
     x = np.arange(len(percentage_keys))
-    offsets = np.arange(len(variants)) - (len(variants) - 1) / 2
-    all_max_values = []
+    offsets = np.arange(n_keys) - (n_keys - 1) / 2
+    all_max_values: list[float] = []
 
-    for i, variant in enumerate(variants):
-        metrics = all_metrics[variant]
+    for i, key in enumerate(confidence_keys):
+        variant, method = key
+        metrics = all_metrics[key]
         means = [metrics.get(k, 0) * 100 for k in percentage_keys]
         all_max_values.extend([m for m in means if not np.isnan(m)])
 
-        legend_label = variant.get_shorthand()
+        legend_label = get_variant_method_label(variant, method)
         if mcc_key and mcc_key in metrics:
             mcc_value = metrics[mcc_key]
             legend_label = f"{legend_label} (MCC: {mcc_value:.2f})"
@@ -350,7 +404,7 @@ def create_confidence_chart() -> None:
             means,
             width,
             label=legend_label,
-            color=color_map[variant],
+            color=color_map[key],
         )
         add_bar_labels(ax, bars, means, [0.0] * len(means))
 

@@ -8,6 +8,7 @@ import torch
 from transformers import PreTrainedModel
 
 from rl_for_llms.models.answer import AnswerWithConfidence
+from rl_for_llms.models.method import Method
 from rl_for_llms.models.response_confidence import (
     ResponseConfidenceResult,
     SampleResult,
@@ -17,6 +18,7 @@ from rl_for_llms.models.variant import Variant
 from rl_for_llms.utils.chart_utils import (
     create_confidence_evolution_chart,
     get_eval_prefix,
+    get_variant_method_shorthand,
 )
 from rl_for_llms.utils.confidence_utils import get_confidence_token_logit_sigmoid
 from rl_for_llms.utils.config_utils import get_config
@@ -43,13 +45,17 @@ from rl_for_llms.utils.path_utils import (
 from rl_for_llms.utils.reward_utils import get_math_verification_answer
 
 
-def _get_variant_checkpoint_dir(variant: Variant, config_hf_model_id: str) -> str:
+def _get_variant_checkpoint_dir(
+    variant: Variant,
+    config_hf_model_id: str,
+    method: Method | None = None,
+) -> str:
     """Return the checkpoint directory path for a variant in data/evaluation/final."""
     standardized_hf_model_id = standardize_model_id(config_hf_model_id)
     prefix = get_eval_prefix(variant)
+    shorthand = get_variant_method_shorthand(variant, method)
     return str(
-        get_evaluation_final_dir()
-        / f"{standardized_hf_model_id}_{prefix}_{variant.value}"
+        get_evaluation_final_dir() / f"{standardized_hf_model_id}_{prefix}_{shorthand}"
     )
 
 
@@ -57,6 +63,7 @@ def get_response_and_confidence_tokens_for_answers(
     variant: Variant,
     sample_size: int = 1,
     *,
+    method: Method | None = None,
     generate_chart: bool = True,
 ) -> ResponseConfidenceResult:
     """Return response and confidence data for sampled answers using a specific variant."""
@@ -75,7 +82,9 @@ def get_response_and_confidence_tokens_for_answers(
 
     pipe = get_pipeline(config.hf_model_id)
 
-    checkpoint_dir = _get_variant_checkpoint_dir(variant, config.hf_model_id)
+    checkpoint_dir = _get_variant_checkpoint_dir(
+        variant, config.hf_model_id, method=method
+    )
 
     pipe.model = typing.cast(
         "PreTrainedModel", load_checkpoint_weights(pipe.model, checkpoint_dir)
