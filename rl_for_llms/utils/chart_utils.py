@@ -397,7 +397,7 @@ def create_confidence_chart() -> None:
         legend_label = get_variant_method_label(variant, method)
         if mcc_key and mcc_key in metrics:
             mcc_value = metrics[mcc_key]
-            legend_label = f"{legend_label} (MCC: {mcc_value:.2f})"
+            legend_label = f"{legend_label} [MCC: {mcc_value:.2f}]"
 
         bars = ax.bar(
             x + offsets[i] * width,
