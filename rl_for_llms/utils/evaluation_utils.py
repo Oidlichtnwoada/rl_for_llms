@@ -48,7 +48,7 @@ from rl_for_llms.utils.reward_utils import get_math_verification_answer
 def _get_variant_checkpoint_dir(
     variant: Variant,
     config_hf_model_id: str,
-    method: Method | None = None,
+    method: Method,
 ) -> str:
     """Return the checkpoint directory path for a variant in data/evaluation/final."""
     standardized_hf_model_id = standardize_model_id(config_hf_model_id)
@@ -61,9 +61,9 @@ def _get_variant_checkpoint_dir(
 
 def get_response_and_confidence_tokens_for_answers(
     variant: Variant,
+    method: Method,
     sample_size: int = 1,
     *,
-    method: Method | None = None,
     generate_chart: bool = True,
 ) -> ResponseConfidenceResult:
     """Return response and confidence data for sampled answers using a specific variant."""
@@ -82,9 +82,7 @@ def get_response_and_confidence_tokens_for_answers(
 
     pipe = get_pipeline(config.hf_model_id)
 
-    checkpoint_dir = _get_variant_checkpoint_dir(
-        variant, config.hf_model_id, method=method
-    )
+    checkpoint_dir = _get_variant_checkpoint_dir(variant, config.hf_model_id, method)
 
     pipe.model = typing.cast(
         "PreTrainedModel", load_checkpoint_weights(pipe.model, checkpoint_dir)
@@ -176,7 +174,7 @@ def get_response_and_confidence_tokens_for_answers(
     )
 
     if generate_chart:
-        create_confidence_evolution_chart(result, variant)
+        create_confidence_evolution_chart(result, variant, method)
 
     return result
 

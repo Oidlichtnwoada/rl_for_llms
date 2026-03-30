@@ -14,7 +14,7 @@ def main() -> None:
     create_answer_accuracy_chart()
     create_confidence_chart()
     _ = get_response_and_confidence_tokens_for_answers(
-        Variant.WITH_CONFREW, method=Method.DENSE
+        Variant.WITH_CONFREW, Method.DENSE
     )
 
 
