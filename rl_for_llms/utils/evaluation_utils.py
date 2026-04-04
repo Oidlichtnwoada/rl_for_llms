@@ -83,11 +83,13 @@ def get_response_and_confidence_tokens_for_answers(
 
     pipe = get_pipeline(config.hf_model_id)
 
-    checkpoint_dir = _get_variant_checkpoint_dir(variant, config.hf_model_id, method)
-
-    pipe.model = typing.cast(
-        "PreTrainedModel", load_checkpoint_weights(pipe.model, checkpoint_dir)
-    )
+    if variant.is_trained():
+        checkpoint_dir = _get_variant_checkpoint_dir(
+            variant, config.hf_model_id, method
+        )
+        pipe.model = typing.cast(
+            "PreTrainedModel", load_checkpoint_weights(pipe.model, checkpoint_dir)
+        )
 
     rows = dataset.select(range(sample_size))
     messages = [row["prompt"][-1]["content"] for row in rows]
