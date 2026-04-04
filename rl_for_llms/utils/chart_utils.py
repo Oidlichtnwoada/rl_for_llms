@@ -1,4 +1,5 @@
 import pathlib
+import textwrap
 from typing import Literal
 
 import matplotlib.colors as mcolors
@@ -568,10 +569,11 @@ def create_confidence_evolution_chart(
         n_rows = (n_tokens - 1) // tokens_per_row + 1
 
         correctness_label = "Correct" if sample.is_correct else "Incorrect"
+        wrapped_question = textwrap.fill(sample.question, width=200)
         title_text = (
             f"Sample {idx + 1} [{correctness_label}]\n"
             f"Mean Confidence: {sample.mean_confidence_sigmoid:.3f}\n"
-            f"Question: {sample.question}"
+            f"Question: {wrapped_question}"
         )
         title_h = title_height / fig_height
         y_cursor -= title_h
@@ -582,7 +584,6 @@ def create_confidence_evolution_chart(
             fontsize=5,
             va="center",
             ha="left",
-            wrap=True,
             parse_math=False,
         )
 
