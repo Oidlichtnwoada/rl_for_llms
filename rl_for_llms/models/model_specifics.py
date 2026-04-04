@@ -28,8 +28,8 @@ def get_model_specifics() -> ModelSpecifics:
                 hf_model_id=hf_model_id,
                 lm_head_attribute_name="lm_head",
                 confidence_token="<|vision_pad|>",
-                confidence_token_logprob_mean=-29.0,
-                confidence_token_logit_mean=-4.0,
+                confidence_token_logprob_mean=-28.5,
+                confidence_token_logit_mean=-3.9,
                 confidence_token_logit_std=1.5,
             )
         case "Qwen/Qwen3.5-0.8B":
