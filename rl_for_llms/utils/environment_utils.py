@@ -61,8 +61,7 @@ def get_lora_train_confidence_token_embedding() -> bool:
     """Check if the confidence token embedding should be trained during LoRA fine-tuning via environment variable."""
     if use_confidence_loss():
         return os.getenv("LORA_TRAIN_CONFIDENCE_TOKEN_EMBEDDING", "1") == "1"
-    else:
-        return False
+    return False
 
 
 def get_wandb_api_key() -> str | None:
