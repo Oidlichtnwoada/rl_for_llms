@@ -38,6 +38,7 @@ from rl_for_llms.utils.llm_utils import (
     get_tokenizer,
     load_checkpoint_weights,
 )
+from rl_for_llms.utils.logging_utils import log_msg
 from rl_for_llms.utils.path_utils import (
     get_evaluation_final_dir,
     get_evaluation_metric_dir,
@@ -65,6 +66,7 @@ def get_response_and_confidence_tokens_for_answers(
     sample_size: int = 1,
     *,
     generate_chart: bool = True,
+    log_result: bool = True,
 ) -> ResponseConfidenceResult:
     """Return response and confidence data for sampled answers using a specific variant."""
     method = Method.DENSE
@@ -181,6 +183,9 @@ def get_response_and_confidence_tokens_for_answers(
 
     if generate_chart:
         create_confidence_evolution_chart(result, variant, method)
+
+    if log_result:
+        log_msg(str(result))
 
     return result
 
