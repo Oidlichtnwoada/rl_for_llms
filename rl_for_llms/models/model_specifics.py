@@ -37,9 +37,9 @@ def get_model_specifics() -> ModelSpecifics:
                 hf_model_id=hf_model_id,
                 lm_head_attribute_name="lm_head",
                 confidence_token="<|vision_pad|>",
-                confidence_token_logprob_mean=-23.0,
-                confidence_token_logit_mean=-5.0,
-                confidence_token_logit_std=1.7,
+                confidence_token_logprob_mean=-42.7,
+                confidence_token_logit_mean=-3.7,
+                confidence_token_logit_std=1.5,
             )
         case _:
             raise ValueError
