@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 from rl_for_llms.models.dataset import Dataset
 from rl_for_llms.models.method import Method
+from rl_for_llms.models.model_specifics import get_model_specifics
 from rl_for_llms.models.variant import Variant
 from rl_for_llms.utils.constant_utils import (
     get_confidence_loss_name,
@@ -35,18 +36,22 @@ class Config(BaseModel):
 
     seed: int = Field(default_factory=get_seed)
     started_at: float = Field(default_factory=time.time)
-    hf_model_id: str = Field(
-        default=get_cuda_default_value(
-            "Qwen/Qwen2.5-3B-Instruct", "Qwen/Qwen2.5-0.5B-Instruct"
-        )
+    hf_model_id: str = Field(default=get_model_specifics().hf_model_id)
+    lm_head_attribute_name: str = Field(
+        default=get_model_specifics().lm_head_attribute_name
     )
-    lm_head_attribute_name: str = Field(default="lm_head")
-    confidence_token: str = Field(default="<|vision_pad|>")
+    confidence_token: str = Field(default=get_model_specifics().confidence_token)
     method: Method = Field(default=get_method())
     confidence_token_logprob_kl_scale: float = Field(default=0.1)
-    confidence_token_logprob_mean: float = Field(default=-29.0)
-    confidence_token_logit_mean: float = Field(default=-4.0)
-    confidence_token_logit_std: float = Field(default=1.5)
+    confidence_token_logprob_mean: float = Field(
+        default=get_model_specifics().confidence_token_logprob_mean
+    )
+    confidence_token_logit_mean: float = Field(
+        default=get_model_specifics().confidence_token_logit_mean
+    )
+    confidence_token_logit_std: float = Field(
+        default=get_model_specifics().confidence_token_logit_std
+    )
     confidence_loss_factor: float = Field(default=get_confidence_loss_factor())
     use_confidence_loss: bool = Field(default=use_confidence_loss())
     use_confidence_reward: bool = Field(default=use_confidence_reward())

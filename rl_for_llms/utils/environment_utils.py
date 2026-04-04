@@ -84,3 +84,8 @@ def is_debug_mode() -> bool:
 def get_seed() -> int:
     """Return the seed from environment variable."""
     return int(os.getenv("SEED", "42"))
+
+
+def get_hf_model_id() -> str:
+    """Return the HF model id from environment variable."""
+    return os.getenv("HF_MODEL_ID", "Qwen/Qwen2.5-0.5B-Instruct")
