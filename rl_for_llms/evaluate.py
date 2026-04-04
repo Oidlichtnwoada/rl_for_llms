@@ -12,7 +12,7 @@ def main() -> None:
     """Execute the main function of the module."""
     create_answer_accuracy_chart()
     create_confidence_chart()
-    _ = get_response_and_confidence_tokens_for_answers(Variant.BASE, sample_size=1)
+    _ = get_response_and_confidence_tokens_for_answers(Variant.BASE, sample_size=64)
 
 
 if __name__ == "__main__":
