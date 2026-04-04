@@ -427,7 +427,6 @@ def get_confidence_colormap() -> mcolors.LinearSegmentedColormap:
     )
 
 
-
 def add_gradient_line(
     ax: Axes,
     x: list[float],
