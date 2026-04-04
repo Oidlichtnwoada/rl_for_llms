@@ -10,7 +10,7 @@ from rl_for_llms.utils.constant_utils import (
 
 def is_local_mode_enforced() -> bool:
     """Check if local mode is enforced via environment variable."""
-    return os.getenv("MODE") == "LOCAL"
+    return os.getenv("MODE", "LOCAL") == "LOCAL"
 
 
 def use_confidence_loss() -> bool:
