@@ -427,12 +427,6 @@ def get_confidence_colormap() -> mcolors.LinearSegmentedColormap:
     )
 
 
-def escape_latex(text: str) -> str:
-    """Escape characters that matplotlib interprets as LaTeX markup."""
-    for char in ("\\", "$", "_", "^", "{", "}", "%", "#", "&", "~"):
-        text = text.replace(char, f"\\{char}")
-    return text
-
 
 def add_gradient_line(
     ax: Axes,
@@ -492,6 +486,8 @@ def _configure_token_row_axes(
         rotation=10,
         ha="right",
     )
+    for label in ax.get_xticklabels():
+        label.set_parse_math(False)
     ax.tick_params(axis="x", length=2, pad=1)
     ax.set_ylabel("Confidence", fontsize=5, labelpad=2)
     ax.tick_params(axis="y", labelsize=4)
@@ -576,7 +572,7 @@ def create_confidence_evolution_chart(
         title_text = (
             f"Sample {idx + 1} [{correctness_label}]\n"
             f"Mean Confidence: {sample.mean_confidence_sigmoid:.3f}\n"
-            f"Question: {escape_latex(sample.question)}"
+            f"Question: {sample.question}"
         )
         title_h = title_height / fig_height
         y_cursor -= title_h
@@ -588,6 +584,7 @@ def create_confidence_evolution_chart(
             va="center",
             ha="left",
             wrap=True,
+            parse_math=False,
         )
 
         token_texts = [
