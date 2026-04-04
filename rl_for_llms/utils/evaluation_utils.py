@@ -5,6 +5,7 @@ from collections import defaultdict
 
 import pandas as pd
 import torch
+from tqdm import tqdm
 from transformers import PreTrainedModel
 
 from rl_for_llms.models.answer import AnswerWithConfidence
@@ -96,7 +97,10 @@ def get_response_and_confidence_tokens_for_answers(
     all_logit_values: list[float] = []
     all_confidence_logprob_values: list[float] = []
 
-    for message, correct_answer in zip(messages, answers, strict=True):
+    for message, correct_answer in tqdm(
+        zip(messages, answers, strict=True),
+        total=len(messages),
+    ):
         output_message, step_data, token_ids, token_texts = (
             get_llm_output_with_step_data(
                 message,

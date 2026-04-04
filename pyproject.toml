@@ -17,6 +17,7 @@ dependencies = [
     "pandas==3.0.1",
     "scipy==1.17.1",
     "matplotlib==3.10.8",
+    "tqdm==4.67.3",
 ]
 
 [dependency-groups]
