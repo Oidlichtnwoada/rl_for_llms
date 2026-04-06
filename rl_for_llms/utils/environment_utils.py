@@ -88,4 +88,4 @@ def get_seed() -> int:
 
 def get_hf_model_id() -> str:
     """Return the HF model id from environment variable."""
-    return os.getenv("HF_MODEL_ID", "Qwen/Qwen3.5-0.8B")
+    return os.getenv("HF_MODEL_ID", "Qwen/Qwen2.5-0.5B-Instruct")
