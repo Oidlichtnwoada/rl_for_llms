@@ -1,2 +1,0 @@
-eval_before_train/answer/truncation_percentage_t=1.0,eval_before_train/answer/confidence_token_inclusion_percentage_t=1.0,eval_before_train/answer/accuracy/pass@1_t=1.0,eval_before_train/answer/accuracy/pass@4_t=1.0,eval_before_train/answer/accuracy/majority_voting_t=1.0,eval_before_train/answer/accuracy/confidence_weighted_majority_voting_t=1.0,eval_before_train/answer/accuracy/highest_confidence_t=1.0
-0.3212890625,0.0,0.40673828125,0.68359375,0.509765625,0.48046875,0.3203125
