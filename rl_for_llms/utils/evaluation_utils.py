@@ -310,6 +310,21 @@ def aggregate_metrics(
     return aggregated_metrics
 
 
+def compute_mean_std_metrics(
+    runs: list[dict[tuple[str, ...], float]],
+) -> dict[tuple[str, ...], float]:
+    """Compute per-metric mean and std across runs, expanding each key into key/mean and key/std."""
+    result: dict[tuple[str, ...], float] = {}
+    if not runs:
+        return result
+    all_keys: set[tuple[str, ...]] = set().union(*runs)
+    for key in all_keys:
+        values = [run[key] for run in runs if key in run]
+        result[(*key, "mean")] = statistics.mean(values)
+        result[(*key, "std")] = statistics.stdev(values) if len(values) > 1 else 0.0
+    return result
+
+
 def change_metric_keys(
     metrics: dict[tuple[str, ...], float],
     prefix: tuple[str, ...] = (),

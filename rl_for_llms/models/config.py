@@ -19,6 +19,7 @@ from rl_for_llms.utils.environment_utils import (
     get_confidence_loss_factor,
     get_lora_train_confidence_token_embedding,
     get_method,
+    get_num_eval_repetitions,
     get_per_device_rollouts_per_batch,
     get_seed,
     get_skip_eval_before_train,
@@ -82,6 +83,7 @@ class Config(BaseModel):
         default=get_cuda_default_value(8192, 1024), le=8192
     )
     skip_eval_before_train: bool = Field(default=get_skip_eval_before_train())
+    num_eval_repetitions: int = Field(default_factory=get_num_eval_repetitions)
     num_generations: int = Field(
         default=get_cuda_default_value(
             2 * get_base_num_generations(), get_base_num_generations()

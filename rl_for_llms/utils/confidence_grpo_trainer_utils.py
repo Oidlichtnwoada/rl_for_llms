@@ -38,6 +38,7 @@ from rl_for_llms.utils.evaluation_utils import (
     aggregate_metrics,
     change_metric_keys,
     compute_answer_metrics,
+    compute_mean_std_metrics,
     get_df_from_metrics,
     get_eval_metrics_df_name,
     store_eval_df,
@@ -86,6 +87,9 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             "bc": [],
             "answer": [],
         }
+        self._eval_run_results: list[
+            tuple[dict[tuple[str, ...], float], dict[tuple[str, ...], float]]
+        ] = []
 
     def get_lm_head(self, *, unwrap_model: bool) -> Module:
         """Get the language model head."""
@@ -506,12 +510,19 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         """Evaluate the model and return evaluation metrics."""
         delete_csv_files_in_evaluation_metric_dir(self.config.started_at)
         self._save_checkpoint_to_disk(metric_key_prefix)
-        self.eval_mode = True
-        eval_output = super().evaluate(eval_dataset, ignore_keys, metric_key_prefix)
-        self.eval_mode = False
+        for _ in range(self.config.num_eval_repetitions):
+            self.eval_mode = True
+            super().evaluate(
+                eval_dataset, ignore_keys, metric_key_prefix
+            )
+            self.eval_mode = False
+            bc_concat, _ = self._compute_eval_bc_metrics(metric_key_prefix)
+            _, answer_agg = self._compute_eval_answer_metrics(metric_key_prefix)
+            self._eval_run_results.append((bc_concat, answer_agg))
+            self.clear_eval_inputs_and_outputs()
         self._merge_eval_metrics(metric_key_prefix)
-        self.clear_eval_inputs_and_outputs()
-        return eval_output
+        self._eval_run_results.clear()
+        return {}
 
     def get_config_shorthand(self) -> str:
         """Get a shorthand representation of the config."""
@@ -544,19 +555,19 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         load_checkpoint_weights(model, model_output_dir)
 
     def _merge_eval_metrics(self, metric_key_prefix: str) -> None:
-        bc_concat, _ = self._compute_eval_bc_metrics(metric_key_prefix)
-        _, answer_agg = self._compute_eval_answer_metrics(metric_key_prefix)
+        bc_concat_runs = [r[0] for r in self._eval_run_results]
+        answer_agg_runs = [r[1] for r in self._eval_run_results]
         shorthand = self.get_config_shorthand()
-        metric_bundles: list[tuple[bool, bool, dict[tuple[str, ...], float]]] = [
-            (False, True, bc_concat),
-            (True, False, answer_agg),
+        metric_bundles: list[tuple[bool, bool, list[dict[tuple[str, ...], float]]]] = [
+            (False, True, bc_concat_runs),
+            (True, False, answer_agg_runs),
         ]
-        for is_aggregated, is_bc, data in metric_bundles:
+        for is_aggregated, is_bc, runs in metric_bundles:
             store_eval_df(
                 get_eval_metrics_df_name(
                     metric_key_prefix, is_aggregated=is_aggregated, is_bc=is_bc
                 ),
-                get_df_from_metrics(data),
+                get_df_from_metrics(compute_mean_std_metrics(runs)),
                 shorthand,
             )
 

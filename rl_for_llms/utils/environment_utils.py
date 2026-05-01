@@ -81,6 +81,11 @@ def is_debug_mode() -> bool:
     return first_check or second_check
 
 
+def get_num_eval_repetitions() -> int:
+    """Return the number of evaluation repetitions from environment variable."""
+    return int(os.getenv("NUM_EVAL_REPETITIONS", "3"))
+
+
 def get_seed() -> int:
     """Return the seed from environment variable."""
     return int(os.getenv("SEED", "42"))
