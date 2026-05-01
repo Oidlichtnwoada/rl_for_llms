@@ -544,13 +544,11 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         load_checkpoint_weights(model, model_output_dir)
 
     def _merge_eval_metrics(self, metric_key_prefix: str) -> None:
-        bc_concat, bc_agg = self._compute_eval_bc_metrics(metric_key_prefix)
-        answer_concat, answer_agg = self._compute_eval_answer_metrics(metric_key_prefix)
+        bc_concat, _ = self._compute_eval_bc_metrics(metric_key_prefix)
+        _, answer_agg = self._compute_eval_answer_metrics(metric_key_prefix)
         shorthand = self.get_config_shorthand()
         metric_bundles: list[tuple[bool, bool, dict[tuple[str, ...], float]]] = [
             (False, True, bc_concat),
-            (True, True, bc_agg),
-            (False, False, answer_concat),
             (True, False, answer_agg),
         ]
         for is_aggregated, is_bc, data in metric_bundles:
