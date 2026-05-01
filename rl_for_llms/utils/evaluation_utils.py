@@ -297,7 +297,7 @@ def compute_answer_metrics(
 def aggregate_metrics(
     metrics_list: list[dict[tuple[str, ...], float]],
 ) -> dict[tuple[str, ...], float]:
-    """Aggregate metrics by computing mean and standard deviation."""
+    """Aggregate metrics by computing mean."""
     aggregated_metrics: dict[tuple[str, ...], float] = {}
     if not metrics_list:
         return aggregated_metrics
@@ -306,9 +306,7 @@ def aggregate_metrics(
         values = [metrics[key] for metrics in metrics_list if key in metrics]
         if len(values) == 0:
             raise ValueError
-        aggregated_metrics[(*key, "mean")] = statistics.mean(values)
-        stddev = statistics.stdev(values) if len(values) > 1 else 0.0
-        aggregated_metrics[(*key, "std")] = stddev
+        aggregated_metrics[key] = statistics.mean(values)
     return aggregated_metrics
 
 

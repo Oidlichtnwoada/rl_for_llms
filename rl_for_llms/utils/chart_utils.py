@@ -172,8 +172,8 @@ def load_agg_metrics_from_csv(
     metric_type: str,
     metric_keys: tuple[str, ...],
     method: Method | None = None,
-) -> dict[str, tuple[float, float]]:
-    """Load aggregated metrics (mean, std) from CSV for a variant, filtered to given keys."""
+) -> dict[str, float]:
+    """Load aggregated metrics from CSV for a variant, filtered to given keys."""
     all_metrics = load_all_agg_metrics_from_csv(variant, metric_type, method=method)
     return {k: v for k, v in all_metrics.items() if k in metric_keys}
 
@@ -182,17 +182,14 @@ def load_all_agg_metrics_from_csv(
     variant: Variant,
     metric_type: str,
     method: Method | None = None,
-) -> dict[str, tuple[float, float]]:
-    """Load all aggregated metrics (mean, std) from CSV for a variant."""
+) -> dict[str, float]:
+    """Load all aggregated metrics from CSV for a variant."""
     df = pd.read_csv(get_csv_path(variant, metric_type, "agg", method=method))
     prefix = get_eval_prefix(variant)
-    metrics: dict[str, tuple[float, float]] = {}
+    metrics: dict[str, float] = {}
     for col in df.columns:
-        if col.endswith("/mean"):
-            base_key = col[len(prefix) + 1 : -5]
-            std_key = f"{prefix}/{base_key}/std"
-            if std_key in df.columns:
-                metrics[base_key] = (df[col].iloc[0], df[std_key].iloc[0])
+        base_key = col[len(prefix) + 1 :]
+        metrics[base_key] = df[col].iloc[0]
     return metrics
 
 
@@ -220,19 +217,16 @@ def add_bar_labels(
     ax: Axes,
     bars: BarContainer,
     means: list[float],
-    stds: list[float],
     *,
-    add_stddev: bool = False,
     fontsize: float = 5,
 ) -> None:
     """Add text labels on top of bars."""
-    for bar, mean, std in zip(bars, means, stds, strict=False):
+    for bar, mean in zip(bars, means, strict=False):
         if not np.isnan(mean):
-            label_text = f"{mean:.2f}%\n±{std:.2f}%" if add_stddev else f"{mean:.2f}%"
             ax.text(
                 bar.get_x() + bar.get_width() / 2,
                 bar.get_height() + 0.5,
-                label_text,
+                f"{mean:.2f}%",
                 ha="center",
                 va="bottom",
                 fontsize=fontsize,
@@ -271,7 +265,7 @@ def save_chart(filename: str) -> None:
     plt.close()
 
 
-def create_answer_accuracy_chart(*, add_stddev_to_label: bool = False) -> None:
+def create_answer_accuracy_chart() -> None:
     """Create an answer accuracy chart comparing all variants."""
     configure_matplotlib_fonts()
     config = get_config()
@@ -300,12 +294,7 @@ def create_answer_accuracy_chart(*, add_stddev_to_label: bool = False) -> None:
     for i, key in enumerate(all_keys):
         variant, method = key
         metrics = all_metrics[key]
-        means = [
-            metrics.get(f"answer/{m}_t=1.0", (0, 0))[0] * 100 for m in common_metrics
-        ]
-        stds = [
-            metrics.get(f"answer/{m}_t=1.0", (0, 0))[1] * 100 for m in common_metrics
-        ]
+        means = [metrics.get(f"answer/{m}_t=1.0", 0) * 100 for m in common_metrics]
         all_max_values.extend(means)
         bars = ax.bar(
             x_common + offsets[i] * width,
@@ -314,7 +303,7 @@ def create_answer_accuracy_chart(*, add_stddev_to_label: bool = False) -> None:
             label=get_variant_method_label(variant, method),
             color=color_map[key],
         )
-        add_bar_labels(ax, bars, means, stds, add_stddev=add_stddev_to_label)
+        add_bar_labels(ax, bars, means)
 
     confidence_keys = [key for key in all_keys if key[0].has_trained_confidence()]
     x_conf_start = len(common_metrics)
@@ -326,7 +315,7 @@ def create_answer_accuracy_chart(*, add_stddev_to_label: bool = False) -> None:
             metrics = all_metrics[key]
             m_key = f"answer/{metric}_t=1.0"
             if m_key in metrics:
-                mean, std = metrics[m_key][0] * 100, metrics[m_key][1] * 100
+                mean = metrics[m_key] * 100
                 all_max_values.append(mean)
                 bar = ax.bar(
                     x_pos + conf_offsets[i] * width,
@@ -334,7 +323,7 @@ def create_answer_accuracy_chart(*, add_stddev_to_label: bool = False) -> None:
                     width,
                     color=color_map[key],
                 )
-                add_bar_labels(ax, bar, [mean], [std], add_stddev=add_stddev_to_label)
+                add_bar_labels(ax, bar, [mean])
 
     x_all = np.arange(len(common_metrics) + len(confidence_metrics))
     labels = [format_metric_label(m) for m in common_metrics + confidence_metrics]
@@ -408,7 +397,7 @@ def create_confidence_chart() -> None:
             label=legend_label,
             color=color_map[key],
         )
-        add_bar_labels(ax, bars, means, [0.0] * len(means), fontsize=4)
+        add_bar_labels(ax, bars, means, fontsize=4)
 
     labels = [format_metric_label(k) for k in percentage_keys]
     finalize_chart(
