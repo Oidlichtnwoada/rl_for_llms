@@ -512,9 +512,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         self._save_checkpoint_to_disk(metric_key_prefix)
         for _ in range(self.config.num_eval_repetitions):
             self.eval_mode = True
-            super().evaluate(
-                eval_dataset, ignore_keys, metric_key_prefix
-            )
+            super().evaluate(eval_dataset, ignore_keys, metric_key_prefix)
             self.eval_mode = False
             bc_concat, _ = self._compute_eval_bc_metrics(metric_key_prefix)
             _, answer_agg = self._compute_eval_answer_metrics(metric_key_prefix)
