@@ -178,19 +178,32 @@ def load_agg_metrics_from_csv(
     return {k: v for k, v in all_metrics.items() if k in metric_keys}
 
 
+def _load_mean_metrics_from_csv(
+    csv_path: pathlib.Path,
+    prefix: str,
+) -> dict[str, float]:
+    """Load mean values from a CSV with /mean and /std columns, keyed without the /mean suffix."""
+    df = pd.read_csv(csv_path)
+    metrics: dict[str, float] = {}
+    mean_suffix = "/mean"
+    for col in df.columns:
+        if not col.endswith(mean_suffix):
+            continue
+        base_key = col[len(prefix) + 1 : -len(mean_suffix)]
+        metrics[base_key] = float(df[col].iloc[0])
+    return metrics
+
+
 def load_all_agg_metrics_from_csv(
     variant: Variant,
     metric_type: str,
     method: Method | None = None,
 ) -> dict[str, float]:
     """Load all aggregated metrics from CSV for a variant."""
-    df = pd.read_csv(get_csv_path(variant, metric_type, "agg", method=method))
-    prefix = get_eval_prefix(variant)
-    metrics: dict[str, float] = {}
-    for col in df.columns:
-        base_key = col[len(prefix) + 1 :]
-        metrics[base_key] = df[col].iloc[0]
-    return metrics
+    return _load_mean_metrics_from_csv(
+        get_csv_path(variant, metric_type, "agg", method=method),
+        get_eval_prefix(variant),
+    )
 
 
 def load_all_concat_metrics_from_csv(
@@ -199,13 +212,10 @@ def load_all_concat_metrics_from_csv(
     method: Method | None = None,
 ) -> dict[str, float]:
     """Load all concatenated metrics (single values) from CSV for a variant."""
-    df = pd.read_csv(get_csv_path(variant, metric_type, "concat", method=method))
-    prefix = get_eval_prefix(variant)
-    metrics: dict[str, float] = {}
-    for col in df.columns:
-        base_key = col[len(prefix) + 1 :]
-        metrics[base_key] = df[col].iloc[0]
-    return metrics
+    return _load_mean_metrics_from_csv(
+        get_csv_path(variant, metric_type, "concat", method=method),
+        get_eval_prefix(variant),
+    )
 
 
 def compute_ylim(max_value: float) -> float:
