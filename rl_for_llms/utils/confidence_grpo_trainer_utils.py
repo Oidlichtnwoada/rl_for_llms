@@ -13,12 +13,18 @@ from torch.nn import Module, functional
 from torch.utils.hooks import RemovableHandle
 from trl.trainer.grpo_trainer import GRPOTrainer
 
+from rl_for_llms.models.aggregation_strategy import AggregationStrategy
 from rl_for_llms.models.answer import (
     Answer,
     get_answers_with_confidence,
 )
 from rl_for_llms.models.config import Config
 from rl_for_llms.models.method import Method
+from rl_for_llms.utils.aggregation_utils import (
+    get_exponentially_decreasing_aggregation_weights,
+    get_exponentially_increasing_aggregation_weights,
+    get_mean_aggregation_weights,
+)
 from rl_for_llms.utils.classification_utils import compute_binary_classification_metrics
 from rl_for_llms.utils.confidence_utils import (
     compute_laser_self_rewarding_score,
@@ -413,6 +419,17 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             case Method.LASER:
                 return self._compute_laser_confidence_loss(inputs)
 
+    def _get_aggregation_weights(self, mask: torch.Tensor) -> torch.Tensor:
+        """Return per-token aggregation weights based on the configured strategy."""
+        base = self.config.exponential_weight_base
+        match self.config.loss_aggregation_strategy:
+            case AggregationStrategy.MEAN:
+                return get_mean_aggregation_weights(mask)
+            case AggregationStrategy.EXPONENTIALLY_INCREASING:
+                return get_exponentially_increasing_aggregation_weights(mask, base)
+            case AggregationStrategy.EXPONENTIALLY_DECREASING:
+                return get_exponentially_decreasing_aggregation_weights(mask, base)
+
     def _compute_dense_confidence_loss(
         self, inputs: dict[str, torch.Tensor]
     ) -> torch.Tensor:
@@ -423,7 +440,6 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             self.all_confidence_logits_excluding_last, self.config
         ).float()
         mask = inputs["completion_mask"].bool()
-        sequence_lengths = mask.sum(dim=-1)
         real_rewards = (
             inputs["rewards"]
             .unsqueeze(-1)
@@ -438,8 +454,9 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             )
             * mask
         )
+        aggregation_weights = self._get_aggregation_weights(mask)
         per_rollout_loss_weighted = (
-            per_sample_loss_masked.sum(dim=-1) / sequence_lengths
+            (per_sample_loss_masked * aggregation_weights).sum(dim=-1)
         ) * inputs["sample_weights"]
         return per_rollout_loss_weighted.mean()
 

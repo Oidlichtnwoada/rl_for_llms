@@ -4,6 +4,7 @@ from typing import Literal
 from peft import TaskType
 from pydantic import BaseModel, Field
 
+from rl_for_llms.models.aggregation_strategy import AggregationStrategy
 from rl_for_llms.models.dataset import Dataset
 from rl_for_llms.models.method import Method
 from rl_for_llms.models.model_specifics import get_model_specifics
@@ -61,6 +62,10 @@ class Config(BaseModel):
     minimum_confidence_std: float = Field(default=0.1)
     confidence_reward_percentage: float = Field(default=0.1)
     learning_rate: float = Field(default=2e-5)
+    loss_aggregation_strategy: AggregationStrategy = Field(
+        default=AggregationStrategy.MEAN
+    )
+    exponential_weight_base: float = Field(default=1.01)
     num_train_epochs: int = Field(
         default=get_cuda_default_value(
             2 * get_base_num_train_epochs(), get_base_num_train_epochs()
