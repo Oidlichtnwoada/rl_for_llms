@@ -289,7 +289,7 @@ def add_bar_labels(
     for idx, (bar, mean) in enumerate(zip(bars, means, strict=False)):
         if not np.isnan(mean):
             std = stds[idx] if stds is not None else None
-            label = f"{mean:.2f}%\n±{std:.2f}%" if std is not None else f"{mean:.2f}%"
+            label = f"{mean:.2f}%\n$\\pm${std:.2f}%" if std is not None else f"{mean:.2f}%"
             ax.text(
                 bar.get_x() + bar.get_width() / 2,
                 bar.get_height() + 0.5,
@@ -492,7 +492,7 @@ def create_confidence_chart(*, show_std: bool = True) -> None:
             mcc_value = metrics[mcc_key]
             if show_std:
                 mcc_std = stds.get(mcc_key, 0.0)
-                legend_label = f"{legend_label} [MCC: {mcc_value:.2f}±{mcc_std:.2f}]"
+                legend_label = f"{legend_label} [MCC: {mcc_value:.2f}$\\pm${mcc_std:.2f}]"
             else:
                 legend_label = f"{legend_label} [MCC: {mcc_value:.2f}]"
 
