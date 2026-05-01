@@ -181,8 +181,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         """Capture full logits for LaSeR (consumed by ``_get_laser_post_response_scores``)."""
         self._laser_full_logits = logits
         if self.use_tempmod and self.eval_mode and logits.size(1) == 1:
-            confidence_logits = logits[:, :, self.confidence_token_id]
-            return self._apply_temperature_modulation(logits, confidence_logits)
+            raise ValueError
         return None
 
     def _accumulate_confidence_values(self, confidence_values: Tensor) -> None:
