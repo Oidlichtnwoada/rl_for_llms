@@ -26,6 +26,8 @@ from rl_for_llms.utils.config_utils import get_config
 from rl_for_llms.utils.constant_utils import (
     get_default_confidence_score,
     get_default_metric_separator,
+    get_mean_name,
+    get_std_name,
 )
 from rl_for_llms.utils.dataset_utils import load_training_data_from_disk, trim_dataset
 from rl_for_llms.utils.group_utils import iter_groups
@@ -320,8 +322,10 @@ def compute_mean_std_metrics(
     all_keys: set[tuple[str, ...]] = set().union(*runs)
     for key in all_keys:
         values = [run[key] for run in runs if key in run]
-        result[(*key, "mean")] = statistics.mean(values)
-        result[(*key, "std")] = statistics.stdev(values) if len(values) > 1 else 0.0
+        result[(*key, get_mean_name())] = statistics.mean(values)
+        result[(*key, get_std_name())] = (
+            statistics.stdev(values) if len(values) > 1 else 0.0
+        )
     return result
 
 

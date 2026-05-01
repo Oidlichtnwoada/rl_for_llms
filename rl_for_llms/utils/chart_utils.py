@@ -1,6 +1,6 @@
 import pathlib
 import textwrap
-from typing import Literal
+from typing import Any, Literal
 
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
@@ -19,6 +19,8 @@ from rl_for_llms.utils.config_utils import get_config
 from rl_for_llms.utils.constant_utils import (
     get_eval_after_train_prefix,
     get_eval_before_train_prefix,
+    get_mean_name,
+    get_std_name,
 )
 from rl_for_llms.utils.font_utils import get_chart_font_families
 from rl_for_llms.utils.path_utils import get_charts_dir, get_evaluation_final_dir
@@ -178,20 +180,45 @@ def load_agg_metrics_from_csv(
     return {k: v for k, v in all_metrics.items() if k in metric_keys}
 
 
-def _load_mean_metrics_from_csv(
+def _load_metrics_by_suffix(
     csv_path: pathlib.Path,
     prefix: str,
+    suffix: str,
 ) -> dict[str, float]:
-    """Load mean values from a CSV with /mean and /std columns, keyed without the /mean suffix."""
+    """Load metrics from a CSV filtered to columns ending with suffix, stripping prefix and suffix from keys."""
     df = pd.read_csv(csv_path)
     metrics: dict[str, float] = {}
-    mean_suffix = "/mean"
     for col in df.columns:
-        if not col.endswith(mean_suffix):
+        if not col.endswith(suffix):
             continue
-        base_key = col[len(prefix) + 1 : -len(mean_suffix)]
+        base_key = col[len(prefix) + 1 : -len(suffix)]
         metrics[base_key] = float(df[col].iloc[0])
     return metrics
+
+
+def _get_mean_suffix() -> str:
+    """Return the CSV column suffix for mean values."""
+    return f"/{get_mean_name()}"
+
+
+def _get_std_suffix() -> str:
+    """Return the CSV column suffix for std values."""
+    return f"/{get_std_name()}"
+
+
+def _load_all_from_csv(
+    variant: Variant,
+    metric_type: str,
+    aggregation: Literal["agg", "concat"],
+    suffix: str,
+    method: Method | None = None,
+) -> dict[str, float]:
+    """Load metrics from a CSV by aggregation type and column suffix."""
+    return _load_metrics_by_suffix(
+        get_csv_path(variant, metric_type, aggregation, method=method),
+        get_eval_prefix(variant),
+        suffix,
+    )
 
 
 def load_all_agg_metrics_from_csv(
@@ -199,10 +226,20 @@ def load_all_agg_metrics_from_csv(
     metric_type: str,
     method: Method | None = None,
 ) -> dict[str, float]:
-    """Load all aggregated metrics from CSV for a variant."""
-    return _load_mean_metrics_from_csv(
-        get_csv_path(variant, metric_type, "agg", method=method),
-        get_eval_prefix(variant),
+    """Load all aggregated mean metrics from CSV for a variant."""
+    return _load_all_from_csv(
+        variant, metric_type, "agg", _get_mean_suffix(), method=method
+    )
+
+
+def load_all_agg_std_from_csv(
+    variant: Variant,
+    metric_type: str,
+    method: Method | None = None,
+) -> dict[str, float]:
+    """Load all aggregated std metrics from CSV for a variant."""
+    return _load_all_from_csv(
+        variant, metric_type, "agg", _get_std_suffix(), method=method
     )
 
 
@@ -211,11 +248,28 @@ def load_all_concat_metrics_from_csv(
     metric_type: str,
     method: Method | None = None,
 ) -> dict[str, float]:
-    """Load all concatenated metrics (single values) from CSV for a variant."""
-    return _load_mean_metrics_from_csv(
-        get_csv_path(variant, metric_type, "concat", method=method),
-        get_eval_prefix(variant),
+    """Load all concatenated mean metrics from CSV for a variant."""
+    return _load_all_from_csv(
+        variant, metric_type, "concat", _get_mean_suffix(), method=method
     )
+
+
+def load_all_concat_std_from_csv(
+    variant: Variant,
+    metric_type: str,
+    method: Method | None = None,
+) -> dict[str, float]:
+    """Load all concatenated std metrics from CSV for a variant."""
+    return _load_all_from_csv(
+        variant, metric_type, "concat", _get_std_suffix(), method=method
+    )
+
+
+def _get_error_bar_kwargs(yerr: list[float] | None) -> dict[str, Any]:
+    """Return error bar kwargs for ax.bar; empty dict when yerr is None."""
+    if yerr is None:
+        return {}
+    return {"yerr": yerr, "capsize": 3, "error_kw": {"linewidth": 0.8}}
 
 
 def compute_ylim(max_value: float) -> float:
@@ -227,16 +281,19 @@ def add_bar_labels(
     ax: Axes,
     bars: BarContainer,
     means: list[float],
+    stds: list[float] | None = None,
     *,
     fontsize: float = 5,
 ) -> None:
-    """Add text labels on top of bars."""
-    for bar, mean in zip(bars, means, strict=False):
+    """Add text labels on top of bars, optionally including ±std."""
+    for idx, (bar, mean) in enumerate(zip(bars, means, strict=False)):
         if not np.isnan(mean):
+            std = stds[idx] if stds is not None else None
+            label = f"{mean:.2f}%\n±{std:.2f}%" if std is not None else f"{mean:.2f}%"
             ax.text(
                 bar.get_x() + bar.get_width() / 2,
                 bar.get_height() + 0.5,
-                f"{mean:.2f}%",
+                label,
                 ha="center",
                 va="bottom",
                 fontsize=fontsize,
@@ -275,7 +332,7 @@ def save_chart(filename: str) -> None:
     plt.close()
 
 
-def create_answer_accuracy_chart() -> None:
+def create_answer_accuracy_chart(*, show_std: bool = True) -> None:
     """Create an answer accuracy chart comparing all variants."""
     configure_matplotlib_fonts()
     config = get_config()
@@ -292,6 +349,14 @@ def create_answer_accuracy_chart() -> None:
         key: load_agg_metrics_from_csv(key[0], "answer", all_metric_keys, method=key[1])
         for key in all_keys
     }
+    all_stds = (
+        {
+            key: load_all_agg_std_from_csv(key[0], "answer", method=key[1])
+            for key in all_keys
+        }
+        if show_std
+        else {}
+    )
 
     color_map = get_variant_method_color_map()
     _, ax = plt.subplots(figsize=(14, 7))
@@ -304,7 +369,13 @@ def create_answer_accuracy_chart() -> None:
     for i, key in enumerate(all_keys):
         variant, method = key
         metrics = all_metrics[key]
+        stds = all_stds.get(key, {})
         means = [metrics.get(f"answer/{m}_t=1.0", 0) * 100 for m in common_metrics]
+        std_vals = (
+            [stds.get(f"answer/{m}_t=1.0", 0.0) * 100 for m in common_metrics]
+            if show_std
+            else None
+        )
         all_max_values.extend(means)
         bars = ax.bar(
             x_common + offsets[i] * width,
@@ -312,8 +383,9 @@ def create_answer_accuracy_chart() -> None:
             width,
             label=get_variant_method_label(variant, method),
             color=color_map[key],
+            **_get_error_bar_kwargs(std_vals),
         )
-        add_bar_labels(ax, bars, means)
+        add_bar_labels(ax, bars, means, std_vals)
 
     confidence_keys = [key for key in all_keys if key[0].has_trained_confidence()]
     x_conf_start = len(common_metrics)
@@ -323,17 +395,25 @@ def create_answer_accuracy_chart() -> None:
         for i, key in enumerate(confidence_keys):
             variant, method = key
             metrics = all_metrics[key]
+            stds = all_stds.get(key, {})
             m_key = f"answer/{metric}_t=1.0"
             if m_key in metrics:
                 mean = metrics[m_key] * 100
+                std_val = stds.get(m_key, 0.0) * 100 if show_std else None
                 all_max_values.append(mean)
                 bar = ax.bar(
                     x_pos + conf_offsets[i] * width,
                     mean,
                     width,
                     color=color_map[key],
+                    **_get_error_bar_kwargs([std_val] if std_val is not None else None),
                 )
-                add_bar_labels(ax, bar, [mean])
+                add_bar_labels(
+                    ax,
+                    bar,
+                    [mean],
+                    [std_val] if show_std and std_val is not None else None,
+                )
 
     x_all = np.arange(len(common_metrics) + len(confidence_metrics))
     labels = [format_metric_label(m) for m in common_metrics + confidence_metrics]
@@ -347,7 +427,7 @@ def create_answer_accuracy_chart() -> None:
     )
 
 
-def create_confidence_chart() -> None:
+def create_confidence_chart(*, show_std: bool = True) -> None:
     """Create a confidence prediction metrics chart comparing trained variants."""
     configure_matplotlib_fonts()
     config = get_config()
@@ -380,6 +460,14 @@ def create_confidence_chart() -> None:
         key: load_all_concat_metrics_from_csv(key[0], "bc", method=key[1])
         for key in confidence_keys
     }
+    all_stds = (
+        {
+            key: load_all_concat_std_from_csv(key[0], "bc", method=key[1])
+            for key in confidence_keys
+        }
+        if show_std
+        else {}
+    )
 
     color_map = get_variant_method_color_map()
     _, ax = plt.subplots(figsize=(14, 7))
@@ -392,13 +480,21 @@ def create_confidence_chart() -> None:
     for i, key in enumerate(confidence_keys):
         variant, method = key
         metrics = all_metrics[key]
+        stds = all_stds.get(key, {})
         means = [metrics.get(k, 0) * 100 for k in percentage_keys]
+        std_vals = (
+            [stds.get(k, 0.0) * 100 for k in percentage_keys] if show_std else None
+        )
         all_max_values.extend([m for m in means if not np.isnan(m)])
 
         legend_label = get_variant_method_label(variant, method)
         if mcc_key and mcc_key in metrics:
             mcc_value = metrics[mcc_key]
-            legend_label = f"{legend_label} [MCC: {mcc_value:.2f}]"
+            if show_std:
+                mcc_std = stds.get(mcc_key, 0.0)
+                legend_label = f"{legend_label} [MCC: {mcc_value:.2f} ±{mcc_std:.2f}]"
+            else:
+                legend_label = f"{legend_label} [MCC: {mcc_value:.2f}]"
 
         bars = ax.bar(
             x + offsets[i] * width,
@@ -406,8 +502,9 @@ def create_confidence_chart() -> None:
             width,
             label=legend_label,
             color=color_map[key],
+            **_get_error_bar_kwargs(std_vals),
         )
-        add_bar_labels(ax, bars, means, fontsize=4)
+        add_bar_labels(ax, bars, means, std_vals, fontsize=4)
 
     labels = [format_metric_label(k) for k in percentage_keys]
     finalize_chart(

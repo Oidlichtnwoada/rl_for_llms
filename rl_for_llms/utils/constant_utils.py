@@ -133,3 +133,13 @@ def get_eval_before_train_prefix() -> str:
 def get_eval_after_train_prefix() -> str:
     """Return the prefix for evaluation after training metrics."""
     return "eval_after_train"
+
+
+def get_mean_name() -> str:
+    """Return the name for mean statistics."""
+    return "mean"
+
+
+def get_std_name() -> str:
+    """Return the name for standard deviation statistics."""
+    return "std"
