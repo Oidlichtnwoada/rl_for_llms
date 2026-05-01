@@ -20,6 +20,7 @@ from rl_for_llms.models.answer import (
 )
 from rl_for_llms.models.config import Config
 from rl_for_llms.models.method import Method
+from rl_for_llms.models.variant import Variant
 from rl_for_llms.utils.aggregation_utils import (
     get_exponentially_decreasing_aggregation_weights,
     get_exponentially_increasing_aggregation_weights,
@@ -38,6 +39,7 @@ from rl_for_llms.utils.constant_utils import (
     get_default_metric_separator,
     get_grpo_namespace,
     get_loss_name,
+    get_tempmod_name,
     get_total_namespace,
 )
 from rl_for_llms.utils.evaluation_utils import (
@@ -47,6 +49,7 @@ from rl_for_llms.utils.evaluation_utils import (
     compute_mean_std_metrics,
     get_df_from_metrics,
     get_eval_metrics_df_name,
+    get_variant_checkpoint_dir,
     store_eval_df,
 )
 from rl_for_llms.utils.group_utils import iter_groups
@@ -88,6 +91,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         self.all_confidence_logits_excluding_last: Tensor | None = None
         self._laser_full_logits: Tensor | None = None
         self.eval_mode: bool = False
+        self.use_tempmod: bool = False
         self.eval_inputs: dict[str, list[typing.Any]] = {"bc": [], "answer": []}
         self.eval_outputs: dict[str, list[dict[tuple[str, ...], float]]] = {
             "bc": [],
@@ -136,25 +140,49 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         module: Module,  # noqa: ARG002
         inputs: tuple[Tensor, ...],  # noqa: ARG002
         output: torch.Tensor,
-    ) -> None:
+    ) -> Tensor | None:
         """Capture confidence logits during the forward pass."""
         logits = output
         if logits.dim() != 3:  # noqa: PLR2004
             raise ValueError
         match self.config.method:
             case Method.DENSE:
-                self._dense_logits_hook(logits)
+                return self._dense_logits_hook(logits)
             case Method.LASER:
-                self._laser_logits_hook(logits)
+                return self._laser_logits_hook(logits)
 
-    def _dense_logits_hook(self, logits: Tensor) -> None:
+    def _apply_temperature_modulation(
+        self,
+        logits: Tensor,
+        confidence_logits: Tensor,
+        min_temperature: float = 1e-6,
+    ) -> Tensor:
+        """Return logits scaled by per-sequence confidence-derived temperature, pre-compensating for any base config.temperature applied downstream by transformers."""
+        conf = get_confidence_token_logit_sigmoid(
+            confidence_logits[:, -1], self.config
+        ).float()
+        t_min = self.config.temperature_modulation_min_temperature
+        t_max = self.config.temperature_modulation_max_temperature
+        temps = t_min + (1.0 - conf) * (t_max - t_min)
+        temps = temps / self.config.temperature
+        temps = temps.clamp(min=min_temperature)
+        return logits / temps.view(-1, 1, 1)
+
+    def _dense_logits_hook(self, logits: Tensor) -> Tensor | None:
         """Capture raw confidence logit at every position for Dense."""
         confidence_logits = logits[:, :, self.confidence_token_id]
         self._accumulate_confidence_values(confidence_logits)
+        if self.use_tempmod and self.eval_mode and logits.size(1) == 1:
+            return self._apply_temperature_modulation(logits, confidence_logits)
+        return None
 
-    def _laser_logits_hook(self, logits: Tensor) -> None:
+    def _laser_logits_hook(self, logits: Tensor) -> Tensor | None:
         """Capture full logits for LaSeR (consumed by ``_get_laser_post_response_scores``)."""
         self._laser_full_logits = logits
+        if self.use_tempmod and self.eval_mode and logits.size(1) == 1:
+            confidence_logits = logits[:, :, self.confidence_token_id]
+            return self._apply_temperature_modulation(logits, confidence_logits)
+        return None
 
     def _accumulate_confidence_values(self, confidence_values: Tensor) -> None:
         """Accumulate per-position confidence values across decoding steps."""
@@ -534,8 +562,11 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         eval_dataset: Dataset | dict[str, Dataset] | None = None,
         ignore_keys: list[str] | None = None,
         metric_key_prefix: str = "eval",
+        *,
+        use_tempmod: bool = False,
     ) -> dict[str, float]:
         """Evaluate the model and return evaluation metrics."""
+        self.use_tempmod = use_tempmod
         delete_csv_files_in_evaluation_metric_dir(self.config.started_at)
         self._save_checkpoint_to_disk(metric_key_prefix)
         for _ in range(self.config.num_eval_repetitions):
@@ -548,6 +579,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             self.clear_eval_inputs_and_outputs()
         self._merge_eval_metrics(metric_key_prefix)
         self._eval_run_results.clear()
+        self.use_tempmod = False
         return {}
 
     def get_config_shorthand(self) -> str:
@@ -555,6 +587,26 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         if self.state.global_step == 0:
             return "base"
         return self.config.get_config_shorthand()
+
+    def get_eval_shorthand(self) -> str:
+        """Get a shorthand representation of the config for evaluation CSV files."""
+        base = self.get_config_shorthand()
+        if self.use_tempmod:
+            return f"{base}_{get_tempmod_name()}"
+        return base
+
+    def _load_weights_from_dir(self, checkpoint_dir: str | pathlib.Path) -> None:
+        """Unwrap the model and load weights from the given checkpoint directory."""
+        model = self.accelerator.unwrap_model(
+            getattr(self, "model_wrapped", self.model)
+        )
+        load_checkpoint_weights(model, checkpoint_dir)
+
+    def load_final_checkpoint(self, variant: Variant, method: Method) -> None:
+        """Load model weights from the final evaluation directory for a given variant and method."""
+        self._load_weights_from_dir(
+            get_variant_checkpoint_dir(variant, self.config.hf_model_id, method)
+        )
 
     def _get_model_output_dir(self, model_identifier: str) -> pathlib.Path:
         shorthand = self.get_config_shorthand()
@@ -575,15 +627,12 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         model_output_dir = self._get_model_output_dir(model_identifier)
         if not model_output_dir.exists():
             raise FileNotFoundError(model_output_dir)
-        model = self.accelerator.unwrap_model(
-            getattr(self, "model_wrapped", self.model)
-        )
-        load_checkpoint_weights(model, model_output_dir)
+        self._load_weights_from_dir(model_output_dir)
 
     def _merge_eval_metrics(self, metric_key_prefix: str) -> None:
         bc_concat_runs = [r[0] for r in self._eval_run_results]
         answer_agg_runs = [r[1] for r in self._eval_run_results]
-        shorthand = self.get_config_shorthand()
+        shorthand = self.get_eval_shorthand()
         metric_bundles: list[tuple[bool, bool, list[dict[tuple[str, ...], float]]]] = [
             (False, True, bc_concat_runs),
             (True, False, answer_agg_runs),
