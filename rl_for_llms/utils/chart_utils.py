@@ -492,7 +492,7 @@ def create_confidence_chart(*, show_std: bool = True) -> None:
             mcc_value = metrics[mcc_key]
             if show_std:
                 mcc_std = stds.get(mcc_key, 0.0)
-                legend_label = f"{legend_label} [MCC: {mcc_value:.2f} ±{mcc_std:.2f}]"
+                legend_label = f"{legend_label} [MCC: {mcc_value:.2f}±{mcc_std:.2f}]"
             else:
                 legend_label = f"{legend_label} [MCC: {mcc_value:.2f}]"
 
