@@ -672,7 +672,7 @@ def create_confidence_evolution_chart(
         wrapped_question = textwrap.fill(sample.question, width=200)
         title_text = (
             f"Sample {idx + 1} [{correctness_label}]\n"
-            f"Mean Confidence: {sample.mean_confidence_sigmoid:.3f}\n"
+            f"Aggregated Confidence: {sample.aggregated_confidence_sigmoid:.3f}\n"
             f"Question: {wrapped_question}"
         )
         title_h = title_height / fig_height

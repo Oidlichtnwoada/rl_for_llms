@@ -65,6 +65,9 @@ class Config(BaseModel):
     loss_aggregation_strategy: AggregationStrategy = Field(
         default=AggregationStrategy.MEAN
     )
+    confidence_aggregation_strategy: AggregationStrategy = Field(
+        default=AggregationStrategy.MEAN
+    )
     exponential_weight_base: float = Field(default=1.01)
     num_train_epochs: int = Field(
         default=get_cuda_default_value(

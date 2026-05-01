@@ -212,18 +212,18 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
     ) -> list[float]:
         match self.config.method:
             case Method.DENSE:
-                return self._compute_dense_mean_rewards(completion_mask)
+                return self._compute_dense_aggregated_rewards(completion_mask)
             case Method.LASER:
                 return self._compute_laser_mean_scores(completion_mask)
 
-    def _compute_dense_mean_rewards(self, completion_mask: torch.Tensor) -> list[float]:
-        """Compute per-sequence mean confidence for Dense (sigmoid over all positions)."""
-        estimated_rewards, mask, sequence_lengths = self._get_masked_estimated_rewards(
-            completion_mask
-        )
-        sum_estimated_rewards = (estimated_rewards * mask).sum(dim=-1)
-        mean_estimated_rewards = sum_estimated_rewards / sequence_lengths
-        return convert_tensor_to_list(mean_estimated_rewards)
+    def _compute_dense_aggregated_rewards(
+        self, completion_mask: torch.Tensor
+    ) -> list[float]:
+        """Compute per-sequence aggregated confidence for Dense (sigmoid over all positions)."""
+        estimated_rewards, mask, _ = self._get_masked_estimated_rewards(completion_mask)
+        aggregation_weights = self._get_confidence_aggregation_weights(mask)
+        aggregated_rewards = (estimated_rewards * aggregation_weights).sum(dim=-1)
+        return convert_tensor_to_list(aggregated_rewards)
 
     def _get_laser_post_response_scores(self, mask: torch.Tensor) -> torch.Tensor:
         """Return per-sequence LaSeR self-rewarding scores at the post-EOS position."""
@@ -423,6 +423,17 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         """Return per-token aggregation weights based on the configured strategy."""
         base = self.config.exponential_weight_base
         match self.config.loss_aggregation_strategy:
+            case AggregationStrategy.MEAN:
+                return get_mean_aggregation_weights(mask)
+            case AggregationStrategy.EXPONENTIALLY_INCREASING:
+                return get_exponentially_increasing_aggregation_weights(mask, base)
+            case AggregationStrategy.EXPONENTIALLY_DECREASING:
+                return get_exponentially_decreasing_aggregation_weights(mask, base)
+
+    def _get_confidence_aggregation_weights(self, mask: torch.Tensor) -> torch.Tensor:
+        """Return per-token aggregation weights based on the confidence aggregation strategy."""
+        base = self.config.exponential_weight_base
+        match self.config.confidence_aggregation_strategy:
             case AggregationStrategy.MEAN:
                 return get_mean_aggregation_weights(mask)
             case AggregationStrategy.EXPONENTIALLY_INCREASING:

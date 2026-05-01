@@ -163,6 +163,7 @@ def get_response_and_confidence_tokens_for_answers(
                 contains_confidence_token=verification.contains_confidence_token,
                 steps=steps,
                 last_token_confidence_logprob=post_eos_logprob,
+                confidence_aggregation_strategy=config.confidence_aggregation_strategy,
             )
         )
 

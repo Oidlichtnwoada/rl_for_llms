@@ -1,6 +1,9 @@
 import statistics
 
-from pydantic import BaseModel, computed_field
+from pydantic import BaseModel, Field, computed_field
+
+from rl_for_llms.models.aggregation_strategy import AggregationStrategy
+from rl_for_llms.utils.aggregation_utils import apply_aggregation_to_values
 
 
 class TokenStep(BaseModel):
@@ -25,14 +28,20 @@ class SampleResult(BaseModel):
     contains_confidence_token: bool
     steps: list[TokenStep]
     last_token_confidence_logprob: float
+    confidence_aggregation_strategy: AggregationStrategy = Field(
+        default=AggregationStrategy.MEAN
+    )
 
     @computed_field  # type: ignore[prop-decorator]
     @property
-    def mean_confidence_sigmoid(self) -> float:
-        """Return the mean confidence sigmoid value across all steps."""
+    def aggregated_confidence_sigmoid(self) -> float:
+        """Return the aggregated confidence sigmoid value across all steps."""
         if not self.steps:
             return 0.0
-        return statistics.mean(step.confidence_sigmoid for step in self.steps)
+        return apply_aggregation_to_values(
+            [step.confidence_sigmoid for step in self.steps],
+            self.confidence_aggregation_strategy,
+        )
 
     @computed_field  # type: ignore[prop-decorator]
     @property

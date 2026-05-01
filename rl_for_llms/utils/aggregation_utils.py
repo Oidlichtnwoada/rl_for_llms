@@ -1,6 +1,26 @@
 import torch
 from torch import Tensor
 
+from rl_for_llms.models.aggregation_strategy import AggregationStrategy
+
+
+def apply_aggregation_to_values(
+    values: list[float], strategy: AggregationStrategy, base: float = 1.01
+) -> float:
+    """Return the aggregated scalar from a list of values using the given strategy."""
+    if not values:
+        return 0.0
+    tensor = torch.tensor(values, dtype=torch.float32).unsqueeze(0)
+    mask = torch.ones(1, len(values), dtype=torch.float32)
+    match strategy:
+        case AggregationStrategy.MEAN:
+            weights = get_mean_aggregation_weights(mask)
+        case AggregationStrategy.EXPONENTIALLY_INCREASING:
+            weights = get_exponentially_increasing_aggregation_weights(mask, base)
+        case AggregationStrategy.EXPONENTIALLY_DECREASING:
+            weights = get_exponentially_decreasing_aggregation_weights(mask, base)
+    return (tensor * weights).sum().item()
+
 
 def get_mean_aggregation_weights(mask: Tensor) -> Tensor:
     """Return uniform per-token weights (1 / sequence_length) that sum to 1, zero at padding."""
@@ -25,7 +45,7 @@ def get_exponentially_decreasing_aggregation_weights(
 def _get_exponential_aggregation_weights(
     mask: Tensor, *, increasing: bool, base: float = 1.01
 ) -> Tensor:
-    """Return normalised exponential weights over valid positions, with relative positions in [0, 1]."""
+    """Return normalized exponential weights over valid positions, with relative positions in [0, 1]."""
     batch_size, seq_len = mask.shape
     sequence_lengths = mask.float().sum(dim=-1, keepdim=True)
     max_pos = (sequence_lengths - 1).clamp(min=1)
