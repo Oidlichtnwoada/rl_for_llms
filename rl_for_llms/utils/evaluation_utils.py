@@ -49,7 +49,7 @@ from rl_for_llms.utils.path_utils import (
 from rl_for_llms.utils.reward_utils import get_math_verification_answer
 
 
-def _get_variant_checkpoint_dir(
+def get_variant_checkpoint_dir(
     variant: Variant,
     config_hf_model_id: str,
     method: Method,
@@ -88,9 +88,7 @@ def get_response_and_confidence_tokens_for_answers(
     pipe = get_pipeline(config.hf_model_id)
 
     if variant.is_trained():
-        checkpoint_dir = _get_variant_checkpoint_dir(
-            variant, config.hf_model_id, method
-        )
+        checkpoint_dir = get_variant_checkpoint_dir(variant, config.hf_model_id, method)
         pipe.model = typing.cast(
             "PreTrainedModel", load_checkpoint_weights(pipe.model, checkpoint_dir)
         )

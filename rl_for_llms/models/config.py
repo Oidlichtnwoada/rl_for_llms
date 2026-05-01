@@ -103,6 +103,8 @@ class Config(BaseModel):
     )
     gradient_accumulation_steps: int = Field(default=4)
     temperature: float = Field(default=1.0)
+    temperature_modulation_min_temperature: float = Field(default=0.0)
+    temperature_modulation_max_temperature: float = Field(default=2.0)
     top_p: float = Field(default=1.0)
     save_steps: int = Field(default=1024)
     eval_strategy: str = Field(default="no")

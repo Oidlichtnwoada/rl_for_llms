@@ -143,3 +143,8 @@ def get_mean_name() -> str:
 def get_std_name() -> str:
     """Return the name for standard deviation statistics."""
     return "std"
+
+
+def get_tempmod_name() -> str:
+    """Return the suffix name for temperature modulation evaluation files."""
+    return "tempmod"
