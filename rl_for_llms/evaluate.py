@@ -14,12 +14,18 @@ def main() -> None:
     """Execute the main function of the module."""
     create_answer_accuracy_chart()
     create_confidence_chart()
-    inference_time_evaluate(
-        Variant.WITH_CONFREW,
-        Method.DENSE,
-        use_tempmod=True,
-        use_filtering=True,
-    )
+    for use_tempmod, use_filtering in (
+        (False, False),
+        (False, True),
+        (True, False),
+        (True, True),
+    ):
+        inference_time_evaluate(
+            Variant.WITH_CONFREW,
+            Method.DENSE,
+            use_tempmod=use_tempmod,
+            use_filtering=use_filtering,
+        )
     _ = get_response_and_confidence_tokens_for_answers(Variant.BASE, sample_size=64)
 
 
