@@ -153,4 +153,3 @@ def get_tempmod_name() -> str:
 def get_filter_name() -> str:
     """Return the suffix name for SMC particle-filtering evaluation files."""
     return "filter"
-
