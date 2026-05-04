@@ -65,6 +65,7 @@ from rl_for_llms.utils.path_utils import (
     get_evaluation_metric_dir,
     standardize_model_id,
 )
+from rl_for_llms.utils.chart_utils import get_variant_method_shorthand
 from rl_for_llms.utils.reward_utils import get_class_weights_for_single_group
 from rl_for_llms.utils.torch_utils import convert_tensor_to_list, get_mode
 
@@ -99,6 +100,8 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         self.eval_mode: bool = False
         self.use_tempmod: bool = False
         self.use_filtering: bool = False
+        self._loaded_variant: Variant | None = None
+        self._loaded_method: Method | None = None
         self._smc_current_cache: DynamicCache | None = None
         self._smc_cache_hook_handle: RemovableHandle | None = None
         self.eval_inputs: dict[str, list[typing.Any]] = {"bc": [], "answer": []}
@@ -761,6 +764,8 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
 
     def get_config_shorthand(self) -> str:
         """Get a shorthand representation of the config."""
+        if self._loaded_variant is not None and self._loaded_method is not None:
+            return get_variant_method_shorthand(self._loaded_variant, self._loaded_method)
         if self.state.global_step == 0:
             return "base"
         return self.config.get_config_shorthand()
@@ -792,6 +797,8 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         self._load_weights_from_dir(
             get_variant_checkpoint_dir(variant, self.config.hf_model_id, method)
         )
+        self._loaded_variant = variant
+        self._loaded_method = method
 
     def _get_model_output_dir(self, model_identifier: str) -> pathlib.Path:
         shorthand = self.get_config_shorthand()

@@ -1,3 +1,4 @@
 runs
 checkpoint-*
 README.md
+*.parquet
