@@ -10,8 +10,11 @@ def inference_time_evaluate(
     method: Method,
     *,
     use_tempmod: bool = True,
+    use_filtering: bool = True,
 ) -> None:
-    """Load weights for the given variant and run post-training evaluation, optionally with confidence-based temperature modulation."""
+    """Load weights for the given variant and run post-training evaluation, optionally with confidence-based temperature modulation and/or SMC particle filtering."""
+    if use_filtering and method != Method.DENSE:
+        raise ValueError
     config = get_config()
     trainer = get_confidence_grpo_trainer(config)
     if variant.is_trained():
@@ -19,4 +22,5 @@ def inference_time_evaluate(
     trainer.evaluate(
         metric_key_prefix=get_eval_after_train_prefix(),
         use_tempmod=use_tempmod,
+        use_filtering=use_filtering,
     )

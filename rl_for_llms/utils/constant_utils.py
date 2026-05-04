@@ -148,3 +148,9 @@ def get_std_name() -> str:
 def get_tempmod_name() -> str:
     """Return the suffix name for temperature modulation evaluation files."""
     return "tempmod"
+
+
+def get_filter_name() -> str:
+    """Return the suffix name for SMC particle-filtering evaluation files."""
+    return "filter"
+

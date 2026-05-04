@@ -18,6 +18,7 @@ def main() -> None:
         Variant.WITH_CONFREW,
         Method.DENSE,
         use_tempmod=True,
+        use_filtering=True,
     )
     _ = get_response_and_confidence_tokens_for_answers(Variant.BASE, sample_size=64)
 
