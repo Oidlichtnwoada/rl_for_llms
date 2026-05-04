@@ -1,4 +1,5 @@
 import pathlib
+import random
 import shutil
 import statistics
 import typing
@@ -11,6 +12,9 @@ from datasets import Dataset
 from torch import Tensor
 from torch.nn import Module, functional
 from torch.utils.hooks import RemovableHandle
+from transformers import LogitsProcessor
+from transformers.cache_utils import CacheLayerMixin, DynamicCache
+from transformers.generation.logits_process import LogitsProcessorList
 from trl.trainer.grpo_trainer import GRPOTrainer
 
 from rl_for_llms.models.aggregation_strategy import AggregationStrategy
@@ -37,6 +41,7 @@ from rl_for_llms.utils.constant_utils import (
     get_default_confidence_score,
     get_default_eps,
     get_default_metric_separator,
+    get_filter_name,
     get_grpo_namespace,
     get_loss_name,
     get_no_name,
@@ -93,6 +98,9 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         self._laser_full_logits: Tensor | None = None
         self.eval_mode: bool = False
         self.use_tempmod: bool = False
+        self.use_filtering: bool = False
+        self._smc_current_cache: DynamicCache | None = None
+        self._smc_cache_hook_handle: RemovableHandle | None = None
         self.eval_inputs: dict[str, list[typing.Any]] = {"bc": [], "answer": []}
         self.eval_outputs: dict[str, list[dict[tuple[str, ...], float]]] = {
             "bc": [],
@@ -121,6 +129,12 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         self.remove_hook(clear_confidence_logits=clear_confidence_logits)
         lm_head = self.get_lm_head(unwrap_model=unwrap_model)
         self.hook_handle = lm_head.register_forward_hook(self.logits_hook)
+        if self.use_filtering and self.eval_mode and unwrap_model:
+            wrapped = getattr(self, "model_wrapped", self.model)
+            model = self.accelerator.unwrap_model(wrapped)
+            self._smc_cache_hook_handle = model.register_forward_pre_hook(
+                self._capture_cache_pre_hook, with_kwargs=True
+            )
 
     def clear_confidence_logits(self) -> None:
         """Clear confidence logits."""
@@ -133,8 +147,24 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         if self.hook_handle is not None:
             self.hook_handle.remove()
             self.hook_handle = None
+        if self._smc_cache_hook_handle is not None:
+            self._smc_cache_hook_handle.remove()
+            self._smc_cache_hook_handle = None
         if clear_confidence_logits:
             self.clear_confidence_logits()
+            self._smc_current_cache = None
+
+    def _capture_cache_pre_hook(
+        self,
+        module: Module,  # noqa: ARG002
+        args: tuple[typing.Any, ...],  # noqa: ARG002
+        kwargs: dict[str, typing.Any],
+    ) -> tuple[tuple[typing.Any, ...], dict[str, typing.Any]] | None:
+        """Capture a reference to the DynamicCache before each decode step for SMC filtering."""
+        cache = kwargs.get("past_key_values")
+        if isinstance(cache, DynamicCache):
+            self._smc_current_cache = cache
+        return None
 
     def logits_hook(
         self,
@@ -176,6 +206,98 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         if self.use_tempmod and self.eval_mode and logits.size(1) == 1:
             return self._apply_temperature_modulation(logits, confidence_logits)
         return None
+
+    def _smc_pick_replacement(self, alive: list[int], confidence: Tensor) -> int:
+        """Stochastically pick a replacement alive index, weighted proportionally to confidence scores."""
+        if not alive:
+            raise ValueError
+        if len(alive) == 1:
+            return alive[0]
+        weights = [confidence[i].item() for i in alive]
+        total_weight = sum(weights)
+        if total_weight <= 0.0:
+            chosen: list[int] = random.choices(alive, k=1)  # noqa: S311
+            return chosen[0]
+        chosen = random.choices(alive, weights=weights, k=1)  # noqa: S311
+        return chosen[0]
+
+    def _smc_copy_sequence(
+        self, dead_i: int, alive_i: int, scores: Tensor, input_ids: Tensor
+    ) -> None:
+        """Copy state from alive_i to dead_i in-place."""
+        scores[dead_i].copy_(scores[alive_i])
+        input_ids[dead_i].copy_(input_ids[alive_i])
+
+        if self.all_confidence_logits is not None:
+            self.all_confidence_logits[dead_i].copy_(
+                self.all_confidence_logits[alive_i]
+            )
+
+        if self._smc_current_cache is not None:
+            for layer in self._smc_current_cache.layers:
+                if (
+                    isinstance(layer, CacheLayerMixin)
+                    and layer.keys is not None
+                    and layer.values is not None
+                ):
+                    layer.keys[dead_i].copy_(layer.keys[alive_i])
+                    layer.values[dead_i].copy_(layer.values[alive_i])
+
+    def _smc_resample_group(
+        self,
+        group_indices: list[int],
+        confidence: Tensor,
+        scores: Tensor,
+        input_ids: Tensor,
+        finished: list[bool],
+    ) -> None:
+        """Resample dead sequences within a group using confidence-weighted stochastic replacement."""
+        threshold = self.config.filtering_threshold
+        dead = [
+            i
+            for i in group_indices
+            if not finished[i] and confidence[i].item() < threshold
+        ]
+        alive = [
+            i
+            for i in group_indices
+            if not finished[i] and confidence[i].item() >= threshold
+        ]
+
+        if not dead:
+            return
+        if not alive:
+            unfinished = [i for i in group_indices if not finished[i]]
+            if not unfinished:
+                return
+            best = max(unfinished, key=lambda i: confidence[i].item())
+            alive = [best]
+            dead = [i for i in unfinished if i != best]
+
+        for dead_i in dead:
+            alive_i = self._smc_pick_replacement(alive, confidence)
+            self._smc_copy_sequence(dead_i, alive_i, scores, input_ids)
+
+    def apply_smc_filtering(
+        self, scores: Tensor, input_ids: Tensor, finished_mask: Tensor
+    ) -> None:
+        """Resample low-confidence sequences within each group using SMC particle filtering."""
+        if self.all_confidence_logits is None:
+            return
+
+        confidence = (
+            get_confidence_token_logit_sigmoid(
+                self.all_confidence_logits[:, -1], self.config
+            )
+            .float()
+            .detach()
+        )
+        num_gen = self.get_num_generations()
+        batch_size = scores.size(0)
+        finished = finished_mask.tolist()
+
+        for _, _, group in iter_groups(list(range(batch_size)), num_gen):
+            self._smc_resample_group(group, confidence, scores, input_ids, finished)
 
     def _laser_logits_hook(self, logits: Tensor) -> Tensor | None:
         """Capture full logits for LaSeR (consumed by ``_get_laser_post_response_scores``)."""
@@ -409,6 +531,43 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
                 batch_size=input_ids.size(0),
             )
 
+    def _generate_single_turn(
+        self,
+        prompt_ids: list[list[int]],
+        images: list[typing.Any] | None,
+        multimodal_fields: dict[str, typing.Any],
+    ) -> tuple[list[list[int]], list[list[float]] | None]:
+        """Override to dynamically inject SMC LogitsProcessor during generation."""
+        unwrapped_model = self.accelerator.unwrap_model(
+            getattr(self, "model_wrapped", self.model)
+        )
+        original_generate = unwrapped_model.generate
+
+        def patched_generate(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:  # noqa: ANN401
+            if self.use_filtering and self.eval_mode:
+                proc_list = kwargs.get("logits_processor", LogitsProcessorList())
+                if not any(isinstance(p, SMCLogitsProcessor) for p in proc_list):
+                    input_ids_kwarg = kwargs.get("input_ids")
+                    prompt_len = (
+                        input_ids_kwarg.size(1)
+                        if isinstance(input_ids_kwarg, torch.Tensor)
+                        else len(prompt_ids[0])
+                    )
+                    proc_list.append(SMCLogitsProcessor(self, prompt_len))
+                kwargs["logits_processor"] = proc_list
+            return original_generate(*args, **kwargs)
+
+        try:
+            unwrapped_model.generate = patched_generate
+            result = super()._generate_single_turn(
+                prompt_ids, images, multimodal_fields
+            )  # type: ignore[no-untyped-call]
+            return typing.cast(
+                "tuple[list[list[int]], list[list[float]] | None]", result
+            )
+        finally:
+            unwrapped_model.generate = original_generate
+
     def _generate_and_score_completions(
         self, inputs: list[dict[str, torch.Tensor | typing.Any]]
     ) -> dict[str, torch.Tensor | typing.Any]:
@@ -557,6 +716,17 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             self.eval_inputs[key].clear()
             self.eval_outputs[key].clear()
 
+    def _validate_filtering_configuration(self) -> None:
+        """Validate that inference-time filtering is only used on supported generation paths."""
+        if not self.use_filtering:
+            return
+        if self.config.method != Method.DENSE:
+            raise ValueError
+        if self.use_vllm:
+            raise ValueError
+        if getattr(self, "use_transformers_paged", False):
+            raise ValueError
+
     def evaluate(
         self,
         eval_dataset: Dataset | dict[str, Dataset] | None = None,
@@ -564,22 +734,29 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         metric_key_prefix: str = "eval",
         *,
         use_tempmod: bool = False,
+        use_filtering: bool = False,
     ) -> dict[str, float]:
         """Evaluate the model and return evaluation metrics."""
         self.use_tempmod = use_tempmod
-        delete_csv_files_in_evaluation_metric_dir(self.config.started_at)
-        self._save_checkpoint_to_disk(metric_key_prefix)
-        for _ in range(self.config.num_eval_repetitions):
-            self.eval_mode = True
-            super().evaluate(eval_dataset, ignore_keys, metric_key_prefix)
+        self.use_filtering = use_filtering
+        self._validate_filtering_configuration()
+        try:
+            delete_csv_files_in_evaluation_metric_dir(self.config.started_at)
+            self._save_checkpoint_to_disk(metric_key_prefix)
+            for _ in range(self.config.num_eval_repetitions):
+                self.eval_mode = True
+                super().evaluate(eval_dataset, ignore_keys, metric_key_prefix)
+                self.eval_mode = False
+                bc_concat, _ = self._compute_eval_bc_metrics(metric_key_prefix)
+                _, answer_agg = self._compute_eval_answer_metrics(metric_key_prefix)
+                self._eval_run_results.append((bc_concat, answer_agg))
+                self.clear_eval_inputs_and_outputs()
+            self._merge_eval_metrics(metric_key_prefix)
+            self._eval_run_results.clear()
+        finally:
             self.eval_mode = False
-            bc_concat, _ = self._compute_eval_bc_metrics(metric_key_prefix)
-            _, answer_agg = self._compute_eval_answer_metrics(metric_key_prefix)
-            self._eval_run_results.append((bc_concat, answer_agg))
-            self.clear_eval_inputs_and_outputs()
-        self._merge_eval_metrics(metric_key_prefix)
-        self._eval_run_results.clear()
-        self.use_tempmod = False
+            self.use_tempmod = False
+            self.use_filtering = False
         return {}
 
     def get_config_shorthand(self) -> str:
@@ -591,12 +768,17 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
     def get_eval_shorthand(self) -> str:
         """Get a shorthand representation of the config for evaluation CSV files."""
         base = self.get_config_shorthand()
-        suffix = (
+        tempmod_suffix = (
             get_tempmod_name()
             if self.use_tempmod
             else f"{get_no_name()}{get_tempmod_name()}"
         )
-        return f"{base}_{suffix}"
+        filter_suffix = (
+            get_filter_name()
+            if self.use_filtering
+            else f"{get_no_name()}{get_filter_name()}"
+        )
+        return f"{base}_{tempmod_suffix}_{filter_suffix}"
 
     def _load_weights_from_dir(self, checkpoint_dir: str | pathlib.Path) -> None:
         """Unwrap the model and load weights from the given checkpoint directory."""
@@ -695,3 +877,41 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         return self._compute_eval_metric_pair(
             prefix, get_answer_namespace(), recomputed, "answer"
         )
+
+
+class SMCLogitsProcessor(LogitsProcessor):
+    """Logits processor that coordinates SMC filtering securely inside the generation loop."""
+
+    def __init__(self, trainer: ConfidenceGRPOTrainer, prompt_len: int) -> None:
+        """Initialize with trainer reference and initial condition constraints."""
+        self.trainer = trainer
+        self.prompt_len = prompt_len
+        self.finished_mask: torch.Tensor | None = None
+
+    def __call__(
+        self, input_ids: torch.LongTensor, scores: torch.FloatTensor
+    ) -> torch.FloatTensor:
+        """Execute particle filtering over probabilities iteratively."""
+        finished_mask = self.finished_mask
+        if finished_mask is None:
+            finished_mask = torch.zeros(
+                input_ids.size(0), dtype=torch.bool, device=input_ids.device
+            )
+            self.finished_mask = finished_mask
+
+        if input_ids.size(1) > self.prompt_len:
+            last_tokens = input_ids[:, -1]
+            eos_id = self.trainer._tokenizer.eos_token_id  # noqa: SLF001
+            pad_id = self.trainer._tokenizer.pad_token_id  # noqa: SLF001
+
+            if isinstance(eos_id, int):
+                finished_mask |= last_tokens == eos_id
+            elif isinstance(eos_id, list | tuple):
+                for e_id in eos_id:
+                    finished_mask |= last_tokens == e_id
+
+            if isinstance(pad_id, int):
+                finished_mask |= last_tokens == pad_id
+
+        self.trainer.apply_smc_filtering(scores, input_ids, finished_mask)
+        return scores
