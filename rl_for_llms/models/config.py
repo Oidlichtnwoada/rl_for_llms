@@ -1,4 +1,3 @@
-import time
 from typing import Literal
 
 from peft import TaskType
@@ -13,6 +12,7 @@ from rl_for_llms.utils.constant_utils import (
     get_confidence_loss_name,
     get_confidence_reward_name,
     get_no_name,
+    get_process_start_time,
 )
 from rl_for_llms.utils.environment_utils import (
     get_base_num_generations,
@@ -37,7 +37,7 @@ class Config(BaseModel):
     """Configuration for the program."""
 
     seed: int = Field(default_factory=get_seed)
-    started_at: float = Field(default_factory=time.time)
+    started_at: float = Field(default_factory=get_process_start_time)
     hf_model_id: str = Field(default=get_model_specifics().hf_model_id)
     lm_head_attribute_name: str = Field(
         default=get_model_specifics().lm_head_attribute_name

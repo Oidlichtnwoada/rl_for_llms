@@ -1,6 +1,22 @@
+import time
+
 from datasets import Split
 
 from rl_for_llms.models.dataset import Dataset
+
+
+class _ProcessStartTime:
+    _value: float = time.time()
+
+    @staticmethod
+    def get() -> float:
+        """Return the time at which the Python process started (captured at first module import)."""
+        return _ProcessStartTime._value
+
+
+def get_process_start_time() -> float:
+    """Return the time at which the Python process started (captured at first module import)."""
+    return _ProcessStartTime.get()
 
 
 def get_hf_training_ds_path(dataset: Dataset) -> str:
