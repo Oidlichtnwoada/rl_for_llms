@@ -15,7 +15,6 @@ def main() -> None:
     create_answer_accuracy_chart()
     create_confidence_chart()
     for use_tempmod, use_filtering in (
-        (False, False),
         (False, True),
         (True, False),
         (True, True),
