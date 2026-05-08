@@ -94,3 +94,9 @@ def get_seed() -> int:
 def get_hf_model_id() -> str:
     """Return the HF model id from environment variable."""
     return os.getenv("HF_MODEL_ID", "Qwen/Qwen2.5-0.5B-Instruct")
+
+
+def get_temperature_modulation_invert_mapping() -> bool:
+    """Check if temperature modulation mapping should be inverted via environment variable."""
+    return os.getenv("TEMPERATURE_MODULATION_INVERT_MAPPING", "0") == "1"
+

@@ -24,6 +24,7 @@ from rl_for_llms.utils.environment_utils import (
     get_per_device_rollouts_per_batch,
     get_seed,
     get_skip_eval_before_train,
+    get_temperature_modulation_invert_mapping,
     use_confidence_loss,
     use_confidence_reward,
 )
@@ -105,7 +106,9 @@ class Config(BaseModel):
     temperature: float = Field(default=1.0)
     temperature_modulation_min_temperature: float = Field(default=0.5)
     temperature_modulation_max_temperature: float = Field(default=1.5)
-    temperature_modulation_invert_mapping: bool = Field(default=False)
+    temperature_modulation_invert_mapping: bool = Field(
+        default_factory=get_temperature_modulation_invert_mapping
+    )
     filtering_threshold: float = Field(default=0.1)
     top_p: float = Field(default=1.0)
     save_steps: int = Field(default=1024)
