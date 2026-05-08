@@ -15,9 +15,8 @@ def main() -> None:
     create_answer_accuracy_chart()
     create_confidence_chart()
     for use_tempmod, use_filtering in (
-        (False, True),
+        (False, False),
         (True, False),
-        (True, True),
     ):
         inference_time_evaluate(
             Variant.WITH_CONFREW,

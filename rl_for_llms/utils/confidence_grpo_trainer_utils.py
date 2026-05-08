@@ -197,7 +197,8 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         ).float()
         t_min = self.config.temperature_modulation_min_temperature
         t_max = self.config.temperature_modulation_max_temperature
-        temps = t_min + (1.0 - conf) * (t_max - t_min)
+        weight = conf if self.config.temperature_modulation_invert_mapping else (1.0 - conf)
+        temps = t_min + weight * (t_max - t_min)
         temps = temps / self.config.temperature
         temps = temps.clamp(min=min_temperature)
         return logits / temps.view(-1, 1, 1)

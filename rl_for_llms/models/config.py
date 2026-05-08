@@ -85,7 +85,7 @@ class Config(BaseModel):
     report_to: list[str] = Field(default_factory=lambda: get_logging_integrations())
     dataset: Dataset = Field(default=Dataset.GSM8K)
     train_dataset_rows: int = Field(default=get_cuda_default_value(-1, 8192))
-    eval_dataset_rows: int = Field(default=get_cuda_default_value(-1, 2048))
+    eval_dataset_rows: int = Field(default=get_cuda_default_value(-1, 128))
     max_prompt_length: int = Field(default=get_cuda_default_value(2048, 128), le=8192)
     max_completion_length: int = Field(
         default=get_cuda_default_value(8192, 1024), le=8192
@@ -103,8 +103,9 @@ class Config(BaseModel):
     )
     gradient_accumulation_steps: int = Field(default=4)
     temperature: float = Field(default=1.0)
-    temperature_modulation_min_temperature: float = Field(default=0.25)
-    temperature_modulation_max_temperature: float = Field(default=0.75)
+    temperature_modulation_min_temperature: float = Field(default=0.5)
+    temperature_modulation_max_temperature: float = Field(default=1.5)
+    temperature_modulation_invert_mapping: bool = Field(default=False)
     filtering_threshold: float = Field(default=0.1)
     top_p: float = Field(default=1.0)
     save_steps: int = Field(default=1024)
