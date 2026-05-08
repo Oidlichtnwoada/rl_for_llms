@@ -99,4 +99,3 @@ def get_hf_model_id() -> str:
 def get_temperature_modulation_invert_mapping() -> bool:
     """Check if temperature modulation mapping should be inverted via environment variable."""
     return os.getenv("TEMPERATURE_MODULATION_INVERT_MAPPING", "0") == "1"
-
