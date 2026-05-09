@@ -44,6 +44,7 @@ from rl_for_llms.utils.constant_utils import (
     get_default_metric_separator,
     get_filter_name,
     get_grpo_namespace,
+    get_inv_prefix,
     get_loss_name,
     get_no_name,
     get_tempmod_name,
@@ -778,11 +779,15 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
     def get_eval_shorthand(self) -> str:
         """Get a shorthand representation of the config for evaluation CSV files."""
         base = self.get_config_shorthand()
-        tempmod_suffix = (
-            get_tempmod_name()
-            if self.use_tempmod
-            else f"{get_no_name()}{get_tempmod_name()}"
-        )
+        if self.use_tempmod:
+            name = get_tempmod_name()
+            tempmod_suffix = (
+                f"{get_inv_prefix()}{name}"
+                if self.config.temperature_modulation_invert_mapping
+                else name
+            )
+        else:
+            tempmod_suffix = f"{get_no_name()}{get_tempmod_name()}"
         filter_suffix = (
             get_filter_name()
             if self.use_filtering

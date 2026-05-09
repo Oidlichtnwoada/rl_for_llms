@@ -166,6 +166,11 @@ def get_tempmod_name() -> str:
     return "tempmod"
 
 
+def get_inv_prefix() -> str:
+    """Return the prefix for inverted evaluation variants."""
+    return "inv"
+
+
 def get_filter_name() -> str:
     """Return the suffix name for SMC particle-filtering evaluation files."""
     return "filter"
