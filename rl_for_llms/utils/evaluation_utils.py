@@ -346,7 +346,7 @@ def get_df_from_metrics(
     sep: str = get_default_metric_separator(),
 ) -> pd.DataFrame:
     """Convert metrics dictionary to a pandas DataFrame."""
-    data = {sep.join(key): value for key, value in metrics.items()}
+    data = {sep.join(key): value for key, value in sorted(metrics.items())}
     df = pd.DataFrame([data])
     return df
 
