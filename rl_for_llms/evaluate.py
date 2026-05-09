@@ -15,12 +15,6 @@ def main() -> None:
     inference_time_evaluate(
         Variant.WITH_CONFREW,
         Method.DENSE,
-        use_tempmod=False,
-        use_filtering=False,
-    )
-    inference_time_evaluate(
-        Variant.WITH_CONFREW,
-        Method.DENSE,
         use_tempmod=True,
         use_filtering=False,
     )
