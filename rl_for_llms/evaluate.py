@@ -12,12 +12,6 @@ def main() -> None:
     """Execute the main function of the module."""
     create_answer_accuracy_chart()
     create_confidence_chart()
-    inference_time_evaluate(
-        Variant.WITH_CONFREW,
-        Method.DENSE,
-        use_tempmod=True,
-        use_filtering=False,
-    )
     get_config().temperature_modulation_invert_mapping = True
     inference_time_evaluate(
         Variant.WITH_CONFREW,
