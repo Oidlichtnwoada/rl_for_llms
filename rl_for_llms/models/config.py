@@ -18,6 +18,7 @@ from rl_for_llms.utils.environment_utils import (
     get_base_num_generations,
     get_base_num_train_epochs,
     get_confidence_loss_factor,
+    get_filtering_threshold,
     get_lora_train_confidence_token_embedding,
     get_method,
     get_num_eval_repetitions,
@@ -110,7 +111,7 @@ class Config(BaseModel):
         default_factory=get_temperature_modulation_invert_mapping
     )
     confidence_history_length: int = Field(default=8)
-    filtering_threshold: float = Field(default=0.1)
+    filtering_threshold: float = Field(default_factory=get_filtering_threshold)
     top_p: float = Field(default=1.0)
     save_steps: int = Field(default=1024)
     eval_strategy: str = Field(default="no")
