@@ -17,7 +17,7 @@ def main() -> None:
         Variant.WITH_CONFREW,
         Method.DENSE,
         use_tempmod=True,
-        use_filtering=False,
+        use_filtering=True,
     )
 
 

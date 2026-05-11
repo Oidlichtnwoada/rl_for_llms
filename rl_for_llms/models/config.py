@@ -109,6 +109,7 @@ class Config(BaseModel):
     temperature_modulation_invert_mapping: bool = Field(
         default_factory=get_temperature_modulation_invert_mapping
     )
+    confidence_history_length: int = Field(default=8)
     filtering_threshold: float = Field(default=0.1)
     top_p: float = Field(default=1.0)
     save_steps: int = Field(default=1024)

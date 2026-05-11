@@ -38,6 +38,7 @@ from rl_for_llms.utils.confidence_utils import (
 )
 from rl_for_llms.utils.constant_utils import (
     get_answer_namespace,
+    get_boolean_classification_threshold,
     get_confidence_namespace,
     get_default_confidence_score,
     get_default_eps,
@@ -98,6 +99,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         self.all_confidence_logits: Tensor | None = None
         self.all_confidence_logits_excluding_last: Tensor | None = None
         self._laser_full_logits: Tensor | None = None
+        self._prompt_length: int = 0
         self.eval_mode: bool = False
         self.use_tempmod: bool = False
         self.use_filtering: bool = False
@@ -145,6 +147,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         self.all_confidence_logits = None
         self.all_confidence_logits_excluding_last = None
         self._laser_full_logits = None
+        self._prompt_length = 0
 
     def remove_hook(self, *, clear_confidence_logits: bool = True) -> None:
         """Remove the registered hook."""
@@ -189,13 +192,10 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
     def _apply_temperature_modulation(
         self,
         logits: Tensor,
-        confidence_logits: Tensor,
         min_temperature: float = 1e-6,
     ) -> Tensor:
         """Return logits scaled by per-sequence confidence-derived temperature, pre-compensating for any base config.temperature applied downstream by transformers."""
-        conf = get_confidence_token_logit_sigmoid(
-            confidence_logits[:, -1], self.config
-        ).float()
+        conf = self._get_running_average_confidence().float()
         t_min = self.config.temperature_modulation_min_temperature
         t_max = self.config.temperature_modulation_max_temperature
         weight = (
@@ -211,7 +211,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         confidence_logits = logits[:, :, self.confidence_token_id]
         self._accumulate_confidence_values(confidence_logits)
         if self.use_tempmod and self.eval_mode and logits.size(1) == 1:
-            return self._apply_temperature_modulation(logits, confidence_logits)
+            return self._apply_temperature_modulation(logits)
         return None
 
     def _smc_pick_replacement(self, alive: list[int], confidence: Tensor) -> int:
@@ -234,12 +234,10 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         """Copy state from alive_i to dead_i in-place."""
         scores[dead_i].copy_(scores[alive_i])
         input_ids[dead_i].copy_(input_ids[alive_i])
-
         if self.all_confidence_logits is not None:
             self.all_confidence_logits[dead_i].copy_(
                 self.all_confidence_logits[alive_i]
             )
-
         if self._smc_current_cache is not None:
             for layer in self._smc_current_cache.layers:
                 if (
@@ -280,10 +278,36 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
             best = max(unfinished, key=lambda i: confidence[i].item())
             alive = [best]
             dead = [i for i in unfinished if i != best]
-
         for dead_i in dead:
             alive_i = self._smc_pick_replacement(alive, confidence)
             self._smc_copy_sequence(dead_i, alive_i, scores, input_ids)
+
+    def _get_running_average_confidence(self) -> Tensor:
+        """Compute the running average of the confidence over the last N decode steps."""
+        if self.all_confidence_logits is None:
+            raise ValueError
+        confidences = get_confidence_token_logit_sigmoid(
+            self.all_confidence_logits, self.config
+        ).float()
+        history_len = self.config.confidence_history_length
+        prompt_len = self._prompt_length
+        if 0 < prompt_len <= confidences.shape[1]:
+            decode_confidences = confidences[:, prompt_len - 1 :]
+        else:
+            decode_confidences = confidences
+        decode_steps = decode_confidences.shape[1]
+        if decode_steps >= history_len:
+            window = decode_confidences[:, -history_len:]
+        else:
+            padding_len = history_len - decode_steps
+            padding = torch.full(
+                (confidences.shape[0], padding_len),
+                get_boolean_classification_threshold(),
+                device=confidences.device,
+                dtype=confidences.dtype,
+            )
+            window = torch.cat((padding, decode_confidences), dim=1)
+        return window.mean(dim=1)
 
     def apply_smc_filtering(
         self, scores: Tensor, input_ids: Tensor, finished_mask: Tensor
@@ -291,14 +315,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         """Resample low-confidence sequences within each group using SMC particle filtering."""
         if self.all_confidence_logits is None:
             return
-
-        confidence = (
-            get_confidence_token_logit_sigmoid(
-                self.all_confidence_logits[:, -1], self.config
-            )
-            .float()
-            .detach()
-        )
+        confidence = self._get_running_average_confidence().float().detach()
         num_gen = self.get_num_generations()
         batch_size = scores.size(0)
         finished = finished_mask.tolist()
@@ -317,6 +334,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         """Accumulate per-position confidence values across decoding steps."""
         if self.all_confidence_logits is None:
             self.all_confidence_logits = confidence_values
+            self._prompt_length = confidence_values.shape[1]
         elif confidence_values.shape[1] == 1:
             self.all_confidence_logits = torch.cat(
                 (self.all_confidence_logits, confidence_values), dim=1
@@ -523,11 +541,9 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         prompt_mask = output["prompt_mask"]
         completion_ids = output["completion_ids"]
         completion_mask = output["completion_mask"]
-
         input_ids = torch.cat([prompt_ids, completion_ids], dim=1)
         attention_mask = torch.cat([prompt_mask, completion_mask], dim=1)
         logits_to_keep = completion_ids.size(1)
-
         self.register_hook(unwrap_model=True, clear_confidence_logits=True)
         with torch.no_grad():
             self._get_per_token_logps_and_entropies(
@@ -767,7 +783,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         return {}
 
     def get_config_shorthand(self) -> str:
-        """Get a shorthand representation of the config."""
+        """Return a shorthand representation of the config."""
         if self._loaded_variant is not None and self._loaded_method is not None:
             return get_variant_method_shorthand(
                 self._loaded_variant, self._loaded_method
@@ -777,7 +793,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         return self.config.get_config_shorthand()
 
     def get_eval_shorthand(self) -> str:
-        """Get a shorthand representation of the config for evaluation CSV files."""
+        """Return a shorthand representation of the config for evaluation CSV files."""
         base = self.get_config_shorthand()
         if self.use_tempmod:
             name = get_tempmod_name()
@@ -811,6 +827,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         self._loaded_method = method
 
     def _get_model_output_dir(self, model_identifier: str) -> pathlib.Path:
+        """Return the output directory path for the given model identifier."""
         shorthand = self.get_config_shorthand()
         standardized_hf_model_id = standardize_model_id(self.config.hf_model_id)
         return (
@@ -819,6 +836,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         )
 
     def _save_checkpoint_to_disk(self, model_identifier: str) -> None:
+        """Save the unwrapped model weights to disk in the evaluation metric directory."""
         model_output_dir = self._get_model_output_dir(model_identifier)
         shutil.rmtree(model_output_dir, ignore_errors=True)
         model_output_dir.mkdir(parents=True, exist_ok=True)
@@ -832,6 +850,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         self._load_weights_from_dir(model_output_dir)
 
     def _merge_eval_metrics(self, metric_key_prefix: str) -> None:
+        """Merge binary classification and answer metrics from all evaluation runs and store them."""
         bc_concat_runs = [r[0] for r in self._eval_run_results]
         answer_agg_runs = [r[1] for r in self._eval_run_results]
         shorthand = self.get_eval_shorthand()
@@ -855,6 +874,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         recomputed: dict[tuple[str, ...], float],
         outputs_key: str,
     ) -> tuple[dict[tuple[str, ...], float], dict[tuple[str, ...], float]]:
+        """Return concatenated and aggregated metrics given a prefix, namespace, and evaluated outputs."""
         ns = (prefix, namespace)
         concatenated = change_metric_keys(recomputed, prefix=ns)
         aggregated = change_metric_keys(
@@ -865,6 +885,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
     def _compute_eval_bc_metrics(
         self, prefix: str
     ) -> tuple[dict[tuple[str, ...], float], dict[tuple[str, ...], float]]:
+        """Compute binary classification metrics for the evaluation run."""
         concatenated_inputs = tuple(
             list(chain.from_iterable(x))
             for x in zip(*self.eval_inputs["bc"], strict=True)
@@ -879,6 +900,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
     def _compute_eval_answer_metrics(
         self, prefix: str
     ) -> tuple[dict[tuple[str, ...], float], dict[tuple[str, ...], float]]:
+        """Compute answer verification metrics for the evaluation run."""
         answers_with_confidence, temperatures, num_generations_list = zip(
             *self.eval_inputs["answer"], strict=True
         )
@@ -915,20 +937,16 @@ class SMCLogitsProcessor(LogitsProcessor):
                 input_ids.size(0), dtype=torch.bool, device=input_ids.device
             )
             self.finished_mask = finished_mask
-
         if input_ids.size(1) > self.prompt_len:
             last_tokens = input_ids[:, -1]
             eos_id = self.trainer._tokenizer.eos_token_id  # noqa: SLF001
             pad_id = self.trainer._tokenizer.pad_token_id  # noqa: SLF001
-
             if isinstance(eos_id, int):
                 finished_mask |= last_tokens == eos_id
             elif isinstance(eos_id, list | tuple):
                 for e_id in eos_id:
                     finished_mask |= last_tokens == e_id
-
             if isinstance(pad_id, int):
                 finished_mask |= last_tokens == pad_id
-
         self.trainer.apply_smc_filtering(scores, input_ids, finished_mask)
         return scores
