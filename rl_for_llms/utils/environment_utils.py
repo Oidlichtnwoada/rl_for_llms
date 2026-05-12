@@ -103,4 +103,4 @@ def get_temperature_modulation_invert_mapping() -> bool:
 
 def get_filtering_threshold() -> float:
     """Return the SMC filtering threshold from environment variable."""
-    return float(os.getenv("FILTERING_THRESHOLD", "0.15"))
+    return float(os.getenv("FILTERING_THRESHOLD", "0.25"))
