@@ -47,6 +47,7 @@ from rl_for_llms.utils.constant_utils import (
     get_grpo_namespace,
     get_inv_prefix,
     get_loss_name,
+    get_no_name,
     get_tempmod_name,
     get_total_namespace,
 )
@@ -794,16 +795,23 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
     def get_eval_shorthand(self) -> str:
         """Return a shorthand representation of the config for evaluation CSV files."""
         base = self.get_config_shorthand()
-        parts = [base]
+        if not self.use_tempmod and not self.use_filtering:
+            return base
         if self.use_tempmod:
             name = get_tempmod_name()
-            if self.config.temperature_modulation_invert_mapping:
-                parts.append(f"{get_inv_prefix()}{name}")
-            else:
-                parts.append(name)
-        if self.use_filtering:
-            parts.append(get_filter_name())
-        return "_".join(parts)
+            tempmod_suffix = (
+                f"{get_inv_prefix()}{name}"
+                if self.config.temperature_modulation_invert_mapping
+                else name
+            )
+        else:
+            tempmod_suffix = f"{get_no_name()}{get_tempmod_name()}"
+        filter_suffix = (
+            get_filter_name()
+            if self.use_filtering
+            else f"{get_no_name()}{get_filter_name()}"
+        )
+        return f"{base}_{tempmod_suffix}_{filter_suffix}"
 
     def _load_weights_from_dir(self, checkpoint_dir: str | pathlib.Path) -> None:
         """Unwrap the model and load weights from the given checkpoint directory."""
