@@ -277,6 +277,20 @@ def compute_ylim(max_value: float) -> float:
     return ((int(max_value) // 10) + 2) * 10
 
 
+def extend_max_values_with_stds(
+    max_values: list[float],
+    means: list[float],
+    stds: list[float] | None,
+) -> None:
+    """Append means (and means+stds when available) to ``max_values``, skipping NaNs."""
+    max_values.extend(m for m in means if not np.isnan(m))
+    if stds is None:
+        return
+    max_values.extend(
+        m + s for m, s in zip(means, stds, strict=False) if not np.isnan(m)
+    )
+
+
 def add_bar_labels(
     ax: Axes,
     bars: BarContainer,
@@ -292,9 +306,10 @@ def add_bar_labels(
             label = (
                 f"{mean:.2f}%\n$\\pm${std:.2f}%" if std is not None else f"{mean:.2f}%"
             )
+            offset = (std if std is not None else 0.0) + 0.5
             ax.text(
                 bar.get_x() + bar.get_width() / 2,
-                bar.get_height() + 0.5,
+                bar.get_height() + offset,
                 label,
                 ha="center",
                 va="bottom",
@@ -378,7 +393,7 @@ def create_answer_accuracy_chart(*, show_std: bool = True) -> None:
             if show_std
             else None
         )
-        all_max_values.extend(means)
+        extend_max_values_with_stds(all_max_values, means, std_vals)
         bars = ax.bar(
             x_common + offsets[i] * width,
             means,
@@ -402,7 +417,11 @@ def create_answer_accuracy_chart(*, show_std: bool = True) -> None:
             if m_key in metrics:
                 mean = metrics[m_key] * 100
                 std_val = stds.get(m_key, 0.0) * 100 if show_std else None
-                all_max_values.append(mean)
+                extend_max_values_with_stds(
+                    all_max_values,
+                    [mean],
+                    [std_val] if std_val is not None else None,
+                )
                 bar = ax.bar(
                     x_pos + conf_offsets[i] * width,
                     mean,
@@ -487,7 +506,7 @@ def create_confidence_chart(*, show_std: bool = True) -> None:
         std_vals = (
             [stds.get(k, 0.0) * 100 for k in percentage_keys] if show_std else None
         )
-        all_max_values.extend([m for m in means if not np.isnan(m)])
+        extend_max_values_with_stds(all_max_values, means, std_vals)
 
         legend_label = get_variant_method_label(variant, method)
         if mcc_key and mcc_key in metrics:
