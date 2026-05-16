@@ -101,6 +101,16 @@ def get_temperature_modulation_invert_mapping() -> bool:
     return os.getenv("TEMPERATURE_MODULATION_INVERT_MAPPING", "0") == "1"
 
 
+def get_inference_time_evaluation_use_tempmod() -> bool:
+    """Check if inference-time evaluation should use temperature modulation via environment variable."""
+    return os.getenv("INFERENCE_TIME_EVALUATION_USE_TEMPMOD", "0") == "1"
+
+
+def get_inference_time_evaluation_use_filtering() -> bool:
+    """Check if inference-time evaluation should use filtering via environment variable."""
+    return os.getenv("INFERENCE_TIME_EVALUATION_USE_FILTERING", "0") == "1"
+
+
 def get_filtering_threshold() -> float:
     """Return the SMC filtering threshold from environment variable."""
     return float(os.getenv("FILTERING_THRESHOLD", "0.2"))
