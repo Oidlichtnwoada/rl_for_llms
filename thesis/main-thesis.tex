@@ -321,6 +321,10 @@
 % existence of unused vocabulary tokens that motivate the confidence-token
 % repurposing in Qwen2.5 \citep{qwen25}. Introduce chain-of-thought prompting
 % \citep{cot} and structured reasoning frameworks \citep{treeofthoughts}.
+% CITATION ROLE: \citep{neuraltextdegeneration,mirostat} appear here as
+% *definitions* of decoding pathologies; in sec:rel:decoding they appear as
+% *baselines* against which our confidence-driven temperature modulation is
+% compared. Do not duplicate prose between sections.
 
 \section{Reinforcement Learning Preliminaries}
 \label{sec:bg:rl}
@@ -368,6 +372,12 @@
 % \citep{conformallm}, semantic / verbalised uncertainty
 % (\citep{semanticuncertainty,verbalizedconfidence,justaskforcalibration,
 % selfcheckgpt,internalstatelying,llmsknowwhattheyknow}).
+% CITATION ROLE: \citep{verbalizedconfidence,llmsknowwhattheyknow} appear
+% here as *definitions* of the calibration vocabulary (ECE/Brier targets,
+% verbalised numeric uncertainty); in sec:rel:confidence they reappear as
+% *prior elicitation methods* that Dense Confidence replaces with a trained,
+% bounded signal. Keep the definitional discussion here, the methodological
+% comparison there.
 
 \section{Sequential Monte Carlo for Sequence Models}
 \label{sec:bg:smc}
@@ -376,7 +386,12 @@
 % \citep{bayesianstateestimation}; recent SMC for LLMs
 % (\citep{smcsteering,twistedsmc,smcsyntacticsemanticcontrol,rolloutroulette}).
 % Define proposal/target distributions and ESS-based resampling, in preparation
-% for \autoref{sec:methods:smc}.
+% for sec:methods:itts:smc.
+% CITATION ROLE: \citep{smcsteering,twistedsmc,smcsyntacticsemanticcontrol,
+% rolloutroulette} are introduced here as *the SMC-for-LLMs formalism* (target
+% distribution, twist functions, ESS); in sec:rel:decoding they reappear as
+% *related-work neighbours* whose proposals/potentials we contrast with our
+% confidence-driven potential. Definitional material here, contrast there.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%
@@ -397,6 +412,11 @@
 % rewards \citep{consistentpaths,corewarding,reasonwithoutexternalrewards,
 % reinforcementimplicitrewards}. State why a \emph{dense} (per-step) signal is
 % the missing ingredient.
+% CITATION ROLE: \citep{laser,selfrewardingllms,genverifiers,confasreward}
+% appear here as the *closest neighbours we extend* (compare interfaces,
+% sparsity of supervision, computational cost); they reappear in
+% sec:intro:motivation only as *motivating evidence* for the paradigm. Avoid
+% restating their contributions here.
 
 \section{Process Reward Models and Step-Level Supervision}
 \label{sec:rel:prm}
@@ -422,6 +442,10 @@
 % verbalised confidence \citep{verbalizedconfidence}, "LLMs know what they
 % know" \citep{llmsknowwhattheyknow}, R-Tuning \citep{rtuning},
 % selective generation \citep{selfevalselectivegeneration}.
+% CITATION ROLE: \citep{verbalizedconfidence,llmsknowwhattheyknow} appear
+% here as *elicitation methods* (prompting / probing for self-assessed
+% probability) that Dense Confidence supersedes with a trained, bounded
+% per-step score. Their definitional/calibration use is in sec:bg:calibration.
 
 \section{Test-Time Compute and Inference-Time Scaling}
 \label{sec:rel:testtime}
@@ -443,6 +467,13 @@
 % neuraltextdegeneration}); SMC for LLMs (\citep{smcsteering,twistedsmc,
 % smcsyntacticsemanticcontrol,rolloutroulette}). Motivate using our dense
 % confidence signal as the per-step potential.
+% CITATION ROLE: \citep{mirostat,neuraltextdegeneration} appear here as
+% *temperature-control baselines* (entropy-targeting / nucleus sampling) that
+% our tempmod policy competes against -- the definitional appearance is in
+% sec:bg:llm. \citep{smcsteering,twistedsmc,smcsyntacticsemanticcontrol,
+% rolloutroulette} appear here as *related SMC-for-LLM systems* whose twist /
+% potential we replace with the trained confidence signal -- the definitional
+% appearance is in sec:bg:smc.
 
 \section{Datasets and Benchmarks}
 \label{sec:rel:datasets}
@@ -464,6 +495,37 @@
 % Maintain the OpenAI/DeepMind-style mathematical precision used in RPT and
 % reference the exact code paths (\texttt{ConfidenceGRPOTrainer},
 % \texttt{confidence\_utils}, \texttt{SMCLogitsProcessor}).
+
+\section{Method Overview}
+\label{sec:methods:overview}
+
+% TODO[methods:overview]: One-page map of the entire methods chapter, written
+% \emph{before} the technical sections so the reader has a mental model
+% before the equations start. Mirrors the "chapter funnel" used at the start
+% of the example thesis' Methods chapter. Cover, in order:
+%   1. The shared backbone: GRPO-trained Qwen2.5 with a LoRA adapter and a
+%      repurposed confidence token whose logit/log-probability is captured
+%      via a forward hook on the LM head (sec:methods:architecture,
+%      sec:methods:hook).
+%   2. Two training-time confidence branches:
+%        - Dense Confidence (ours): bounded sigmoid on the raw confidence-
+%          token logit at *every* response position, trained with a class-
+%          reweighted BCE auxiliary loss (sec:methods:dense).
+%        - LaSeR (reimplementation): unbounded log_softmax-derived score at
+%          the *last* response position only, trained with MSE against the
+%          binary reward (sec:methods:laser).
+%      Both can optionally feed back into the GRPO advantage as an intrinsic
+%      reward.
+%   3. Three inference-time scaling overlays that re-use the trained Dense
+%      Confidence head as a controller (sec:methods:itts):
+%        - confidence-guided answer selection (post-hoc aggregation),
+%        - confidence-driven temperature modulation (per-step sampling
+%          knob, with an inverse-mapping ablation),
+%        - confidence-conditioned SMC particle filtering (KV-cache surgery
+%          on \texttt{DynamicCache} when a particle hits EOS).
+% Close with a small reference figure or block-diagram (TikZ) showing how the
+% three ITTS overlays plug into the same trained checkpoint. No new
+% citations -- this section is purely a roadmap.
 
 \section{System Architecture and Notation}
 \label{sec:methods:architecture}
@@ -865,13 +927,6 @@
 % (group size G acting as particle count for SMC).
 
 \cleardoubleoddpage
-\chapter{Project Configuration}
-\label{app:pyproject}
-
-% TODO[app:pyproject]: \lstinputlisting of ../pyproject.toml as in RPT
-% \autoref{app:pyproject}.
-
-\cleardoubleoddpage
 \chapter{Implementation Pointers}
 \label{app:code}
 
@@ -891,6 +946,15 @@
 %   - Answer aggregation | inference | models/answer.py::get_answers_with_confidence
 %   - Reward functions | training | utils/reward_utils.py
 %   - Inference-time eval driver | eval | utils/inference_time_evaluation_utils.py
+
+\cleardoubleoddpage
+\chapter{Project Configuration}
+\label{app:pyproject}
+
+% TODO[app:pyproject]: \lstinputlisting of ../pyproject.toml as in RPT
+% \autoref{app:pyproject}. Placed last because it is the most raw artifact
+% (a verbatim source listing); the reader should encounter the structured
+% reference material (hyperparameters, code pointers) first.
 
 
 
