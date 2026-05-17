@@ -650,6 +650,12 @@
 % TODO[setup:dataset]: GSM8K \citep{gsm8k} preprocessing (verbatim from RPT).
 % Briefly justify why GSM8K is preferred over MATH \citep{mathdataset} or
 % DeepMath-103K \citep{deepmath103k} (compute budget, faster signal).
+% NOTE TO SELF: state clearly that GSM8K is the *only* dataset used for both
+% training and evaluation in this thesis. No multi-domain or cross-dataset
+% transfer experiments were run; this is a deliberate scoping decision
+% driven by the compute budget (single GV100, float32) and is revisited as
+% a threat to external validity in sec:disc:threats and as future work in
+% ch:conclusion (cf. \citep{mathdataset,deepmath103k,evalllmscode}).
 
 \section{Model and Training Configuration}
 \label{sec:setup:model}
@@ -657,6 +663,21 @@
 % TODO[setup:model]: Qwen2.5-0.5B-Instruct \citep{qwen25}, LoRA \citep{lora}
 % rank/alpha, GRPO hyperparameters \citep{deepseekmath}, KL=0 choice.
 % Refer to \autoref{app:hyperparams}.
+% NOTE TO SELF -- training-budget observations to fold into prose:
+%   * Epoch count: the default reported configuration trains for 1 epoch over
+%     the filtered GSM8K split. A 2-epoch ablation was also executed; the
+%     accuracy / MCC deltas were within seed noise (negligible), consistent
+%     with the small effective dataset size. Report this explicitly so the
+%     reader does not assume undertraining.
+%   * Model family: only Qwen2.5-0.5B-Instruct was actually trained. The
+%     experimental plan also included the 0.8B variant of the Qwen3.5
+%     successor family for a scale ablation, but it was dropped because
+%     (i) the larger model would have multiplied GPU-hours per run and
+%     (ii) the existing ablation grid (Base / GRPO / Dense $\pm$ reward /
+%     LaSeR $\pm$ reward / three inference-time overlays) already saturated
+%     the available compute budget on a single GV100. Frame this as a
+%     scoping decision, not a methodological gap; revisit as future work
+%     in ch:conclusion.
 
 \section{Experimental Variants}
 \label{sec:setup:variants}
@@ -837,6 +858,27 @@
 % Limitations" subsection. Add: limited test-time scaling budget, single
 % dataset (GSM8K), confidence-loss sensitivity \citep{rewardoveropt},
 % single-seed evaluation.
+% NOTE TO SELF -- additional limitations to spell out in prose:
+%   * Hyperparameter coverage: the presented methods expose a *large* knob
+%     set -- confidence-loss weight, class-reweighting factors, confidence-
+%     reward blend coefficient, sigmoid scale, LoRA r/alpha, GRPO group size
+%     G, KL coefficient, learning rate, tempmod min/max temperature,
+%     confidence-history length, tempmod inversion flag, SMC filtering
+%     threshold, and (implicit) the SMC particle count G. The available
+%     compute did not permit a proper sweep over this joint space; reported
+%     values are reasonable defaults guided by RPT/SR experiments rather
+%     than an exhaustive search. State plainly that the reported numbers
+%     are therefore an under-estimate of what each method can deliver with
+%     a tuned configuration.
+%   * Single model size (0.5B): trends may or may not survive at 0.8B+ in
+%     the Qwen3.5 family; see sec:disc:threats T3.
+%   * Single dataset (GSM8K only): no cross-dataset transfer experiments
+%     were run; restricts external validity (cf. \citep{mathdataset,
+%     deepmath103k,evalllmscode}).
+%   * Epoch count: a 2-epoch ablation produced negligible gains on this
+%     small split, so longer training was not pursued -- this caps the
+%     ceiling reachable on GSM8K alone but does not justify discarding the
+%     method.
 
 \section{Threats to Validity}
 \label{sec:disc:threats}
@@ -859,6 +901,9 @@
 %     math (\citep{mathdataset,deepmath103k}), code (\citep{evalllmscode}),
 %     or frontier-scale models. Mitigation: scope claims to the experimental
 %     regime; defer cross-domain generalisation to future work.
+%     Additionally note that a Qwen3.5-0.8B scale ablation was planned but
+%     not executed for compute reasons (see sec:setup:model), so model-
+%     family scaling behaviour is currently extrapolation, not measurement.
 %   T4 (statistical conclusion validity) -- Multiple comparisons across
 %     variants without formal multiple-testing correction; reliability
 %     metrics (ECE/Brier) reported on a finite evaluation split. Mitigation:
@@ -886,6 +931,31 @@
 % integration with test-time compute scaling \citep{testtimecomputescaling,
 % s1,metageneration}. Close with a one-sentence outlook on self-correcting
 % System-2 agents.
+% NOTE TO SELF -- explicit future-work bullets to add on top of the
+% directions already enumerated in RPT \autoref{sec:conclusion}:
+%   * Hyperparameter exploration: a proper sweep over the knobs listed in
+%     sec:disc:limitations (confidence-loss weight, reward blend, sigmoid
+%     scale, LoRA r/alpha, GRPO G, learning rate, tempmod T_min/T_max,
+%     inversion flag, confidence-history length, SMC filtering threshold,
+%     particle count) is expected to substantially tighten every metric
+%     reported here and to clarify which inference-time overlay dominates.
+%   * Larger / newer models: re-running the full ablation grid on
+%     Qwen3.5-0.8B (the originally planned scale ablation, dropped for
+%     compute reasons) and beyond would test whether Dense Confidence's
+%     gains persist or grow with model capacity \citep{qwen25}.
+%   * More training data: the dense confidence head is supervised only by
+%     the broadcast binary correctness signal; with substantially more
+%     trajectories -- e.g. moving from GSM8K \citep{gsm8k} to MATH
+%     \citep{mathdataset}, DeepMath-103K \citep{deepmath103k} or code
+%     benchmarks \citep{evalllmscode} -- the resulting confidence scores
+%     are expected to become markedly better calibrated. This would in
+%     turn sharpen every downstream consumer of the signal: confidence-
+%     guided answer selection \citep{selfconsistency,bonalignmentpolicy,
+%     bonselectionselfcertainty,deepthinkwithconfidence,
+%     confimprovesselfconsistency}, temperature modulation, and SMC
+%     particle filtering. State this expectation explicitly so the reader
+%     understands that the inference-time-scaling numbers presented are
+%     a *lower bound* on what a better-trained confidence head can deliver.
 
 
 
