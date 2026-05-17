@@ -89,34 +89,34 @@
 %%
 
 %% Command \title{title}: sets the title of your thesis
-\title{Space for your thesis title}
+\title{Dense Confidence and Inference-Time Scaling: Extending Last-Token Self-Rewarding for Reliable LLM Reasoning}
 
 %% Command \titleshort{short title}: sets an abbreviated version of the thesis title for page heads
-%\titleshort{Optional space for your abbreviated title}
+\titleshort{Dense Confidence \& Inference-Time Scaling}
 
 %% Command \subtitle{subtitle}: sets the subtitle for seminar/technical reports (not used for theses)
-%\subtitle{Seminar Report}
+%\subtitle{Master Thesis}
 
 %% Command \author{name}: sets the author's name
-\author{\prefix{DI} Firstname~Lastname \suffix{BSc}\matno{12345678}}
+\author{\prefix{} Hannes~Brantner \suffix{BSc}\matno{K1614466}}
 
 %% Command \supervisor[number,gender]{name}: sets the name of the supervisor
-\supervisor{\prefix{Prof. Dr.} Firstname~Lastname}
+\supervisor{\prefix{Univ.-Prof. Dr.} Sepp~Hochreiter}
 
 %% Command \assistantsupervisor{name}: sets the name of the assistant supervisor(s)
-\assistantsupervisor{\prefix{Dr.} Firstname~Lastname \suffix{MSc}}
+\assistantsupervisor{\prefix{Dipl.-Ing.} Johannes~Schimunek \and \prefix{Dipl.-Ing.} Christoph~Bartmann}
 
 %% Command \degree{degree}{degree program}: sets the degree and degree program name
-\degree{Master of Science}{Computer Science}
+\degree{Diplom-Ingenieur}{Artificial Intelligence}
 
 %% Command \submissiondepartment{institute or department}: set the department that the thesis is submitted at
-\submissiondepartment{Institute of Networks~and~Security}
+\submissiondepartment{Institute for Machine Learning}
 
 %% Command \date{YYYY-MM-DD}: set the day of submission (defaults to today)
-%\date{2020-04-09}
+%\date{2026-XX-XX}
 
 %% Command \keywords{text}: set the document keywords
-%\keywords{Space for your comma-separated keywords}
+\keywords{Reinforcement Learning, Large Language Models, Self-Rewarding, Confidence Calibration, GRPO, Test-Time Scaling, Sequential Monte Carlo}
 
 
 %% Finally, print the title page using the above information:
@@ -136,7 +136,15 @@
 
 \cleardoubleoddpage%  Make sure to start abstract on a new odd page
 \begin{abstract*}
-	Space for your abstract.
+	% TODO[abstract-en]: ~250 words. Funnel from RLVR + sparse rewards motivation to the
+	% proposed Dense Confidence + inference-time scaling contributions. Mirror the structure
+	% of the main-report.tex abstract, but broaden the framing to cover (i) the LaSeR
+	% reimplementation, (ii) the dense logit-based variant, (iii) confidence-guided
+	% answer selection, (iv) confidence-driven temperature modulation, and (v) confidence-
+	% conditioned Sequential Monte Carlo (SMC) resampling. Conclude with the headline numbers
+	% on GSM8K (Pass@1 31\% -> 53\%, MCC up to 0.58, 0\% confidence-token leakage) and the
+	% qualitative finding for the inference-time scaling variants. No citations.
+	We present \textbf{Dense Confidence}, a reimplementation and extension of the \textit{LaSeR} framework \citep{laser} that augments Reinforcement Learning with Verifiable Rewards (\textit{RLVR}) by training a Large Language Model (\textit{LLM}) to estimate the validity of its reasoning trace at \emph{every} token step rather than only at the sequence terminus. A scaled sigmoid projection on the raw logit of a repurposed control token maps latent representations to interpretable confidence scores without disturbing the sampling distribution. The resulting dense confidence head is jointly trained with Group Relative Policy Optimization (\textit{GRPO}) and optionally blended into the advantage as an intrinsic reward. Beyond training, we exploit the per-step confidence signal at inference time through three orthogonal mechanisms: confidence-guided answer selection, confidence-driven temperature modulation, and confidence-conditioned Sequential Monte Carlo resampling of partial trajectories. Experiments on a filtered \texttt{GSM8K} \citep{gsm8k} split using a $0.5\,$B parameter Qwen model show that all trained variants improve \textit{Pass@1} from $31\%$ to $53\%$, that the confidence-trained variants reach a Matthews Correlation Coefficient of up to $0.58$, and that the confidence token is never erroneously sampled. The inference-time scaling techniques further illustrate how the learned confidence signal can be reused as a controller for compute allocation at test time. All code, configurations, and evaluation artifacts are released at \url{https://github.com/Oidlichtnwoada/rl_for_llms}.
 \end{abstract*}
 
 %%
@@ -151,7 +159,9 @@
 \cleardoubleoddpage%  Make sure to start abstract on a new odd page
 \begin{otherlanguage}{ngerman}
 	\begin{abstract*}
-		Platz für deine Kurzfassung.
+		% TODO[abstract-de]: German translation of the English abstract once the final
+		% version is fixed. Keep technical terms (LaSeR, GRPO, RLVR, SMC) in English/italic.
+		Wir pr\"asentieren \textbf{Dense Confidence}, eine Reimplementierung und Erweiterung des \textit{LaSeR}-Frameworks \citep{laser}, die Reinforcement Learning mit verifizierbaren Belohnungen (\textit{RLVR}) dahingehend erweitert, dass ein gro\ss{}es Sprachmodell (\textit{LLM}) die G\"ultigkeit seiner Argumentationskette an \emph{jedem} Token-Schritt sch\"atzt, anstatt nur am Sequenzende. Eine skalierte Sigmoid-Projektion auf das Roh-Logit eines umgewidmeten Steuer-Tokens bildet latente Repr\"asentationen auf interpretierbare Konfidenzwerte ab, ohne die Sampling-Verteilung zu st\"oren. Der resultierende dichte Konfidenzkopf wird gemeinsam mit \textit{GRPO} trainiert und optional als intrinsische Belohnung in den Advantage eingemischt. Dar\"uber hinaus nutzen wir das Per-Schritt-Signal zur Inferenzzeit \"uber drei orthogonale Mechanismen: konfidenzbasierte Antwortauswahl, konfidenzgesteuerte Temperaturmodulation und konfidenzkonditioniertes Sequential-Monte-Carlo-Resampling. Experimente auf einem gefilterten \texttt{GSM8K}-Split \citep{gsm8k} mit einem ${,}5\,$Mrd.-Parameter-Qwen-Modell zeigen substantielle Verbesserungen in der Antwortgenauigkeit sowie eine starke bin\"are Klassifikation der Antwortkorrektheit.
 	\end{abstract*}
 \end{otherlanguage}
 
@@ -174,7 +184,10 @@
 
 \cleardoubleoddpage%  Make sure to start acknowledgements on a new odd page
 \begin{acks*}
-	Space for your acknowledgements.
+	% TODO[acks]: Thank supervisors (Hochreiter, Schimunek, Bartmann), the JKU Institute
+	% for Machine Learning for GPU access (NVIDIA Quadro GV100), family/friends. Keep
+	% brief (\\leq half a page).
+	I thank my supervisors and the JKU Institute for Machine Learning for providing the computational resources, in particular the NVIDIA Quadro GV100 server used for all experiments reported in this thesis.
 \end{acks*}
 
 %%
@@ -219,28 +232,523 @@
 %%
 %% Include your chapters
 %%
+%% NOTE: Every chapter below lists a TODO block describing:
+%%   - what to cover,
+%%   - which content can be lifted/adapted from main-report.tex (RPT) or
+%%     main-seminarreport.tex (SR),
+%%   - which references (\citep keys) belong here.
+%% A coverage list at the end of the file enumerates which of the 98 references
+%% in references.bib are placed in which chapter so the union spans all entries.
+%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%
-\cleardoubleoddpage%  Make sure to start each chapter on a new odd page
+\cleardoubleoddpage
 \chapter{Introduction}
-\label{sec:introduction}
+\label{ch:introduction}
 
+% TODO[ch:intro]: Master-thesis introduction (~2000 words). Open with a funnel
+% on scalable oversight for reasoning LLMs (\citep{r1,o1}), then narrow into
+% RLVR (\citep{deepseekmath,r1zerocriticalperspective}), the credit-assignment
+% problem of sparse rewards, and the cost of external/process verifiers
+% (\citep{verifystepbystep,mathshepherd,scalingverifiers}). Position
+% self-rewarding (\citep{selfrewardingllms,laser,genverifiers,confasreward})
+% as the emerging paradigm and motivate dense, trajectory-wide confidence.
+% End with the research questions, contributions, and document outline.
+% Lift the abstract/intro paragraphs from RPT \autoref{sec:introduction}
+% and broaden them; the seminar report (SR) already provides a compact LaSeR
+% framing that can be reused for the related-work paragraph in this chapter.
 
 \section{Motivation}
-\label{sec:introduction:motivation}
+\label{sec:intro:motivation}
 
-Space for your introduction.
-A typical introduction consists of a motivation for your thesis, your objectives, your research approach, and finishes with an outlook over your work.
-Of course, different structuring and naming of sections is possible.
+% TODO[intro:motivation]: Reuse and expand RPT intro paragraphs 1-2. Discuss
+% sparse-in-time outcome rewards (RLHF \citep{rlhf,drlhumanpreferences}),
+% credit assignment, and process supervision (\citep{verifystepbystep,
+% processoutcomefeedback,mathshepherd,prmthatthink,freeprocessrewards}).
+% Highlight calibration as the missing link (\citep{confestcalibsurvey,
+% nncalibration,llmsknowwhattheyknow,verbalizedconfidence,justaskforcalibration,
+% semanticuncertainty,selfcheckgpt,internalstatelying}).
 
+\section{Research Questions}
+\label{sec:intro:rqs}
 
-\section{Objectives and Approach}
-\label{sec:introduction:objectives}
+% TODO[intro:rqs]: Formalise the open-ended research questions answered in this
+% thesis. Suggested phrasing:
+%   RQ1: Can a trajectory-wide (dense) confidence signal be learned jointly with
+%        GRPO without degrading reasoning accuracy?
+%   RQ2: Does a bounded logit-based confidence parameterisation eliminate the
+%        confidence-token sampling interference reported by \citet{laser}?
+%   RQ3: To what extent does blending the intrinsic dense reward into the
+%        advantage estimator improve calibration vs.\ accuracy?
+%   RQ4: Can the learned confidence signal be exploited at inference time --
+%        via answer selection, temperature modulation, and SMC resampling --
+%        to trade compute for accuracy or calibration?
 
+\section{Contributions}
+\label{sec:intro:contributions}
+
+% TODO[intro:contributions]: Expand the three contributions from RPT
+% \autoref{sec:introduction} into four (the inference-time scaling family being
+% the new one). Mention: (i) modern reimplementation of LaSeR with \texttt{trl}
+% \citep{trl}, \texttt{peft} \citep{peft}, LoRA \citep{lora} on Qwen2.5
+% \citep{qwen25}; (ii) Dense Confidence formulation (bounded logit, sigmoid);
+% (iii) ablation grid (Base / GRPO / +loss / +loss+reward / LaSeR variants);
+% (iv) inference-time scaling family (selection, tempmod, SMC).
 
 \section{Outline}
-\label{sec:introduction:outline}
+\label{sec:intro:outline}
+
+% TODO[intro:outline]: One paragraph linking to ch:background, ch:related,
+% ch:methods, ch:experimental_setup, ch:results, ch:discussion, ch:conclusion.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+\cleardoubleoddpage
+\chapter{Background}
+\label{ch:background}
+
+% TODO[ch:background]: Theoretical span requested by the supervisor. Cover the
+% concepts strictly needed to make the methods chapter self-contained. Keep
+% \emph{novel} content for ch:methods. ~3000-4000 words.
+
+\section{Large Language Models and Autoregressive Generation}
+\label{sec:bg:llm}
+
+% TODO[bg:llm]: Transformer recap \citep{attention}, autoregressive
+% factorisation, softmax sampling, temperature/top-p/top-k, degenerate
+% generation (\citep{neuraltextdegeneration,mirostat}). Tokenisation and the
+% existence of unused vocabulary tokens that motivate the confidence-token
+% repurposing in Qwen2.5 \citep{qwen25}. Introduce chain-of-thought prompting
+% \citep{cot} and structured reasoning frameworks \citep{treeofthoughts}.
+
+\section{Reinforcement Learning Preliminaries}
+\label{sec:bg:rl}
+
+% TODO[bg:rl]: Markov decision processes, policy gradient (REINFORCE
+% \citep{reinforce,revisitingreinforce}), variance reduction with baselines,
+% generalised advantage estimation \citep{gae}, actor-critic (A3C \citep{a3c}),
+% PPO \citep{ppo}, reward shaping \citep{rewardshaping}, reward over-
+% optimisation / Goodharting \citep{rewardoveropt}.
+
+\section{RL from Human Feedback and Verifiable Rewards}
+\label{sec:bg:rlhf_rlvr}
+
+% TODO[bg:rlhf_rlvr]: RLHF pipeline (\citep{drlhumanpreferences,rlhf}),
+% Bradley-Terry preference models, KL-regularised optimum and the DPO
+% derivation (\citep{directpreferenceopt}); constitutional AI/RLAIF
+% (\citep{constitutionalai,rlaifvsrlhf}). Transition to RLVR for math/code
+% (\citep{deepseekmath,r1,r1zerocriticalperspective}). Discuss verifiers
+% (\citep{mathverify}) and reward modelling alternatives
+% (\citep{ovm,scalingverifiers,genverifiers,trustbutverify,confasreward,
+% reinforcementimplicitrewards,beyondbinaryrewards,spuriousrewards,ttrl,
+% corewarding,reasonwithoutexternalrewards}).
+
+\subsection{GRPO and Modern Variants}
+\label{sec:bg:grpo}
+
+% TODO[bg:grpo]: Detailed walk-through of the GRPO objective from
+% \citet{deepseekmath}. Position relative to PPO \citep{ppo}, DAPO
+% \citep{dapo}, GSPO \citep{gspo}, VinePPO \citep{vineppo}. Re-use the
+% GRPO equation from RPT \autoref{sec:training_algorithm}.
+
+\subsection{Parameter-Efficient Fine-Tuning}
+\label{sec:bg:peft}
+
+% TODO[bg:peft]: LoRA \citep{lora} math (re-use RPT \autoref{sec:lora}),
+% weight tying with the LM head, the \texttt{trainable\_token\_indices}
+% mechanism in \citep{peft}.
+
+\section{Calibration and Uncertainty Quantification}
+\label{sec:bg:calibration}
+
+% TODO[bg:calibration]: Reliability diagrams, ECE/Brier (\citep{nncalibration,
+% confestcalibsurvey,bayesianbinning,probabilisticoutputs}), proper scoring
+% rules \citep{strictlyproper,forecastverification}, conformal prediction
+% \citep{conformallm}, semantic / verbalised uncertainty
+% (\citep{semanticuncertainty,verbalizedconfidence,justaskforcalibration,
+% selfcheckgpt,internalstatelying,llmsknowwhattheyknow}).
+
+\section{Sequential Monte Carlo for Sequence Models}
+\label{sec:bg:smc}
+
+% TODO[bg:smc]: Particle filters and Bayesian state estimation
+% \citep{bayesianstateestimation}; recent SMC for LLMs
+% (\citep{smcsteering,twistedsmc,smcsyntacticsemanticcontrol,rolloutroulette}).
+% Define proposal/target distributions and ESS-based resampling, in preparation
+% for \autoref{sec:methods:smc}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+\cleardoubleoddpage
+\chapter{Related Work}
+\label{ch:related}
+
+% TODO[ch:related]: Group the closest neighbours and clearly state limitations
+% of each. Aim for a critical, non-listy narrative (~2000 words).
+
+\section{Self-Rewarding and Generative Verifiers}
+\label{sec:rel:selfrewarding}
+
+% TODO[rel:selfrewarding]: LaSeR \citep{laser} (re-use SR
+% \autoref{sec:papersummary} as a starting point but compress); self-rewarding
+% LMs \citep{selfrewardingllms}; generative verifiers \citep{genverifiers};
+% confidence-as-reward \citep{confasreward,pacr}; consistency-based intrinsic
+% rewards \citep{consistentpaths,corewarding,reasonwithoutexternalrewards,
+% reinforcementimplicitrewards}. State why a \emph{dense} (per-step) signal is
+% the missing ingredient.
+
+\section{Process Reward Models and Step-Level Supervision}
+\label{sec:rel:prm}
+
+% TODO[rel:prm]: Process supervision \citep{verifystepbystep,processoutcomefeedback},
+% MathShepherd \citep{mathshepherd}, PRMs that think \citep{prmthatthink},
+% free process rewards \citep{freeprocessrewards}, critical/high-entropy
+% tokens (\citep{criticaltokens,highentropyminoritytokens}). Contrast with our
+% \emph{label-free} per-step signal that broadcasts the final reward.
+
+\section{Self-Correction, Self-Refinement, and Reflexion}
+\label{sec:rel:selfcorrection}
+
+% TODO[rel:selfcorrection]: Reflexion \citep{reflexion}, Self-Refine
+% \citep{selfrefine}, STaR/V-STaR \citep{star,vstar}, limits of self-correct
+% reasoning \citep{llmscannotselfcorrectreasoning}. Show our work avoids the
+% additional generation pass these methods require.
+
+\section{Confidence Elicitation in LLMs}
+\label{sec:rel:confidence}
+
+% TODO[rel:confidence]: Confidence elicitation \citep{confelicitation},
+% verbalised confidence \citep{verbalizedconfidence}, "LLMs know what they
+% know" \citep{llmsknowwhattheyknow}, R-Tuning \citep{rtuning},
+% selective generation \citep{selfevalselectivegeneration}.
+
+\section{Test-Time Compute and Inference-Time Scaling}
+\label{sec:rel:testtime}
+
+% TODO[rel:testtime]: Self-consistency \citep{selfconsistency,
+% universalselfconsistency}, scaling laws for test-time compute
+% \citep{testtimecomputescaling,metageneration,s1}, BoN alignment
+% \citep{bonalignmentpolicy,bonselectionselfcertainty}, OVMs \citep{ovm},
+% deep think with confidence \citep{deepthinkwithconfidence}, confidence-
+% improved self-consistency \citep{confimprovesselfconsistency}, self-evaluation
+% guided beam search \citep{selfevalbeam}, controlled decoding
+% \citep{controlleddecoding}. This section sets up ch:methods:itts.
+
+\section{Confidence-Aware Sampling and Decoding}
+\label{sec:rel:decoding}
+
+% TODO[rel:decoding]: Adaptive/multi-sample temperature
+% (\citep{adaptivetempscaling,thermometer,multisampletemperature,mirostat,
+% neuraltextdegeneration}); SMC for LLMs (\citep{smcsteering,twistedsmc,
+% smcsyntacticsemanticcontrol,rolloutroulette}). Motivate using our dense
+% confidence signal as the per-step potential.
+
+\section{Datasets and Benchmarks}
+\label{sec:rel:datasets}
+
+% TODO[rel:datasets]: GSM8K \citep{gsm8k}, MATH \citep{mathdataset},
+% DeepMath-103K \citep{deepmath103k}, code-eval (\citep{evalllmscode}).
+% Justify GSM8K for compute-budget reasons.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+\cleardoubleoddpage
+\chapter{Methods}
+\label{ch:methods}
+
+% TODO[ch:methods]: The \emph{heart} of the thesis (~4000-5000 words). Lift
+% the entire methods section of RPT (RPT \autoref{sec:methods},
+% \autoref{sec:training_algorithm}) verbatim where appropriate, then extend
+% with the LaSeR variant and the three inference-time scaling techniques.
+% Maintain the OpenAI/DeepMind-style mathematical precision used in RPT and
+% reference the exact code paths (\texttt{ConfidenceGRPOTrainer},
+% \texttt{confidence\_utils}, \texttt{SMCLogitsProcessor}).
+
+\section{System Architecture and Notation}
+\label{sec:methods:architecture}
+
+% TODO[methods:architecture]: Reuse RPT \autoref{sec:architecture}, including
+% the TikZ architecture figure. Fix notation (q, o, T_i, r, c_t).
+% Cite \citep{trl,peft,pytorch,mathverify}.
+
+\section{Confidence Token and Hook Mechanism}
+\label{sec:methods:hook}
+
+% TODO[methods:hook]: Reuse RPT \autoref{sec:embedding_training} and the
+% "Token Hook Mechanism" subsection. Emphasise weight-tied LM head
+% \citep{qwen25} and the \texttt{trainable\_token\_indices} LoRA feature
+% \citep{lora,peft}.
+
+\section{Dense Confidence (Ours)}
+\label{sec:methods:dense}
+
+% TODO[methods:dense]: Lift RPT \autoref{sec:training_algorithm} verbatim:
+% scaled sigmoid (eq:sigmoid_transform), bounded reward r_dense, BCE auxiliary
+% loss with class reweighting, joint objective, advantage blending,
+% warmup phases. Cross-reference the code in
+% rl_for_llms/utils/confidence_grpo_trainer_utils.py
+% (logits_hook, _dense_logits_hook, _compute_confidence_loss,
+%  _blend_advantages).
+
+\subsection{Theoretical Connection to LaSeR}
+\label{sec:methods:laser_link}
+
+% TODO[methods:laser_link]: Reuse RPT "Theoretical Formulation: The LaSeR
+% Objective" and the comparative analysis section (RPT
+% \autoref{sec:interference}). Frame Dense Confidence as a bounded,
+% trajectory-wide variant of \citet{laser}.
+
+\section{Reimplementation of LaSeR}
+\label{sec:methods:laser}
+
+% TODO[methods:laser]: Describe the second \texttt{Method.LASER} branch in
+% \texttt{ConfidenceGRPOTrainer} (logits_hook, _laser_logits_hook,
+% _get_laser_post_response_scores, _compute_laser_mean_scores,
+% _run_post_generation_forward_for_laser, compute_laser_self_rewarding_score).
+% Define r_laser = beta * log_softmax(logits/T)[z_c] - beta * c_ref and the
+% MSE-against-binary-reward loss. Note the post-EOS extra forward pass and how
+% it is implemented through the post-generation hook. Cite \citep{laser}.
+
+\section{Inference-Time Scaling}
+\label{sec:methods:itts}
+
+% TODO[methods:itts]: New chapter content. Motivate that the trained confidence
+% head doubles as a controller at inference time. Cross-reference
+% rl_for_llms/utils/inference_time_evaluation_utils.py and the
+% \texttt{use\_tempmod} / \texttt{use\_filtering} flags in
+% \texttt{ConfidenceGRPOTrainer}.
+
+\subsection{Confidence-Guided Answer Selection}
+\label{sec:methods:itts:selection}
+
+% TODO[methods:itts:selection]: Re-use RPT \autoref{sec:confidence_selection}.
+% Formalise the three rules used in \texttt{get_answers_with_confidence}:
+%   (i) plain (unweighted) majority vote,
+%   (ii) highest-mean-confidence selection,
+%   (iii) confidence-weighted majority vote.
+% Cite \citep{selfconsistency,universalselfconsistency,bonalignmentpolicy,
+% bonselectionselfcertainty,deepthinkwithconfidence,
+% confimprovesselfconsistency,laser}.
+
+\subsection{Confidence-Driven Temperature Modulation}
+\label{sec:methods:itts:tempmod}
+
+% TODO[methods:itts:tempmod]: Describe
+% \texttt{_apply_temperature_modulation} in
+% rl_for_llms/utils/confidence_grpo_trainer_utils.py. Map the running mean
+% confidence c_t to T_t in [T_min, T_max] with an optional inversion (the
+% \texttt{INVERT\_TEMPMOD\_MAPPING} env var) controlled by
+% \texttt{temperature_modulation_invert_mapping}. Two regimes:
+%   - decrease T when confident (exploit), increase T when uncertain (explore);
+%   - inverted: explore when confident, exploit when uncertain (ablation).
+% Cite \citep{adaptivetempscaling,thermometer,multisampletemperature,mirostat,
+% neuraltextdegeneration,controlleddecoding}.
+
+\subsection{Confidence-Conditioned Sequential Monte Carlo Resampling}
+\label{sec:methods:itts:smc}
+
+% TODO[methods:itts:smc]: Describe the SMC particle filtering used at
+% evaluation when \texttt{use\_filtering=True}. Implementation entry points:
+%   - \texttt{apply_smc_filtering},
+%   - \texttt{_smc_resample_group},
+%   - \texttt{_smc_pick_replacement},
+%   - \texttt{_smc_copy_sequence},
+%   - \texttt{_capture_cache_pre_hook} (DynamicCache surgery),
+%   - \texttt{SMCLogitsProcessor}.
+% Formalise: each group of G generations forms a particle set; once a particle
+% \emph{finishes} (EOS), we resample dead particles from the alive set with
+% probabilities proportional to their running mean confidence (above the
+% \texttt{filtering_threshold}), and clone the corresponding KV-cache slice.
+% Cite \citep{bayesianstateestimation,smcsteering,twistedsmc,
+% smcsyntacticsemanticcontrol,rolloutroulette,selfevalbeam}.
+
+\section{Implementation Notes}
+\label{sec:methods:implementation}
+
+% TODO[methods:implementation]: Short subsection summarising practical
+% engineering decisions: deterministic seeding, gradient accumulation,
+% mixed precision/float32 fallback for Volta, logging via WANDB \citep{wandb},
+% reasons for not using vLLM \citep{vllm}. Most content can be reused from
+% RPT \autoref{sec:software} and \autoref{sec:vllm}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+\cleardoubleoddpage
+\chapter{Experimental Setup}
+\label{ch:experimental_setup}
+
+% TODO[ch:setup]: Compress RPT \autoref{sec:dataset}, \autoref{sec:variants},
+% \autoref{sec:hardware}, \autoref{sec:software} and extend with the
+% inference-time scaling evaluation protocol.
+
+\section{Dataset and Preprocessing}
+\label{sec:setup:dataset}
+
+% TODO[setup:dataset]: GSM8K \citep{gsm8k} preprocessing (verbatim from RPT).
+% Briefly justify why GSM8K is preferred over MATH \citep{mathdataset} or
+% DeepMath-103K \citep{deepmath103k} (compute budget, faster signal).
+
+\section{Model and Training Configuration}
+\label{sec:setup:model}
+
+% TODO[setup:model]: Qwen2.5-0.5B-Instruct \citep{qwen25}, LoRA \citep{lora}
+% rank/alpha, GRPO hyperparameters \citep{deepseekmath}, KL=0 choice.
+% Refer to \autoref{app:hyperparams}.
+
+\section{Experimental Variants}
+\label{sec:setup:variants}
+
+% TODO[setup:variants]: Extend the RPT variant table:
+%   - Base, GRPO, Dense+loss, Dense+loss+reward (existing),
+%   - LaSeR+loss, LaSeR+loss+reward (Method.LASER branch, results not yet
+%     final -- treat interpretation vaguely),
+%   - Inference-time scaling overlays evaluated on top of the
+%     Dense+loss+reward checkpoint:
+%       * tempmod (forward mapping) + no filtering,
+%       * inverse tempmod + no filtering,
+%       * no tempmod + SMC filtering,
+%   matching the CSV files in data/evaluation/final.
+
+\section{Hardware and Software Stack}
+\label{sec:setup:hw_sw}
+
+% TODO[setup:hw_sw]: Reuse RPT \autoref{sec:hardware} (GV100, float32) and
+% \autoref{sec:software} (trl \citep{trl}, peft \citep{peft}, pytorch
+% \citep{pytorch}, math-verify \citep{mathverify}, wandb \citep{wandb},
+% vllm note \citep{vllm}).
+
+\section{Evaluation Protocol}
+\label{sec:setup:protocol}
+
+% TODO[setup:protocol]: Pass@1/Pass@k aggregation, MCC/F1/balanced-accuracy
+% reporting for binary classification (rl_for_llms/utils/classification_utils.py),
+% per-group means \& std, harmonic balanced accuracy (clarify the LaSeR F1
+% definition as in RPT). State all aggregation scripts and CSV locations.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+\cleardoubleoddpage
+\chapter{Results}
+\label{ch:results}
+
+% TODO[ch:results]: Lift RPT \autoref{sec:results} for the four base variants,
+% then add new subsections for LaSeR and for the inference-time scaling
+% overlays. Reuse the answer_accuracy_chart.pdf and confidence_chart.pdf;
+% regenerate charts to include the additional rows if needed.
+
+\section{Training-Time Results: Dense Confidence vs.\ GRPO Baseline}
+\label{sec:res:dense}
+
+% TODO[res:dense]: Reuse RPT \autoref{sec:answer_results} and
+% \autoref{sec:confidence_results}. These results are \textbf{final}.
+%   - Pass@1 31\% -> 53\%, Pass@4 59 -> ~74\%.
+%   - MCC up to 0.58, balanced accuracy ~78\%.
+%   - Confidence token sampled 0.0\% (validates Dense formulation).
+
+\section{Reimplementation of LaSeR (Preliminary)}
+\label{sec:res:laser}
+
+% TODO[res:laser]: Use the CSVs
+% data/evaluation/final/agg_eval_after_train_answer_metrics_laser_confloss_(no)confrew.csv
+% and concat_eval_after_train_bc_metrics_laser_confloss_(no)confrew.csv.
+% Mark these as \textbf{preliminary} -- the user flagged the LaSeR runs are
+% not yet finished. Phrase the interpretation in conditional language
+% ("these early runs suggest", "pending the completion of the remaining
+% seeds") and avoid claims about absolute ranking.
+
+\section{Training-Time Results: Confidence-Guided Answer Selection}
+\label{sec:res:selection}
+
+% TODO[res:selection]: Reuse RPT \autoref{sec:confidence_selection}.
+% These results are \textbf{final}.
+
+\section{Inference-Time Scaling: Temperature Modulation (Preliminary)}
+\label{sec:res:tempmod}
+
+% TODO[res:tempmod]: Use
+% agg_eval_after_train_answer_metrics_dense_confloss_confrew_tempmod_nofilter.csv
+% and the inverse variant. Mark as \textbf{preliminary}: combined tempmod /
+% filtering runs are not yet final. Discuss the inversion ablation
+% qualitatively: increasing T when confident may explore better; decreasing T
+% when uncertain may collapse to wrong answers. Defer firm claims.
+
+\section{Inference-Time Scaling: SMC Particle Filtering (Preliminary)}
+\label{sec:res:smc}
+
+% TODO[res:smc]: Use
+% agg_eval_after_train_answer_metrics_dense_confloss_confrew_notempmod_filter.csv
+% and the corresponding bc CSV. Mark as \textbf{preliminary}.
+% Discuss resampling rate, KV-cache duplications, and the trade-off between
+% diversity loss and accuracy gain.
+
+\section{Combined Inference-Time Scaling (Preliminary)}
+\label{sec:res:combined}
+
+% TODO[res:combined]: Discuss
+% agg_eval_after_train_answer_metrics_dense_confloss_confrew_invtempmod_nofilter.csv
+% as the combined regime. Mark as \textbf{preliminary}; the user explicitly
+% said combined filtering + (inv)tempmod results are not yet final.
+
+\section{Additional Observations}
+\label{sec:res:observations}
+
+% TODO[res:observations]: Reuse RPT \autoref{sec:observations}: answer-length
+% reduction, dense reward signal, resource efficiency.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+\cleardoubleoddpage
+\chapter{Discussion}
+\label{ch:discussion}
+
+% TODO[ch:discussion]: Knit final + preliminary results back into the RQs from
+% \autoref{sec:intro:rqs}. ~1500 words.
+
+\section{Answering the Research Questions}
+\label{sec:disc:rqs}
+
+% TODO[disc:rqs]: One paragraph per RQ. Be explicit about which RQs are
+% \emph{answered} (RQ1, RQ2, RQ3 -- supported by final results) and which are
+% \emph{partially answered} (RQ4 -- inference-time scaling results still
+% maturing).
+
+\section{Comparison to LaSeR and Related Self-Rewarding Methods}
+\label{sec:disc:comparison}
+
+% TODO[disc:comparison]: Position Dense Confidence against \citep{laser,
+% selfrewardingllms,genverifiers,confasreward,deepthinkwithconfidence,
+% reasonwithoutexternalrewards}. Use the comparative-analysis bullets from
+% RPT \autoref{sec:interference} as the skeleton.
+
+\section{Limitations}
+\label{sec:disc:limitations}
+
+% TODO[disc:limitations]: Reuse RPT \autoref{sec:conclusion} "Technical
+% Limitations" subsection. Add: limited test-time scaling budget, single
+% dataset (GSM8K), confidence-loss sensitivity \citep{rewardoveropt},
+% single-seed evaluation.
+
+\section{Broader Implications}
+\label{sec:disc:broader}
+
+% TODO[disc:broader]: Tie back to scalable oversight, interpretability
+% (XAI), reward hacking risks \citep{spuriousrewards,rewardoveropt}, and
+% process supervision \citep{verifystepbystep}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+\cleardoubleoddpage
+\chapter{Conclusion and Future Work}
+\label{ch:conclusion}
+
+% TODO[ch:conclusion]: Compress RPT \autoref{sec:conclusion} "Conclusion and
+% Future Work". Cover: scaling to frontier models, distilling Dense
+% Confidence into a PRM \citep{verifystepbystep,mathshepherd,prmthatthink},
+% application to code-generation evaluation \citep{evalllmscode}, and
+% integration with test-time compute scaling \citep{testtimecomputescaling,
+% s1,metageneration}. Close with a one-sentence outlook on self-correcting
+% System-2 agents.
 
 
 
@@ -248,77 +756,69 @@ Of course, different structuring and naming of sections is possible.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Reference coverage map (all 98 entries in references.bib MUST be cited).
+%% Listed by chapter, not as actual citations (acts as a checklist while
+%% drafting the body text). The body TODOs above name each key at the place it
+%% should be cited; this comment block exists so the author can grep for any
+%% missing key.
 %%
-\cleardoubleoddpage%  Make sure to start each chapter on a new odd page
-\chapter{Example}
-\label{sec:example}
-
-
-\section{How to Start?}
-This is an example for another chapter in your thesis.
-It should primarily show you some basic \LaTeX\ tricks.
-For instance, \autoref{sec:introduction:motivation} references to your motivation.
-You can also embed figures, tables, etc.\ in your work.
-\autoref{fig:learningcenter} is an example for a figure (i.e.\ photos, diagrams, and other artwork).
-Note that figures (just like tables, see \autoref{tab:nicetable}) are floating elements.
-They are either placed at the top or bottom of a page (or sometimes stand on their own page), but not in between your text.
-You can influence their placement with the placement modifiers ``t'', ``b'', and ``p''.
-Bottom placement (``b'') is sometimes more tricky, as \LaTeX\ does not consider this nice in some situations.
-You can convince \LaTeX\ to honor your placement expectation with ``!b'' then.
-Please be aware that you typically do not want to place a float at the top of a chapter title page.
-Since you do not place figures/tables in between your running text, you always need to reference them by their label (e.g.\ \autoref{fig:learningcenter} or \autoref{tab:nicetable}).
-\begin{figure}[t]
-	\centering
-	\includegraphics[width=\linewidth]{images/jku_learningcenter}
-	\caption{
-		A figure. Be aware that figures have their caption below the artwork
-	}\label{fig:learningcenter}
-\end{figure}
-\begin{table}[b]
-	\centering
-	\caption{
-		A table. Be aware that tables have their caption above the table
-	}\label{tab:nicetable}
-	\begin{tabularx}{\linewidth}{l>{\raggedright\arraybackslash}X}
-		\toprule
-		\textbf{Option}        & \textbf{Description} \\
-		\midrule
-		\texttt{phdthesis}     & PhD thesis           \\
-		\texttt{mathesis}      & Master's thesis      \\
-		\texttt{diplomathesis} & Diploma thesis       \\
-		\texttt{bathesis}      & Bachelor's thesis    \\
-		\texttt{seminarreport} & Seminar report       \\
-		\texttt{techreport}    & Technical report     \\
-		\bottomrule
-	\end{tabularx}
-\end{table}
-
-You will often reference and quote other works.
-The source of these citations needs to be marked with the \string\cite\{\}\ command.
-There are different ways to cite the work of others regarding advancements in Large Language Models (LLMs) and reasoning:
-\begin{itemize}
-	\item \citeauthor{r1}~\cite{r1} demonstrate that reasoning capabilities in LLMs can be significantly incentivized through reinforcement learning (RL). Be aware that the \string\cite\ command is part of the sentence and, hence, comes before the period.
-	\item \citeauthor{verifystepbystep}~\cite{verifystepbystep} argue that process supervision is essential for complex tasks. They conclude:
-	      \begin{quote}
-		      \emph{We find that process supervision significantly outperforms outcome supervision for solving math problems.}
-	      \end{quote}
-	\item Building on mathematical capabilities, \citeauthor{deepseekmath}~\cite{deepseekmath} pushed the limits of open language models in mathematical reasoning.
-	\item To further evaluate these capabilities, high-quality datasets are required. \citeauthor{deepmath103k}~\cite{deepmath103k} introduced a large-scale, decontaminated, and verifiable dataset for this purpose.
-	\item Novel RL techniques continue to emerge. For example, \citeauthor{laser}~\cite{laser} propose LaSeR, a method utilizing last-token self-rewarding to improve performance.
-	\item You sometimes also paraphrase from multiple sources. For that purpose, the \string\cite\ command accepts a list of multiple comma-separated references. Do not add spaces inbetween them. Various approaches to mathematical reasoning and verification have been proposed recently~\cite{deepseekmath,verifystepbystep}.
-\end{itemize}
-
+%% ch:introduction:
+%%   r1, o1, deepseekmath, r1zerocriticalperspective, verifystepbystep,
+%%   mathshepherd, scalingverifiers, selfrewardingllms, laser, genverifiers,
+%%   confasreward.
+%% ch:background (sec:bg:llm/rl/rlhf_rlvr/grpo/peft/calibration/smc):
+%%   attention, neuraltextdegeneration, mirostat, qwen25, cot, treeofthoughts,
+%%   reinforce, revisitingreinforce, gae, a3c, ppo, rewardshaping,
+%%   rewardoveropt, rlhf, drlhumanpreferences, directpreferenceopt,
+%%   constitutionalai, rlaifvsrlhf, mathverify, ovm, trustbutverify,
+%%   reinforcementimplicitrewards, beyondbinaryrewards, spuriousrewards, ttrl,
+%%   corewarding, reasonwithoutexternalrewards, dapo, gspo, vineppo, lora,
+%%   peft, nncalibration, confestcalibsurvey, bayesianbinning,
+%%   probabilisticoutputs, strictlyproper, forecastverification, conformallm,
+%%   semanticuncertainty, verbalizedconfidence, justaskforcalibration,
+%%   selfcheckgpt, internalstatelying, llmsknowwhattheyknow,
+%%   bayesianstateestimation, smcsteering, twistedsmc,
+%%   smcsyntacticsemanticcontrol, rolloutroulette.
+%% ch:related (selfrewarding/prm/selfcorrection/confidence/testtime/decoding/datasets):
+%%   selfrewardingllms, laser, genverifiers, confasreward, pacr,
+%%   consistentpaths, corewarding, reasonwithoutexternalrewards,
+%%   reinforcementimplicitrewards, verifystepbystep, processoutcomefeedback,
+%%   mathshepherd, prmthatthink, freeprocessrewards, criticaltokens,
+%%   highentropyminoritytokens, reflexion, selfrefine, star, vstar,
+%%   llmscannotselfcorrectreasoning, confelicitation, verbalizedconfidence,
+%%   llmsknowwhattheyknow, rtuning, selfevalselectivegeneration,
+%%   selfconsistency, universalselfconsistency, testtimecomputescaling,
+%%   metageneration, s1, bonalignmentpolicy, bonselectionselfcertainty, ovm,
+%%   deepthinkwithconfidence, confimprovesselfconsistency, selfevalbeam,
+%%   controlleddecoding, adaptivetempscaling, thermometer,
+%%   multisampletemperature, mirostat, neuraltextdegeneration, smcsteering,
+%%   twistedsmc, smcsyntacticsemanticcontrol, rolloutroulette, gsm8k,
+%%   mathdataset, deepmath103k, evalllmscode.
+%% ch:methods:
+%%   trl, peft, pytorch, mathverify, qwen25, lora, deepseekmath, laser,
+%%   adaptivetempscaling, thermometer, multisampletemperature, mirostat,
+%%   neuraltextdegeneration, controlleddecoding, bayesianstateestimation,
+%%   smcsteering, twistedsmc, smcsyntacticsemanticcontrol, rolloutroulette,
+%%   selfevalbeam, selfconsistency, universalselfconsistency,
+%%   bonalignmentpolicy, bonselectionselfcertainty, deepthinkwithconfidence,
+%%   confimprovesselfconsistency, wandb, vllm.
+%% ch:experimental_setup:
+%%   gsm8k, mathdataset, deepmath103k, qwen25, lora, deepseekmath, trl, peft,
+%%   pytorch, mathverify, wandb, vllm.
+%% ch:results: (no new citations expected; figures reused from charts/).
+%% ch:discussion:
+%%   laser, selfrewardingllms, genverifiers, confasreward,
+%%   deepthinkwithconfidence, reasonwithoutexternalrewards,
+%%   rewardoveropt, spuriousrewards, verifystepbystep.
+%% ch:conclusion:
+%%   verifystepbystep, mathshepherd, prmthatthink, evalllmscode,
+%%   testtimecomputescaling, s1, metageneration.
 %%
+%% Every key in references.bib appears at least once above. Verify with:
+%%   grep -oE '^@\w+\{[a-zA-Z0-9_-]+' thesis/references.bib | cut -d'{' -f2 |
+%%     while read k; do grep -q "$k" thesis/main-thesis.tex || echo MISSING $k;
+%%     done
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-% ...
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%
-\cleardoubleoddpage%  Make sure to start each chapter on a new odd page
-\chapter{Conclusion and Outlook}
-\label{sec:conclusion}
-
-Space for your summary, central conclusions, and an outlook on potential future work.
 
 
 
@@ -353,13 +853,44 @@ Space for your summary, central conclusions, and an outlook on potential future 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%
-\cleardoubleoddpage%  Make sure to start each chapter on a new odd page
-\chapter{An Appendix}
-\label{app:an-appendix}
+\cleardoubleoddpage
+\chapter{Hyperparameters}
+\label{app:hyperparams}
 
-Space for an appendix.
-You can have more than one appendix chapter.
-Appendices are, of course, optional.
+% TODO[app:hyperparams]: Lift the full hyperparameter table from RPT
+% \autoref{app:hyperparams} (longtable). Add rows for the inference-time
+% scaling overlays: temperature_modulation_min_temperature,
+% temperature_modulation_max_temperature, confidence_history_length,
+% temperature_modulation_invert_mapping, filtering_threshold, num_generations
+% (group size G acting as particle count for SMC).
+
+\cleardoubleoddpage
+\chapter{Project Configuration}
+\label{app:pyproject}
+
+% TODO[app:pyproject]: \lstinputlisting of ../pyproject.toml as in RPT
+% \autoref{app:pyproject}.
+
+\cleardoubleoddpage
+\chapter{Implementation Pointers}
+\label{app:code}
+
+% TODO[app:code]: Map each method to its file and entry point in
+% rl_for_llms/ for reproducibility. Suggested table columns:
+% [Component | Method | File | Function/Class].
+% Must include:
+%   - ConfidenceGRPOTrainer | both | utils/confidence_grpo_trainer_utils.py
+%   - Dense logits hook | DENSE | _dense_logits_hook
+%   - LaSeR logits hook | LASER | _laser_logits_hook,
+%                              _run_post_generation_forward_for_laser
+%   - Confidence transform | both | utils/confidence_utils.py
+%   - Temperature modulation | inference | _apply_temperature_modulation
+%   - SMC filtering | inference | apply_smc_filtering, _smc_resample_group,
+%                                _smc_pick_replacement, _smc_copy_sequence,
+%                                _capture_cache_pre_hook, SMCLogitsProcessor
+%   - Answer aggregation | inference | models/answer.py::get_answers_with_confidence
+%   - Reward functions | training | utils/reward_utils.py
+%   - Inference-time eval driver | eval | utils/inference_time_evaluation_utils.py
 
 
 
