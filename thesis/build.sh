@@ -8,7 +8,7 @@ START_TIME=$SECONDS
 # --- Configuration ---
 IMAGE="texlive/texlive:latest"
 OUTPUT_DIR="build"
-DEFAULT_SOURCE="main-report"
+DEFAULT_SOURCE="main-thesis"
 ENGINES_TO_RUN=("pdf") # Default engine
 SOURCES=()
 FORCE_CLEAN=false
