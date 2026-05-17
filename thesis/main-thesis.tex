@@ -208,19 +208,19 @@
 \tableofcontents
 
 %% Make sure to start the list of tables on a new odd page (odd is only relevant in twoside layout)
-%\cleardoubleoddpage
+\cleardoubleoddpage
 %% Print the list of tables (optional and often not necessary)
-%\listoftables
+\listoftables
 
 %% Make sure to start the list of figures on a new odd page (odd is only relevant in twoside layout)
-%\cleardoubleoddpage
+\cleardoubleoddpage
 %% Print the list of figures (optional and often not necessary)
-%\listoffigures
+\listoffigures
 
 %% Make sure to start the list of acronyms on a new odd page (odd is only relevant in twoside layout)
-%\cleardoubleoddpage
+\cleardoubleoddpage
 %% Include list of acronyms (optional and often not necessary)
-%\import{./}{acronyms}
+\import{./}{acronyms}
 
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -688,6 +688,31 @@
 % per-group means \& std, harmonic balanced accuracy (clarify the LaSeR F1
 % definition as in RPT). State all aggregation scripts and CSV locations.
 
+\section{Reproducibility}
+\label{sec:setup:reproducibility}
+
+% TODO[setup:reproducibility]: Short, explicit statement (~half a page) to
+% satisfy the JKU mathesis rubric on scientific honesty / replicability.
+% Cover, in this order:
+%   - Code: public GitHub repository
+%     \url{https://github.com/Oidlichtnwoada/rl_for_llms} (commit hash to be
+%     pinned at submission time). Build/lint/test entry points:
+%     \texttt{./check\_repo.sh}, \texttt{./run\_repo.sh}, \texttt{./run\_eval.sh}.
+%   - Determinism: fixed \texttt{SEED} environment variable threaded through
+%     \texttt{environment\_utils.get\_seed}; deterministic CuBLAS/cuDNN.
+%   - Configuration: every hyperparameter lives in the central
+%     \texttt{Config} (rl\_for\_llms/models/config.py) and is exported in
+%     \autoref{app:hyperparams}. Exact \texttt{pyproject.toml} pinned in
+%     \autoref{app:pyproject}; code entry points in \autoref{app:code}.
+%   - Data: HuggingFace \texttt{gsm8k} with the deterministic preprocessing
+%     described in \autoref{sec:setup:dataset}; processed splits cached under
+%     \texttt{data/training/}.
+%   - Artifacts: raw run logs and aggregated CSVs released under
+%     \texttt{data/evaluation/final/}; W\&B run identifiers in the README.
+%   - Hardware: NVIDIA Quadro GV100 (Volta, float32). Document the
+%     non-CUDA fallback path (\texttt{MODE=LOCAL}) for portability.
+% No new citations -- this section is purely procedural.
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%
 \cleardoubleoddpage
@@ -698,8 +723,19 @@
 % then add new subsections for LaSeR and for the inference-time scaling
 % overlays. Reuse the answer_accuracy_chart.pdf and confidence_chart.pdf;
 % regenerate charts to include the additional rows if needed.
+% STRUCTURE: Two top-level sections to make the training-vs-inference axis
+% visible in the TOC. Each result block is a \subsection so the reader sees
+% the grouping immediately; preliminary blocks are flagged inline rather than
+% via separate sections.
 
-\section{Training-Time Results: Dense Confidence vs.\ GRPO Baseline}
+\section{Training-Time Results}
+\label{sec:res:training}
+
+% TODO[res:training]: One-paragraph preamble: which variants are compared,
+% which checkpoint defines "final", and which metric families are reported
+% (answer-correctness vs. binary-classification of correctness).
+
+\subsection{Dense Confidence vs.\ GRPO Baseline (Final)}
 \label{sec:res:dense}
 
 % TODO[res:dense]: Reuse RPT \autoref{sec:answer_results} and
@@ -708,7 +744,7 @@
 %   - MCC up to 0.58, balanced accuracy ~78\%.
 %   - Confidence token sampled 0.0\% (validates Dense formulation).
 
-\section{Reimplementation of LaSeR (Preliminary)}
+\subsection{Reimplementation of LaSeR (Preliminary)}
 \label{sec:res:laser}
 
 % TODO[res:laser]: Use the CSVs
@@ -719,13 +755,24 @@
 % ("these early runs suggest", "pending the completion of the remaining
 % seeds") and avoid claims about absolute ranking.
 
-\section{Training-Time Results: Confidence-Guided Answer Selection}
+\subsection{Confidence-Guided Answer Selection (Final)}
 \label{sec:res:selection}
 
 % TODO[res:selection]: Reuse RPT \autoref{sec:confidence_selection}.
-% These results are \textbf{final}.
+% These results are \textbf{final}. Although selection is a post-hoc
+% aggregation, it is reported in the training-time section because it does
+% not change generation -- only the choice among already-generated samples.
 
-\section{Inference-Time Scaling: Temperature Modulation (Preliminary)}
+\section{Inference-Time Scaling Results}
+\label{sec:res:inference}
+
+% TODO[res:inference]: One-paragraph preamble: all inference-time scaling
+% overlays are evaluated on top of the Dense+loss+reward checkpoint; the
+% generation distribution itself is modified (tempmod) or trajectories are
+% resampled (SMC). All subsections below are flagged \textbf{preliminary}
+% per the user's instruction.
+
+\subsection{Temperature Modulation (Preliminary)}
 \label{sec:res:tempmod}
 
 % TODO[res:tempmod]: Use
@@ -735,7 +782,7 @@
 % qualitatively: increasing T when confident may explore better; decreasing T
 % when uncertain may collapse to wrong answers. Defer firm claims.
 
-\section{Inference-Time Scaling: SMC Particle Filtering (Preliminary)}
+\subsection{SMC Particle Filtering (Preliminary)}
 \label{sec:res:smc}
 
 % TODO[res:smc]: Use
@@ -744,7 +791,7 @@
 % Discuss resampling rate, KV-cache duplications, and the trade-off between
 % diversity loss and accuracy gain.
 
-\section{Combined Inference-Time Scaling (Preliminary)}
+\subsection{Combined Inference-Time Scaling (Preliminary)}
 \label{sec:res:combined}
 
 % TODO[res:combined]: Discuss
@@ -790,6 +837,34 @@
 % Limitations" subsection. Add: limited test-time scaling budget, single
 % dataset (GSM8K), confidence-loss sensitivity \citep{rewardoveropt},
 % single-seed evaluation.
+
+\section{Threats to Validity}
+\label{sec:disc:threats}
+
+% TODO[disc:threats]: JKU mathesis rubric expects an explicit
+% threats-to-validity discussion. Organise as four numbered threats, each
+% with a mitigation paragraph:
+%   T1 (internal validity) -- Single random seed for most variants; risk of
+%     mistaking seed noise for method differences. Mitigation: report per-
+%     group means and standard deviations, flag preliminary runs (LaSeR,
+%     tempmod, SMC, combined) as such, and avoid absolute ranking claims.
+%   T2 (construct validity) -- Confidence-loss weighting and the choice of
+%     intrinsic reward blend may overfit to the BCE auxiliary signal rather
+%     than to true correctness; risk of reward hacking
+%     (\citep{rewardoveropt,spuriousrewards}). Mitigation: report MCC /
+%     balanced accuracy / confidence-token sampling rate alongside Pass@k,
+%     and use the dense Dense+loss-only ablation as a no-reward control.
+%   T3 (external validity) -- Single dataset (GSM8K, grade-school math) and
+%     a 0.5B-parameter Qwen2.5 model; results may not transfer to harder
+%     math (\citep{mathdataset,deepmath103k}), code (\citep{evalllmscode}),
+%     or frontier-scale models. Mitigation: scope claims to the experimental
+%     regime; defer cross-domain generalisation to future work.
+%   T4 (statistical conclusion validity) -- Multiple comparisons across
+%     variants without formal multiple-testing correction; reliability
+%     metrics (ECE/Brier) reported on a finite evaluation split. Mitigation:
+%     use effect-size language ("substantially higher MCC") rather than
+%     p-value claims, and release raw per-sample CSVs for re-analysis.
+% No new citations beyond those already listed.
 
 \section{Broader Implications}
 \label{sec:disc:broader}
