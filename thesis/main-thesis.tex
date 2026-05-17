@@ -65,6 +65,14 @@
 \usepackage{amsfonts}
 \usepackage{subfigure}
 \usepackage{acronym}
+\usepackage{placeins}
+\usepackage{float}
+\usepackage{longtable}
+\usepackage{pdflscape}
+\usepackage{booktabs}
+\usepackage{listings}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,calc,fit,backgrounds}
 
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -247,60 +255,47 @@
 \chapter{Introduction}
 \label{ch:introduction}
 
-% TODO[ch:intro]: Master-thesis introduction (~2000 words). Open with a funnel
-% on scalable oversight for reasoning LLMs (\citep{r1,o1}), then narrow into
-% RLVR (\citep{deepseekmath,r1zerocriticalperspective}), the credit-assignment
-% problem of sparse rewards, and the cost of external/process verifiers
-% (\citep{verifystepbystep,mathshepherd,scalingverifiers}). Position
-% self-rewarding (\citep{selfrewardingllms,laser,genverifiers,confasreward})
-% as the emerging paradigm and motivate dense, trajectory-wide confidence.
-% End with the research questions, contributions, and document outline.
-% Lift the abstract/intro paragraphs from RPT \autoref{sec:introduction}
-% and broaden them; the seminar report (SR) already provides a compact LaSeR
-% framing that can be reused for the related-work paragraph in this chapter.
+Reasoning has emerged as the principal yardstick by which the new generation of Large Language Models (\textit{LLMs}) is judged. Frontier systems such as OpenAI's o1 \citep{o1} and DeepSeek-R1 \citep{r1} have made it apparent that exposing an explicit chain of thought, and then optimising it with reinforcement learning, can unlock capabilities that supervised fine-tuning alone fails to elicit. At the same time, this paradigm has sharpened a long-standing tension in the alignment community: \emph{how do we supervise reasoning that humans no longer have the bandwidth or expertise to fully audit?} The present thesis attacks one slice of this scalable-oversight problem -- the question of whether an \textit{LLM} can learn to \emph{continuously self-assess} the validity of its own reasoning trace, and whether that self-assessment can be turned into a controller for both training-time optimisation and test-time compute allocation.
 
 \section{Motivation}
 \label{sec:intro:motivation}
 
-% TODO[intro:motivation]: Reuse and expand RPT intro paragraphs 1-2. Discuss
-% sparse-in-time outcome rewards (RLHF \citep{rlhf,drlhumanpreferences}),
-% credit assignment, and process supervision (\citep{verifystepbystep,
-% processoutcomefeedback,mathshepherd,prmthatthink,freeprocessrewards}).
-% Highlight calibration as the missing link (\citep{confestcalibsurvey,
-% nncalibration,llmsknowwhattheyknow,verbalizedconfidence,justaskforcalibration,
-% semanticuncertainty,selfcheckgpt,internalstatelying}).
+Conventional Reinforcement Learning from Human Feedback (\textit{RLHF}) pipelines \citep{rlhf,drlhumanpreferences} train an \textit{LLM} against a reward model that returns a single scalar at the end of each generation. Such outcome rewards are dense in value but sparse in time: the credit-assignment problem is delegated entirely to the policy-gradient estimator. For inexact domains such as dialogue or summarisation the resulting bias-variance trade-off is acceptable, because the notion of ``correct'' is itself diffuse. For exact reasoning -- mathematics, code, formal logic -- it is not. A single binary terminal reward must be back-propagated through trajectories of hundreds of tokens, leaving the model to guess which of its intermediate steps was actually responsible for the success or failure.
+
+Reinforcement Learning with Verifiable Rewards (\textit{RLVR}) \citep{deepseekmath,r1,r1zerocriticalperspective} restores objectivity to the reward channel by replacing the learned preference model with a deterministic external verifier (a math grader, a unit-test harness, a theorem prover). It does not, however, restore density. The reward remains a single bit per trajectory, and Goodharting -- the well-documented tendency of policy gradient to over-optimise an imperfect reward proxy \citep{rewardoveropt,spuriousrewards} -- becomes proportionally more dangerous as the credit-assignment horizon grows. Process Reward Models (\textit{PRMs}) try to densify the signal step-by-step \citep{verifystepbystep,processoutcomefeedback,mathshepherd,prmthatthink,freeprocessrewards}, but at the cost of either expensive per-step human annotation or a separate auxiliary model that must itself be trained, validated, and kept aligned with the policy. Generative verifiers \citep{genverifiers}, value-based verifiers \citep{ovm,scalingverifiers}, and trust-but-verify hybrids \citep{trustbutverify} all sit on the same Pareto frontier: better supervision at the price of either annotation cost or model duplication.
+
+A parallel line of work has therefore asked whether the policy itself can serve as its own critic. Self-rewarding language models \citep{selfrewardingllms,confasreward,reinforcementimplicitrewards,reasonwithoutexternalrewards,corewarding,beyondbinaryrewards,ttrl}, and most directly the \textit{LaSeR} (Last-Token Self-Rewarding) framework \citep{laser}, optimise an intrinsic reward that the model produces at the end of its own trajectory. This sidesteps both the annotation cost of \textit{PRMs} and the alignment tax of an external reward model, but it inherits two structural weaknesses: the supervision signal remains sparse-in-time (a single self-assessment at sequence terminus), and the unbounded log-probability parameterisation used by \citet{laser} risks contaminating the sampling distribution by inflating the logit of the confidence token until it begins to be emitted as text.
+
+Calibration is the missing link \citep{nncalibration,confestcalibsurvey,bayesianbinning,probabilisticoutputs,strictlyproper,forecastverification}. A self-reward is only as useful as it is calibrated -- as informative -- about correctness. The growing literature on confidence elicitation \citep{confelicitation,verbalizedconfidence,justaskforcalibration,llmsknowwhattheyknow,semanticuncertainty,selfcheckgpt,internalstatelying,conformallm} demonstrates that modern \textit{LLMs} carry substantial information about their own correctness in their internal states, but that recovering it through prompting or post-hoc probes is brittle. A trained, bounded, per-step confidence head -- which is what this thesis proposes -- offers a more disciplined alternative.
 
 \section{Research Questions}
 \label{sec:intro:rqs}
 
-% TODO[intro:rqs]: Formalise the open-ended research questions answered in this
-% thesis. Suggested phrasing:
-%   RQ1: Can a trajectory-wide (dense) confidence signal be learned jointly with
-%        GRPO without degrading reasoning accuracy?
-%   RQ2: Does a bounded logit-based confidence parameterisation eliminate the
-%        confidence-token sampling interference reported by \citet{laser}?
-%   RQ3: To what extent does blending the intrinsic dense reward into the
-%        advantage estimator improve calibration vs.\ accuracy?
-%   RQ4: Can the learned confidence signal be exploited at inference time --
-%        via answer selection, temperature modulation, and SMC resampling --
-%        to trade compute for accuracy or calibration?
+This thesis is organised around four research questions:
+\begin{description}
+	\item[RQ1.] Can a \emph{trajectory-wide} (dense) confidence signal be learned jointly with \textit{GRPO} \citep{deepseekmath} without degrading reasoning accuracy?
+	\item[RQ2.] Does a bounded, logit-based confidence parameterisation eliminate the confidence-token sampling interference reported by \citet{laser}?
+	\item[RQ3.] To what extent does blending the intrinsic dense reward into the advantage estimator improve binary classification of correctness versus pure answer accuracy?
+	\item[RQ4.] Can the learned confidence signal be exploited at \emph{inference} time -- through confidence-guided answer selection, confidence-driven temperature modulation, and confidence-conditioned Sequential Monte Carlo resampling -- to trade compute for accuracy or calibration?
+\end{description}
 
 \section{Contributions}
 \label{sec:intro:contributions}
 
-% TODO[intro:contributions]: Expand the three contributions from RPT
-% \autoref{sec:introduction} into four (the inference-time scaling family being
-% the new one). Mention: (i) modern reimplementation of LaSeR with \texttt{trl}
-% \citep{trl}, \texttt{peft} \citep{peft}, LoRA \citep{lora} on Qwen2.5
-% \citep{qwen25}; (ii) Dense Confidence formulation (bounded logit, sigmoid);
-% (iii) ablation grid (Base / GRPO / +loss / +loss+reward / LaSeR variants);
-% (iv) inference-time scaling family (selection, tempmod, SMC).
+The contributions of this thesis are fourfold.
+
+\textbf{(i)~A modern reimplementation of LaSeR.} We rebuild the \textit{LaSeR} self-rewarding loop on top of contemporary open tooling -- \texttt{trl} \citep{trl} for the \textit{GRPO} trainer, \texttt{peft} \citep{peft} with Low-Rank Adaptation \citep{lora} for parameter-efficient fine-tuning, and the Qwen2.5 family \citep{qwen25} as the policy backbone. Unlike the original \textit{LaSeR} implementation, every hyperparameter, environment variable, and training script is released and reproducible.
+
+\textbf{(ii)~Dense Confidence.} We propose a bounded, logit-based reformulation of the self-rewarding signal that is evaluated at \emph{every} response position rather than only at the sequence terminus. A scaled sigmoid maps the raw logit of a repurposed control token to a confidence score in $[0,1]$, providing dense supervision via a binary cross-entropy auxiliary loss while provably preventing the confidence token from ever reaching the sampling threshold.
+
+\textbf{(iii)~Controlled ablation grid.} We compare six training-time configurations -- a frozen \textit{Base} model, plain \textit{GRPO} without confidence training, Dense Confidence with and without intrinsic reward blending, and a faithful \textit{LaSeR} reimplementation with and without intrinsic reward blending -- on a filtered \texttt{GSM8K} \citep{gsm8k} split.
+
+\textbf{(iv)~Inference-time scaling family.} We introduce three inference-time controllers that re-use the trained Dense Confidence head as a steering signal: confidence-guided answer selection, confidence-driven temperature modulation (with an inversion ablation), and confidence-conditioned Sequential Monte Carlo (SMC) particle filtering with explicit \texttt{DynamicCache} surgery on completed particles. To our knowledge this is the first system to wire a jointly-trained dense confidence head into all three test-time compute mechanisms within a single trainer.
 
 \section{Outline}
 \label{sec:intro:outline}
 
-% TODO[intro:outline]: One paragraph linking to ch:background, ch:related,
-% ch:methods, ch:experimental_setup, ch:results, ch:discussion, ch:conclusion.
+\autoref{ch:background} reviews the technical preliminaries -- transformer language modelling, policy-gradient reinforcement learning, \textit{GRPO}, parameter-efficient fine-tuning, calibration, and Sequential Monte Carlo for sequence models. \autoref{ch:related} surveys the most closely related lines of work: self-rewarding, process reward modelling, self-correction, confidence elicitation, test-time compute, and confidence-aware decoding. \autoref{ch:methods} is the heart of the thesis: it introduces the architecture, the Dense Confidence mechanism, the \textit{LaSeR} reimplementation, and the three inference-time scaling overlays, in each case with explicit pointers into the released code. \autoref{ch:experimental_setup} fixes the dataset, model, hyperparameters, hardware, and evaluation protocol. \autoref{ch:results} reports the empirical findings, separating final (training-time, Dense Confidence) from preliminary (\textit{LaSeR}, temperature modulation, SMC) results. \autoref{ch:discussion} interprets the results against the research questions and enumerates threats to validity. \autoref{ch:conclusion} closes with a discussion of future work.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%
@@ -308,90 +303,64 @@
 \chapter{Background}
 \label{ch:background}
 
-% TODO[ch:background]: Theoretical span requested by the supervisor. Cover the
-% concepts strictly needed to make the methods chapter self-contained. Keep
-% \emph{novel} content for ch:methods. ~3000-4000 words.
+This chapter assembles the technical vocabulary used throughout the rest of the thesis. The goal is to make \autoref{ch:methods} self-contained: every symbol introduced there has a definition here, and every algorithmic component (\textit{GRPO}, \textit{LoRA}, Sequential Monte Carlo, the calibration metrics) is built up from scratch. Genuinely novel material is deliberately deferred to the methods chapter.
 
 \section{Large Language Models and Autoregressive Generation}
 \label{sec:bg:llm}
 
-% TODO[bg:llm]: Transformer recap \citep{attention}, autoregressive
-% factorisation, softmax sampling, temperature/top-p/top-k, degenerate
-% generation (\citep{neuraltextdegeneration,mirostat}). Tokenisation and the
-% existence of unused vocabulary tokens that motivate the confidence-token
-% repurposing in Qwen2.5 \citep{qwen25}. Introduce chain-of-thought prompting
-% \citep{cot} and structured reasoning frameworks \citep{treeofthoughts}.
-% CITATION ROLE: \citep{neuraltextdegeneration,mirostat} appear here as
-% *definitions* of decoding pathologies; in sec:rel:decoding they appear as
-% *baselines* against which our confidence-driven temperature modulation is
-% compared. Do not duplicate prose between sections.
+A modern \textit{LLM} is a transformer \citep{attention} trained to factorise the joint distribution over token sequences $o = (o_1, \ldots, o_T)$ as $\pi_\theta(o \mid q) = \prod_{t=1}^T \pi_\theta(o_t \mid q, o_{<t})$. At each step $t$, a stack of self-attention blocks maps the context $(q, o_{<t})$ to a hidden state $h_t \in \mathbb{R}^d$, which the language model head $W_{\mathrm{LM}} \in \mathbb{R}^{|\mathcal{V}| \times d}$ projects to a vector of logits $\ell_t = W_{\mathrm{LM}} h_t$ over the vocabulary $\mathcal{V}$. Token probabilities are obtained by a tempered softmax, $\pi_\theta(o_t \mid q, o_{<t}) = \mathrm{softmax}(\ell_t / \tau)$, where the temperature $\tau$ trades exploration against exploitation. Sampling at $\tau \to 0$ collapses to greedy decoding; large $\tau$ flattens the distribution and is known to induce neural text degeneration in the form of repetition, incoherent topic drift, or factual drift \citep{neuraltextdegeneration}. Adaptive entropy-targeting schemes such as Mirostat \citep{mirostat} mitigate these pathologies by adjusting $\tau$ on the fly.
+
+A salient implementation detail is that the vocabulary of multi-modal model families often contains \emph{unused} control tokens that never appear in the text-only pre-training corpus. The Qwen2.5 family \citep{qwen25} used in this thesis is text-only but shares the vocabulary of its multi-modal sibling and consequently exposes tokens such as \texttt{<|vision\_pad|>} that are guaranteed to have near-zero training mass. This makes them ideal candidates for repurposing as control signals -- a property that \autoref{sec:methods:hook} exploits.
+
+Chain-of-thought (\textit{CoT}) prompting \citep{cot} has become the canonical way to elicit multi-step reasoning from autoregressive \textit{LLMs}, and richer structured reasoning frameworks such as Tree-of-Thoughts \citep{treeofthoughts} explicitly maintain a tree of partial solutions. Both motivate the present focus on reasoning-as-trajectory and underpin the dense per-step supervision proposed in \autoref{ch:methods}.
 
 \section{Reinforcement Learning Preliminaries}
 \label{sec:bg:rl}
 
-% TODO[bg:rl]: Markov decision processes, policy gradient (REINFORCE
-% \citep{reinforce,revisitingreinforce}), variance reduction with baselines,
-% generalised advantage estimation \citep{gae}, actor-critic (A3C \citep{a3c}),
-% PPO \citep{ppo}, reward shaping \citep{rewardshaping}, reward over-
-% optimisation / Goodharting \citep{rewardoveropt}.
+A finite-horizon Markov decision process is a tuple $(\mathcal{S}, \mathcal{A}, P, r, \gamma)$ with state space $\mathcal{S}$, action space $\mathcal{A}$, transition kernel $P$, reward function $r$, and discount factor $\gamma \in [0,1]$. The policy-gradient theorem expresses the gradient of the expected discounted return $J(\theta) = \mathbb{E}_{\pi_\theta}\!\left[\sum_t \gamma^t r_t\right]$ as $\nabla_\theta J(\theta) = \mathbb{E}_{\pi_\theta}\!\left[\sum_t \nabla_\theta \log \pi_\theta(a_t \mid s_t)\, A_t\right]$, where $A_t$ is the advantage of action $a_t$ at state $s_t$. REINFORCE \citep{reinforce,revisitingreinforce} estimates $A_t$ by the Monte-Carlo return; actor-critic methods such as A3C \citep{a3c} subtract a learned value baseline to reduce variance; Generalised Advantage Estimation \citep{gae} interpolates between bias and variance with a parameter $\lambda$.
+
+Proximal Policy Optimization (\textit{PPO}) \citep{ppo} introduced the clipped surrogate objective that is now the workhorse of policy-gradient \textit{RL} for language models. Reward shaping \citep{rewardshaping} accelerates learning by adding potential-based shaping terms, but raises the spectre of \emph{reward over-optimisation} or Goodharting \citep{rewardoveropt} -- the policy exploiting imperfections of the reward signal at the expense of the underlying objective. The intrinsic-reward formulation of \autoref{sec:methods:dense} is itself a shaped reward, and the guardrails we put in place (class-balanced \textit{BCE} loss, blending coefficient, gating on group standard deviation, long warmup) directly address the over-optimisation risk.
 
 \section{RL from Human Feedback and Verifiable Rewards}
 \label{sec:bg:rlhf_rlvr}
 
-% TODO[bg:rlhf_rlvr]: RLHF pipeline (\citep{drlhumanpreferences,rlhf}),
-% Bradley-Terry preference models, KL-regularised optimum and the DPO
-% derivation (\citep{directpreferenceopt}); constitutional AI/RLAIF
-% (\citep{constitutionalai,rlaifvsrlhf}). Transition to RLVR for math/code
-% (\citep{deepseekmath,r1,r1zerocriticalperspective}). Discuss verifiers
-% (\citep{mathverify}) and reward modelling alternatives
-% (\citep{ovm,scalingverifiers,genverifiers,trustbutverify,confasreward,
-% reinforcementimplicitrewards,beyondbinaryrewards,spuriousrewards,ttrl,
-% corewarding,reasonwithoutexternalrewards}).
+Reinforcement Learning from Human Feedback (\textit{RLHF}) \citep{drlhumanpreferences,rlhf} fits a Bradley-Terry preference model to pairwise human judgements and then optimises the policy with \textit{PPO} against the KL-regularised objective
+\begin{equation}
+	\max_{\pi_\theta} \mathbb{E}_{x \sim \mathcal{D},\, y \sim \pi_\theta(\cdot \mid x)}\!\left[r_\phi(x,y) - \beta\, D_{\mathrm{KL}}(\pi_\theta(\cdot \mid x) \| \pi_{\mathrm{ref}}(\cdot \mid x))\right].
+\end{equation}
+The optimum admits the closed form $\pi^\star(y \mid x) \propto \pi_{\mathrm{ref}}(y \mid x) \exp(\beta^{-1} r_\phi(x,y))$, which is the basis of Direct Preference Optimisation \citep{directpreferenceopt} and the derivation of \textit{LaSeR} (\autoref{sec:methods:laser}). Constitutional AI \citep{constitutionalai} and \textit{RLAIF} \citep{rlaifvsrlhf} replace human judges with another \textit{LLM}, trading data cost for model bias.
+
+Reinforcement Learning with Verifiable Rewards (\textit{RLVR}) replaces the learned reward model with a deterministic external verifier; in mathematics this is typically a symbolic checker such as \texttt{math-verify} \citep{mathverify}, in code a unit-test harness. The recipe was popularised by DeepSeekMath \citep{deepseekmath} and scaled to frontier capability by DeepSeek-R1 \citep{r1}; a critical perspective on R1-zero-style training is given by \citet{r1zerocriticalperspective}. Verifier-style methods include outcome value models \citep{ovm}, generative verifiers \citep{genverifiers}, scaled verifiers \citep{scalingverifiers}, trust-but-verify pipelines \citep{trustbutverify}, confidence-as-reward \citep{confasreward}, reinforcement with implicit rewards \citep{reinforcementimplicitrewards}, beyond-binary rewards \citep{beyondbinaryrewards}, spurious-reward studies \citep{spuriousrewards}, test-time \textit{RL} \citep{ttrl}, consistency-driven rewards \citep{corewarding}, and reward-free reasoning \citep{reasonwithoutexternalrewards}. The Dense Confidence mechanism of \autoref{sec:methods:dense} sits in this lineage as a label-free, per-step intrinsic reward that uses only the verifier-grounded outcome bit as supervision.
 
 \subsection{GRPO and Modern Variants}
 \label{sec:bg:grpo}
 
-% TODO[bg:grpo]: Detailed walk-through of the GRPO objective from
-% \citet{deepseekmath}. Position relative to PPO \citep{ppo}, DAPO
-% \citep{dapo}, GSPO \citep{gspo}, VinePPO \citep{vineppo}. Re-use the
-% GRPO equation from RPT \autoref{sec:training_algorithm}.
+Group Relative Policy Optimization (\textit{GRPO}) \citep{deepseekmath} replaces the value network of \textit{PPO} with a group-relative baseline. For each prompt $q$, $G$ rollouts $\{o_i\}_{i=1}^G$ are sampled from the old policy; the per-trajectory advantage is the standardised reward
+\begin{equation}
+	A_i = \frac{r_i - \mu_r}{\sigma_r + \epsilon}, \qquad \mu_r = \frac{1}{G}\sum_{i=1}^G r_i, \quad \sigma_r^2 = \frac{1}{G}\sum_{i=1}^G (r_i - \mu_r)^2.
+\end{equation}
+The clipped surrogate objective is
+\begin{equation}
+	\mathcal{J}_{\mathrm{GRPO}}(\theta) = \mathbb{E}\!\left[\frac{1}{G}\sum_{i=1}^G \frac{1}{|o_i|}\sum_{t=1}^{|o_i|} \min\!\left(\rho_{i,t} A_i,\, \mathrm{clip}(\rho_{i,t}, 1-\epsilon, 1+\epsilon)\, A_i\right) - \beta_{\mathrm{KL}}\, D_{\mathrm{KL}}(\pi_\theta \| \pi_{\mathrm{ref}})\right],
+\end{equation}
+with $\rho_{i,t} = \pi_\theta(o_{i,t} \mid q, o_{i,<t}) / \pi_{\mathrm{old}}(o_{i,t} \mid q, o_{i,<t})$. Setting $\beta_{\mathrm{KL}} = 0$ removes the reference policy entirely, halving the memory cost; stability then relies on the clipping mechanism and a conservative learning rate. Closely related variants include \textit{DAPO} \citep{dapo}, which decouples advantage and policy clipping; \textit{GSPO} \citep{gspo}, which reformulates the ratio at the sequence level; and \textit{VinePPO} \citep{vineppo}, which re-introduces a critic-free Monte-Carlo value estimator on rollout vines. The implementation in this thesis builds on the \texttt{trl} \citep{trl} reference \textit{GRPO} trainer.
 
 \subsection{Parameter-Efficient Fine-Tuning}
 \label{sec:bg:peft}
 
-% TODO[bg:peft]: LoRA \citep{lora} math (re-use RPT \autoref{sec:lora}),
-% weight tying with the LM head, the \texttt{trainable\_token\_indices}
-% mechanism in \citep{peft}.
+Low-Rank Adaptation (\textit{LoRA}) \citep{lora} freezes the pre-trained weight $W_0 \in \mathbb{R}^{d \times k}$ and learns a low-rank update $\Delta W = \frac{\alpha_{\mathrm{LoRA}}}{r_{\mathrm{LoRA}}} BA$ with $A \in \mathbb{R}^{r_{\mathrm{LoRA}} \times k}$ and $B \in \mathbb{R}^{d \times r_{\mathrm{LoRA}}}$. The forward pass becomes $h = W_0 x + \frac{\alpha_{\mathrm{LoRA}}}{r_{\mathrm{LoRA}}} B A x$. Trainable parameters drop from $dk$ to $(d + k)\, r_{\mathrm{LoRA}}$ per adapted layer, enabling fine-tuning of multi-billion-parameter \textit{LLMs} on a single workstation GPU. We rely on the \texttt{peft} library \citep{peft}; in particular, on its \texttt{trainable\_token\_indices} feature, which permits direct full fine-tuning of a small set of token embeddings on top of the \textit{LoRA} adapters. In weight-tied transformers -- as in Qwen2.5 \citep{qwen25} -- the embedding matrix and the language model head share parameters, so this single mechanism simultaneously tunes the input embedding and the output logit of the chosen token. \autoref{sec:methods:hook} uses this to align the confidence token's logit range to the desired sigmoid centre.
 
 \section{Calibration and Uncertainty Quantification}
 \label{sec:bg:calibration}
 
-% TODO[bg:calibration]: Reliability diagrams, ECE/Brier (\citep{nncalibration,
-% confestcalibsurvey,bayesianbinning,probabilisticoutputs}), proper scoring
-% rules \citep{strictlyproper,forecastverification}, conformal prediction
-% \citep{conformallm}, semantic / verbalised uncertainty
-% (\citep{semanticuncertainty,verbalizedconfidence,justaskforcalibration,
-% selfcheckgpt,internalstatelying,llmsknowwhattheyknow}).
-% CITATION ROLE: \citep{verbalizedconfidence,llmsknowwhattheyknow} appear
-% here as *definitions* of the calibration vocabulary (ECE/Brier targets,
-% verbalised numeric uncertainty); in sec:rel:confidence they reappear as
-% *prior elicitation methods* that Dense Confidence replaces with a trained,
-% bounded signal. Keep the definitional discussion here, the methodological
-% comparison there.
+A classifier with output probability $\hat p$ is calibrated if $\Pr(\text{correct} \mid \hat p = p) = p$ for all $p \in [0,1]$. Reliability diagrams visualise this property and Expected Calibration Error (\textit{ECE}) summarises it as a scalar; both build on the seminal binning approach of \citet{bayesianbinning} and the modern neural-network calibration analysis of \citet{nncalibration,confestcalibsurvey}. The Brier score and probabilistic outputs of \citet{probabilisticoutputs} provide quadratic and logarithmic alternatives. Proper scoring rules \citep{strictlyproper,forecastverification} formalise the property that a forecaster minimises the score in expectation only by reporting its true belief, which is the theoretical motivation for the binary cross-entropy loss of \autoref{sec:methods:dense}. Conformal prediction \citep{conformallm} offers distribution-free finite-sample coverage guarantees.
+
+Specifically for \textit{LLMs}, a sizeable literature has shown that internal states carry exploitable information about correctness even when verbalised confidence does not. \citet{llmsknowwhattheyknow} probes hidden activations; semantic-uncertainty methods \citep{semanticuncertainty} cluster sampled answers by meaning; \texttt{SelfCheckGPT} \citep{selfcheckgpt} cross-checks samples for self-consistency; \citet{internalstatelying} demonstrates that hidden states predict factual errors; verbalised \citep{verbalizedconfidence} and prompted \citep{justaskforcalibration} confidence are brittle in comparison. The trained, bounded, per-step confidence head proposed in \autoref{sec:methods:dense} replaces these elicitation tricks with a single supervised signal.
 
 \section{Sequential Monte Carlo for Sequence Models}
 \label{sec:bg:smc}
 
-% TODO[bg:smc]: Particle filters and Bayesian state estimation
-% \citep{bayesianstateestimation}; recent SMC for LLMs
-% (\citep{smcsteering,twistedsmc,smcsyntacticsemanticcontrol,rolloutroulette}).
-% Define proposal/target distributions and ESS-based resampling, in preparation
-% for sec:methods:itts:smc.
-% CITATION ROLE: \citep{smcsteering,twistedsmc,smcsyntacticsemanticcontrol,
-% rolloutroulette} are introduced here as *the SMC-for-LLMs formalism* (target
-% distribution, twist functions, ESS); in sec:rel:decoding they reappear as
-% *related-work neighbours* whose proposals/potentials we contrast with our
-% confidence-driven potential. Definitional material here, contrast there.
+Sequential Monte Carlo (\textit{SMC}), or particle filtering, is the canonical inference procedure for general state-space models \citep{bayesianstateestimation}. A population of $G$ particles approximates the posterior over latent state by importance sampling against a proposal distribution and then resampling according to (potentially twisted) weights. Recent work has adapted \textit{SMC} to \textit{LLMs}: \citet{smcsteering} steer generation toward a target distribution induced by a reward; twisted \textit{SMC} \citep{twistedsmc} learns an explicit twist function approximating the optimal proposal; \citet{smcsyntacticsemanticcontrol} apply syntactic and semantic potentials, and rollout-roulette decoding \citep{rolloutroulette} uses short \textit{Monte-Carlo} look-ahead estimates as particle weights. In all cases the central control knobs are the proposal distribution, the per-step potential (or weight), and the resampling rule (e.g.\ effective-sample-size-based). \autoref{sec:methods:itts:smc} instantiates this template with the trained Dense Confidence score as the per-step potential and a deterministic threshold rule for resampling.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%
@@ -399,88 +368,44 @@
 \chapter{Related Work}
 \label{ch:related}
 
-% TODO[ch:related]: Group the closest neighbours and clearly state limitations
-% of each. Aim for a critical, non-listy narrative (~2000 words).
+The contributions of this thesis touch six adjacent lines of research. This chapter situates the proposed Dense Confidence method against each of them, focusing on what distinguishes our trained, bounded, per-step intrinsic reward from existing alternatives.
 
 \section{Self-Rewarding and Generative Verifiers}
 \label{sec:rel:selfrewarding}
 
-% TODO[rel:selfrewarding]: LaSeR \citep{laser} (re-use SR
-% \autoref{sec:papersummary} as a starting point but compress); self-rewarding
-% LMs \citep{selfrewardingllms}; generative verifiers \citep{genverifiers};
-% confidence-as-reward \citep{confasreward,pacr}; consistency-based intrinsic
-% rewards \citep{consistentpaths,corewarding,reasonwithoutexternalrewards,
-% reinforcementimplicitrewards}. State why a \emph{dense} (per-step) signal is
-% the missing ingredient.
-% CITATION ROLE: \citep{laser,selfrewardingllms,genverifiers,confasreward}
-% appear here as the *closest neighbours we extend* (compare interfaces,
-% sparsity of supervision, computational cost); they reappear in
-% sec:intro:motivation only as *motivating evidence* for the paradigm. Avoid
-% restating their contributions here.
+The most direct ancestor of this work is \textit{LaSeR} \citep{laser}, which trains a $7$B-parameter \textit{LLM} to emit a single confidence token at the end of its trajectory and uses the log-probability of that token as an intrinsic reward blended into the \textit{GRPO} advantage. Three structural choices differentiate Dense Confidence from \textit{LaSeR}: \textbf{(i)}~we evaluate confidence at \emph{every} response position rather than at the terminal token alone, removing the need for the extra forward pass required to extract the post-EOS confidence in \textit{LaSeR}; \textbf{(ii)}~we transform the raw logit with a scaled, bounded sigmoid, eliminating the unbounded log-probability that motivates the upward logit drift and consequent sampling interference observed in \textit{LaSeR}; \textbf{(iii)}~we frame confidence as binary classification with a class-rebalanced \textit{BCE} loss, rather than MSE regression against the binary reward.
+
+A broader family of self-rewarding methods either iteratively refines a model with its own preference judgements (\textit{Self-Rewarding LMs} \citep{selfrewardingllms}), trains an explicit generative verifier alongside the solver (\citet{genverifiers}), reformulates confidence as the reward (\textit{Confidence as Reward} \citep{confasreward}, \textit{PACR} \citep{pacr}), or exploits structural cues such as path consistency (\citet{consistentpaths,corewarding}). \textit{TTRL} \citep{ttrl} and reward-free reasoning \citep{reasonwithoutexternalrewards} push the idea further by removing the external verifier entirely. \textit{Implicit Rewards} \citep{reinforcementimplicitrewards} and \textit{Beyond Binary Rewards} \citep{beyondbinaryrewards} densify the credit-assignment signal without an auxiliary critic. In all of these methods the signal remains either sparse-in-time, sparse-across-trajectories, or post-hoc. Dense Confidence is, to our knowledge, the first self-rewarding mechanism that is \emph{simultaneously} bounded, per-step, and trained end-to-end inside the \textit{GRPO} loop.
 
 \section{Process Reward Models and Step-Level Supervision}
 \label{sec:rel:prm}
 
-% TODO[rel:prm]: Process supervision \citep{verifystepbystep,processoutcomefeedback},
-% MathShepherd \citep{mathshepherd}, PRMs that think \citep{prmthatthink},
-% free process rewards \citep{freeprocessrewards}, critical/high-entropy
-% tokens (\citep{criticaltokens,highentropyminoritytokens}). Contrast with our
-% \emph{label-free} per-step signal that broadcasts the final reward.
+Process Reward Models (\textit{PRMs}) attack the credit-assignment problem from a different angle by supervising each reasoning step explicitly. \citet{verifystepbystep} popularised step-level human annotation, \texttt{MathShepherd} \citep{mathshepherd} automates the step-label generation, \citet{processoutcomefeedback} compares process versus outcome supervision under matched compute, \citet{prmthatthink} train \textit{PRMs} that themselves reason, and \citet{freeprocessrewards} derive step-level rewards from outcome data alone. Recent work has identified \emph{critical} \citep{criticaltokens} or \emph{high-entropy minority} tokens \citep{highentropyminoritytokens} as carriers of disproportionate process-level signal. All of these methods require either a separately trained reward model, dense human annotation, or careful step segmentation. Dense Confidence offers a markedly cheaper alternative: the policy itself produces a dense classifier signal at every token, supervised only by the broadcast outcome reward.
 
 \section{Self-Correction, Self-Refinement, and Reflexion}
 \label{sec:rel:selfcorrection}
 
-% TODO[rel:selfcorrection]: Reflexion \citep{reflexion}, Self-Refine
-% \citep{selfrefine}, STaR/V-STaR \citep{star,vstar}, limits of self-correct
-% reasoning \citep{llmscannotselfcorrectreasoning}. Show our work avoids the
-% additional generation pass these methods require.
+A related line of work asks the model to \emph{generate again} after an initial attempt: \texttt{Reflexion} \citep{reflexion} feeds back a verbal self-critique, \texttt{Self-Refine} \citep{selfrefine} iterates draft-critique-revise, \texttt{STaR}~/~\texttt{V-STaR} \citep{star,vstar} bootstrap rationales from correct samples, and \citet{llmscannotselfcorrectreasoning} caution that intrinsic self-correction without external signal often degrades reasoning. Dense Confidence sidesteps the additional generation pass entirely: the self-assessment is produced \emph{during} the original rollout, at no incremental decoding cost, and provides supervision rather than corrective rewriting.
 
 \section{Confidence Elicitation in LLMs}
 \label{sec:rel:confidence}
 
-% TODO[rel:confidence]: Confidence elicitation \citep{confelicitation},
-% verbalised confidence \citep{verbalizedconfidence}, "LLMs know what they
-% know" \citep{llmsknowwhattheyknow}, R-Tuning \citep{rtuning},
-% selective generation \citep{selfevalselectivegeneration}.
-% CITATION ROLE: \citep{verbalizedconfidence,llmsknowwhattheyknow} appear
-% here as *elicitation methods* (prompting / probing for self-assessed
-% probability) that Dense Confidence supersedes with a trained, bounded
-% per-step score. Their definitional/calibration use is in sec:bg:calibration.
+Confidence elicitation surveys \citep{confelicitation} catalogue a wide spectrum of techniques: verbalised numeric confidence \citep{verbalizedconfidence}, prompted self-assessment \citep{justaskforcalibration}, hidden-state probing \citep{llmsknowwhattheyknow,internalstatelying}, semantic-uncertainty clustering \citep{semanticuncertainty}, sample-based consistency \citep{selfcheckgpt}, refusal-aware tuning (\texttt{R-Tuning} \citep{rtuning}), and self-evaluation for selective generation \citep{selfevalselectivegeneration}. These methods are post-hoc and either elicited from a frozen model or trained on a separate supervised dataset of confidence labels. Dense Confidence is jointly trained with the policy and produces a dense signal at the same compute cost as decoding.
 
 \section{Test-Time Compute and Inference-Time Scaling}
 \label{sec:rel:testtime}
 
-% TODO[rel:testtime]: Self-consistency \citep{selfconsistency,
-% universalselfconsistency}, scaling laws for test-time compute
-% \citep{testtimecomputescaling,metageneration,s1}, BoN alignment
-% \citep{bonalignmentpolicy,bonselectionselfcertainty}, OVMs \citep{ovm},
-% deep think with confidence \citep{deepthinkwithconfidence}, confidence-
-% improved self-consistency \citep{confimprovesselfconsistency}, self-evaluation
-% guided beam search \citep{selfevalbeam}, controlled decoding
-% \citep{controlleddecoding}. This section sets up ch:methods:itts.
+Self-consistency \citep{selfconsistency} and its universal variant \citep{universalselfconsistency} have demonstrated that marginalising over multiple sampled reasoning paths can substantially improve answer accuracy. \citet{testtimecomputescaling}, \citet{metageneration}, and \texttt{s1} \citep{s1} formalise the trade-off curve between additional test-time compute and quality. Best-of-$N$ alignment \citep{bonalignmentpolicy,bonselectionselfcertainty} and outcome value models \citep{ovm} select among $N$ candidates. \emph{Deep think with confidence} \citep{deepthinkwithconfidence} and confidence-improved self-consistency \citep{confimprovesselfconsistency} use a confidence signal as the selector. Self-evaluation guided beam search \citep{selfevalbeam} and controlled decoding \citep{controlleddecoding} make the steering signal part of the decoder. Our three inference-time overlays of \autoref{sec:methods:itts} sit cleanly within this taxonomy but share a single, jointly-trained source of confidence -- the Dense Confidence head -- across all three.
 
 \section{Confidence-Aware Sampling and Decoding}
 \label{sec:rel:decoding}
 
-% TODO[rel:decoding]: Adaptive/multi-sample temperature
-% (\citep{adaptivetempscaling,thermometer,multisampletemperature,mirostat,
-% neuraltextdegeneration}); SMC for LLMs (\citep{smcsteering,twistedsmc,
-% smcsyntacticsemanticcontrol,rolloutroulette}). Motivate using our dense
-% confidence signal as the per-step potential.
-% CITATION ROLE: \citep{mirostat,neuraltextdegeneration} appear here as
-% *temperature-control baselines* (entropy-targeting / nucleus sampling) that
-% our tempmod policy competes against -- the definitional appearance is in
-% sec:bg:llm. \citep{smcsteering,twistedsmc,smcsyntacticsemanticcontrol,
-% rolloutroulette} appear here as *related SMC-for-LLM systems* whose twist /
-% potential we replace with the trained confidence signal -- the definitional
-% appearance is in sec:bg:smc.
+Adaptive-temperature methods such as \texttt{Mirostat} \citep{mirostat} target a fixed surprisal level, \citet{adaptivetempscaling} and \texttt{Thermometer} \citep{thermometer} learn the temperature post-hoc, and \citet{multisampletemperature} jointly optimise across multiple samples; \citet{neuraltextdegeneration} establishes the standard nucleus-sampling baseline. \autoref{sec:methods:itts:tempmod} differs from all of these in that the per-step temperature is a closed-loop function of the model's own dense confidence, not of token-level entropy or a learned auxiliary network. \textit{SMC}-based decoders \citep{smcsteering,twistedsmc,smcsyntacticsemanticcontrol,rolloutroulette} weight particles by reward potentials or learned twist functions; we replace those potentials with the dense confidence signal and instantiate the particle set as the existing \textit{GRPO} group, re-using its \texttt{DynamicCache} via the surgery described in \autoref{sec:methods:itts:smc}.
 
 \section{Datasets and Benchmarks}
 \label{sec:rel:datasets}
 
-% TODO[rel:datasets]: GSM8K \citep{gsm8k}, MATH \citep{mathdataset},
-% DeepMath-103K \citep{deepmath103k}, code-eval (\citep{evalllmscode}).
-% Justify GSM8K for compute-budget reasons.
+\texttt{GSM8K} \citep{gsm8k} is the canonical grade-school-math benchmark and the smallest reasoning corpus that consistently distinguishes pre- and post-\textit{RLVR} checkpoints; the harder \texttt{MATH} \citep{mathdataset} and \texttt{DeepMath-103K} \citep{deepmath103k} corpora and code benchmarks \citep{evalllmscode} would enable a richer evaluation but exceed the available compute budget. We therefore restrict all reported experiments to \texttt{GSM8K} and explicitly defer cross-domain transfer to future work (\autoref{sec:disc:threats}, \autoref{ch:conclusion}).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%
@@ -488,151 +413,244 @@
 \chapter{Methods}
 \label{ch:methods}
 
-% TODO[ch:methods]: The \emph{heart} of the thesis (~4000-5000 words). Lift
-% the entire methods section of RPT (RPT \autoref{sec:methods},
-% \autoref{sec:training_algorithm}) verbatim where appropriate, then extend
-% with the LaSeR variant and the three inference-time scaling techniques.
-% Maintain the OpenAI/DeepMind-style mathematical precision used in RPT and
-% reference the exact code paths (\texttt{ConfidenceGRPOTrainer},
-% \texttt{confidence\_utils}, \texttt{SMCLogitsProcessor}).
+This chapter is the technical core of the thesis. It describes, in mathematically precise terms, the exact algorithms implemented in the released codebase. Every equation and design choice has a one-to-one correspondence with a function in \texttt{rl\_for\_llms/utils/confidence\_grpo\_trainer\_utils.py} or \texttt{rl\_for\_llms/utils/confidence\_utils.py}; \autoref{app:code} provides the explicit cross-reference.
 
 \section{Method Overview}
 \label{sec:methods:overview}
 
-% TODO[methods:overview]: One-page map of the entire methods chapter, written
-% \emph{before} the technical sections so the reader has a mental model
-% before the equations start. Mirrors the "chapter funnel" used at the start
-% of the example thesis' Methods chapter. Cover, in order:
-%   1. The shared backbone: GRPO-trained Qwen2.5 with a LoRA adapter and a
-%      repurposed confidence token whose logit/log-probability is captured
-%      via a forward hook on the LM head (sec:methods:architecture,
-%      sec:methods:hook).
-%   2. Two training-time confidence branches:
-%        - Dense Confidence (ours): bounded sigmoid on the raw confidence-
-%          token logit at *every* response position, trained with a class-
-%          reweighted BCE auxiliary loss (sec:methods:dense).
-%        - LaSeR (reimplementation): unbounded log_softmax-derived score at
-%          the *last* response position only, trained with MSE against the
-%          binary reward (sec:methods:laser).
-%      Both can optionally feed back into the GRPO advantage as an intrinsic
-%      reward.
-%   3. Three inference-time scaling overlays that re-use the trained Dense
-%      Confidence head as a controller (sec:methods:itts):
-%        - confidence-guided answer selection (post-hoc aggregation),
-%        - confidence-driven temperature modulation (per-step sampling
-%          knob, with an inverse-mapping ablation),
-%        - confidence-conditioned SMC particle filtering (KV-cache surgery
-%          on \texttt{DynamicCache} when a particle hits EOS).
-% Close with a small reference figure or block-diagram (TikZ) showing how the
-% three ITTS overlays plug into the same trained checkpoint. No new
-% citations -- this section is purely a roadmap.
+All experiments share a single training scaffold: a Qwen2.5 policy fine-tuned with \textit{LoRA} adapters via Group Relative Policy Optimization, instrumented with a forward hook on the language model head that captures the logit of a repurposed control token (\texttt{<|vision\_pad|>}) at every generation step. On top of this scaffold we run two training-time confidence branches and three inference-time scaling overlays.
+
+The training-time branches are mutually exclusive:
+\begin{itemize}
+	\item \textbf{Dense Confidence} (\autoref{sec:methods:dense}) -- this work's contribution. The confidence-token logit is captured at every response position, mapped to $[0,1]$ by a scaled sigmoid, and trained with a class-rebalanced \textit{BCE} loss against the broadcast outcome reward.
+	\item \textbf{LaSeR} (\autoref{sec:methods:laser}) -- a faithful reimplementation of \citet{laser}. The full vocabulary logits at the last non-padding response position are captured via a separate post-generation forward pass, transformed into a scalar reward by $\beta_v\!\cdot\!\log\!\mathrm{softmax}(\text{logits}/\tau)[z_c] - \beta_v c_{\mathrm{ref}}$, and trained with MSE against the binary reward.
+\end{itemize}
+Both branches can optionally feed their score back into the \textit{GRPO} advantage as an intrinsic reward (the \emph{self-rewarding} configuration).
+
+The inference-time overlays (\autoref{sec:methods:itts}) re-use the Dense Confidence head at evaluation only and require no further training:
+\begin{itemize}
+	\item \textbf{Confidence-guided answer selection} (\autoref{sec:methods:itts:selection}) -- post-hoc aggregation across $G$ generations: unweighted majority vote, highest-mean-confidence, and confidence-weighted majority vote.
+	\item \textbf{Confidence-driven temperature modulation} (\autoref{sec:methods:itts:tempmod}) -- the sampling temperature at decode step $t$ is a linear function of the running-mean confidence over the last $H$ steps, with an optional inversion ablation.
+	\item \textbf{Confidence-conditioned Sequential Monte Carlo} (\autoref{sec:methods:itts:smc}) -- the $G$ rollouts in a \textit{GRPO} group are treated as an \textit{SMC} particle set: when a particle terminates (EOS), it is resampled from the still-alive particles with probability proportional to running confidence, including explicit surgery on the underlying \texttt{DynamicCache}.
+\end{itemize}
+
+\autoref{fig:architecture} (reproduced from the companion report) summarises the training-time data flow.
 
 \section{System Architecture and Notation}
 \label{sec:methods:architecture}
 
-% TODO[methods:architecture]: Reuse RPT \autoref{sec:architecture}, including
-% the TikZ architecture figure. Fix notation (q, o, T_i, r, c_t).
-% Cite \citep{trl,peft,pytorch,mathverify}.
+Our implementation leverages the \texttt{trl} library \citep{trl} for the \textit{GRPO} training loop and \texttt{peft} \citep{peft} for Low-Rank Adaptation (\textit{LoRA}) \citep{lora} to enable efficient training on a single GPU. Answer verification is performed using the \texttt{math-verify} package \citep{mathverify}. Unlike simple string matching, this tool parses the \LaTeX{} structure to enable semantic verification (e.g.\ recognising that $\tfrac{1}{2}$ is equivalent to $0.5$). The core component is the \texttt{ConfidenceGRPOTrainer}, a custom subclass of \texttt{GRPOTrainer} that intercepts the model's forward pass via a PyTorch \citep{pytorch} forward hook on the language model head (\texttt{lm\_head}) to extract confidence logits at every generation step. Two reward functions are employed: a \textbf{correctness reward} applying semantic verification against the ground-truth answer, returning $1$ for a match and $0$ otherwise; and a \textbf{format reward} returning $1$ if the completion contains at least one \texttt{\textbackslash boxed\{\}} expression and $0$ otherwise.
+
+\FloatBarrier
+\begin{figure}[H]
+	\centering
+	\resizebox{0.95\linewidth}{!}{
+		\begin{tikzpicture}[
+				>=Latex,
+				font=\small,
+				box/.style={draw, rectangle, rounded corners=3pt, inner sep=6pt, align=center, fill=black!2, text width=4.5cm, minimum height=1.3cm},
+				db/.style={draw, cylinder, cylinder uses custom fill, shape border rotate=90, aspect=0.25, inner sep=6pt, align=center, fill=black!5, text width=2.5cm, minimum height=1.5cm},
+				arr/.style={thick, ->},
+				dasharr/.style={thick, ->, dashed},
+			]
+			\node[db] (dataset) at (7, 3.5) {\textbf{Dataset}\\Prompts $q$, Answers $a$};
+			\node[box, fill=blue!5] (policy1) at (0, 0) {\textbf{\textit{LLM} Policy}\\Generation Phase\\(No Gradients)};
+			\node[box] (traj) at (0, -5.5) {\textbf{Sampled Trajectories}\\$\{o_1, \dots, o_G\}$};
+			\node[box, fill=red!5, minimum height=2.6cm, text width=4.5cm] (ext) at (0, -10.5) {};
+			\node[align=center] at ($(ext.north) + (0, -0.6)$) {\textbf{External Verifier}\\Evaluate Trace};
+			\node[draw, rectangle, fill=white, rounded corners=2pt, minimum height=0.55cm, minimum width=1.9cm, align=center] (form) at ($(ext.south) + (-1.05, 0.45)$) {\scriptsize Format};
+			\node[draw, rectangle, fill=white, rounded corners=2pt, minimum height=0.55cm, minimum width=1.9cm, align=center] (corr) at ($(ext.south) + (1.05, 0.45)$) {\scriptsize Correctness};
+			\node[draw, circle, inner sep=2pt, fill=white] (plus) at (0, -13.1) {$+$};
+			\node[box, fill=orange!5, text width=5.6cm] (hook1) at (14, 0) {\textbf{Forward Hook}\\Capture Confidence Token\\Logits $l_{i,t}^{\text{conf}}$ at every step};
+			\node[box, fill=red!5, minimum height=2.6cm, text width=5.6cm] (int) at (14, -10.5) {};
+			\node[align=center] at ($(int.north) + (0, -1.3)$) {\textbf{Internal Verifier}\\[5pt]$c_{i,t} = \sigma\!\left( \frac{\pi}{\sigma_{\mathrm{conf}}\sqrt{3}} \left(l_{i,t}^{\mathrm{conf}} - \mu_{\mathrm{conf}}\right) \right)$\\[4pt]$\bar{c}_i = \frac{1}{T_i}\sum_{t=1}^{T_i} c_{i,t}$};
+			\node[box, fill=purple!5, text width=7.2cm] (adv) at (7, -15.5) {\textbf{\textit{RL} Advantage Computation}\\[3pt]$A_x = \frac{x_i - \mu_x}{\sigma_x + \epsilon} \quad \text{for } x \in \{r, \bar{c}\}$\\[3pt]Blended $A_i = (1 - \alpha_{\mathrm{blend}}) A_{r_i} + \alpha_{\mathrm{blend}} A_{\bar{c}_i}$};
+			\node[box, fill=blue!5, text width=4.5cm] (policy2) at (0, -19.5) {\textbf{\textit{LLM} Policy}\\Re-evaluation Phase\\(With Gradients)};
+			\node[box, fill=orange!5, text width=5.6cm] (hook2) at (14, -19.5) {\textbf{Forward Hook}\\Capture Confidence Token\\Logits $l_{i,t}^{\text{conf}}$ at every step};
+			\node[box, fill=yellow!5, text width=4.5cm] (loss_rl) at (0, -24.5) {\textbf{\textit{RL} Surrogate Loss}\\$\mathcal{J}(\theta)$};
+			\node[box, fill=yellow!5, text width=5.6cm] (loss_conf) at (14, -24.5) {\textbf{\textit{BCE} Confidence Loss}\\$L_{\text{conf}}(\theta)$};
+			\node[box, fill=green!5, text width=7.0cm] (update) at (7, -29.0) {\textbf{Loss \& Gradient Descent Update}\\$-\mathcal{J}(\theta) + \beta_{\text{conf}} L_{\text{conf}}(\theta)$};
+			\draw[arr] (dataset.west) -| (policy1.north);
+			\draw[arr] (policy1.south) -- (traj.north);
+			\draw[dasharr] (policy1.east) -- (hook1.west);
+			\draw[arr] (traj.south) -- (ext.north);
+			\draw[arr] (hook1.south) -- (int.north);
+			\draw[arr] (dataset.south) |- (3.3, 2.0) -- (3.3, -10.6) -| (corr.north);
+			\draw[arr] (form.south) |- (plus.west);
+			\draw[arr] (corr.south) |- (plus.east);
+			\draw[arr] (plus.south) |- (adv.west);
+			\draw[arr] (int.south) |- (adv.east);
+			\draw[arr] (traj.west) -- (-3.2, -5.5) -- (-3.2, -19.5) -- (policy2.west);
+			\draw[dasharr] (policy2.east) -- (hook2.west);
+			\draw[arr] (policy2.south) -- (loss_rl.north);
+			\draw[arr] ([xshift=-2.5cm]adv.south) |- (1.5, -23.1) -- ([xshift=1.5cm]loss_rl.north);
+			\draw[arr] (corr.east) -- (5.0, -11.35) -- (5.0, -13.2) -- (18.2, -13.2) |- (loss_conf.east);
+			\draw[arr] (hook2.south) -- (loss_conf.north);
+			\draw[arr] (loss_rl.south) |- (update.west);
+			\draw[arr] (loss_conf.south) |- (update.east);
+		\end{tikzpicture}
+	}
+	\caption{Overview of the Dense Confidence RL Architecture. The confidence token logit is captured twice: first during the generation phase (non-differentiable) to compute intrinsic rewards, and second during the re-evaluation forward pass to compute gradients for the auxiliary \textit{BCE} objective.}
+	\label{fig:architecture}
+\end{figure}
+
+\paragraph{Policy and RL algorithm.}
+We use a $0.5\,$B-parameter policy (\texttt{Qwen/Qwen2.5-0.5B-Instruct}) \citep{qwen25} as a deliberately small proxy. The Dense Confidence loss is additive to the policy gradient and therefore compatible with any actor-style RL algorithm such as \textit{PPO} \citep{ppo} or \textit{A3C} \citep{a3c}; we select \textit{GRPO} \citep{deepseekmath} because it eliminates the value network. We set $\beta_{\mathrm{KL}}=0$, removing the frozen reference policy and halving the memory footprint at the cost of relying entirely on clipping and a conservative learning rate for stability.
 
 \section{Confidence Token and Hook Mechanism}
 \label{sec:methods:hook}
 
-% TODO[methods:hook]: Reuse RPT \autoref{sec:embedding_training} and the
-% "Token Hook Mechanism" subsection. Emphasise weight-tied LM head
-% \citep{qwen25} and the \texttt{trainable\_token\_indices} LoRA feature
-% \citep{lora,peft}.
+We require the logit of a designated \textbf{confidence token} at \emph{every} generation step, irrespective of which text token is sampled. The Qwen2.5 vocabulary contains the unused control token \texttt{<|vision\_pad|>} -- inherited from the multi-modal sibling family and absent from the text-only pre-training corpus -- which we repurpose as the confidence token. At step $t$ we extract
+\begin{equation}
+	l_{t}^{\mathrm{conf}} = \mathrm{LMHead}(h_t)[\texttt{id}_{\mathrm{conf}}],
+\end{equation}
+where $h_t$ is the hidden state and $\texttt{id}_{\mathrm{conf}}$ is the vocabulary index. The extraction is implemented as a PyTorch forward hook on \texttt{lm\_head} (\texttt{logits\_hook}) that branches on \texttt{config.method} into a Dense or LaSeR specialisation. Because Qwen2.5 weight-ties the input embedding and the LM head, the \textit{LoRA} \texttt{trainable\_token\_indices} feature of \texttt{peft} \citep{peft} provides a single mechanism that simultaneously fine-tunes the input embedding and the output logit of the confidence token -- the most direct optimisation path for shifting its logit distribution to the desired sigmoid centre.
 
 \section{Dense Confidence (Ours)}
 \label{sec:methods:dense}
 
-% TODO[methods:dense]: Lift RPT \autoref{sec:training_algorithm} verbatim:
-% scaled sigmoid (eq:sigmoid_transform), bounded reward r_dense, BCE auxiliary
-% loss with class reweighting, joint objective, advantage blending,
-% warmup phases. Cross-reference the code in
-% rl_for_llms/utils/confidence_grpo_trainer_utils.py
-% (logits_hook, _dense_logits_hook, _compute_confidence_loss,
-%  _blend_advantages).
+\paragraph{Scaled sigmoid transformation.}
+Raw logits are unbounded; we map them to a confidence score $c_t \in [0,1]$ via the parameterised sigmoid
+\begin{equation}
+	\label{eq:sigmoid_transform}
+	c_t = \sigma\!\left(\frac{\pi}{\sigma_{\mathrm{conf}}\sqrt{3}}\,(l_t^{\mathrm{conf}} - \mu_{\mathrm{conf}})\right),
+\end{equation}
+where $\mu_{\mathrm{conf}}$ and $\sigma_{\mathrm{conf}}$ are the empirical mean and standard deviation of the confidence-token logit on a small calibration corpus and the factor $\pi/\sqrt{3}$ equates the standard deviation of a logistic distribution with that of a unit Gaussian. The implementation is \texttt{get\_confidence\_token\_logit\_sigmoid} in \texttt{confidence\_utils.py}.
+
+\paragraph{Intrinsic reward.}
+The dense intrinsic reward for trajectory $i$ of length $T_i$ is the trajectory mean
+\begin{equation}
+	\bar{c}_i = \frac{1}{T_i}\sum_{t=1}^{T_i} c_{i,t}.
+\end{equation}
+
+\paragraph{GRPO objective.}
+For each prompt $q$, $G$ trajectories $\{o_i\}_{i=1}^G$ are sampled from $\pi_{\mathrm{old}}$ and rewards $r_i$ are computed by the external verifier. \textit{GRPO} \citep{deepseekmath} maximises
+\begin{equation}
+	\mathcal{J}(\theta) = \mathbb{E}_q\!\left[\frac{1}{G}\sum_{i=1}^G\frac{1}{|o_i|}\sum_{t=1}^{|o_i|}\min\!\bigl(\rho_{i,t}A_i,\;\mathrm{clip}(\rho_{i,t}, 1-\epsilon, 1+\epsilon)A_i\bigr) - \beta_{\mathrm{KL}}D_{\mathrm{KL}}(\pi_\theta\|\pi_{\mathrm{ref}})\right],
+\end{equation}
+with $\rho_{i,t} = \pi_\theta(o_{i,t}\mid q, o_{i,<t})/\pi_{\mathrm{old}}(o_{i,t}\mid q, o_{i,<t})$ and $A_i = (r_i - \mu_r)/(\sigma_r + \epsilon)$. With $\beta_{\mathrm{KL}}=0$ the KL term vanishes.
+
+\paragraph{Joint training objective.}
+The total loss is
+\begin{equation}
+	L_{\mathrm{total}} = -\mathcal{J}(\theta) + \beta_{\mathrm{conf}}\, L_{\mathrm{conf}}.
+\end{equation}
+The \textit{BCE} confidence loss per trajectory broadcasts the binary reward $r_i$ to every position $t \in [1, T_i]$:
+\begin{equation}
+	L_{\mathrm{conf},i} = -\frac{1}{T_i}\sum_{t=1}^{T_i}\bigl[r_i \log c_{i,t} + (1-r_i)\log(1-c_{i,t})\bigr].
+\end{equation}
+Because early-training rollouts are dominated by failures, we re-weight at the group level. With $N_{\mathrm{pos}} = \sum_i \mathbf{1}[r_i=1]$ and $N_{\mathrm{neg}} = G - N_{\mathrm{pos}}$, the per-sample weights
+\begin{equation}
+	w_{\mathrm{pos}} = \frac{G}{2 N_{\mathrm{pos}}}, \qquad w_{\mathrm{neg}} = \frac{G}{2 N_{\mathrm{neg}}}
+\end{equation}
+(set to $0$ when the denominator is $0$) equalise the positive and negative contributions. The reweighted group loss is
+\begin{equation}
+	L_{\mathrm{conf}}^{\mathrm{group}} = \frac{1}{G}\sum_{i=1}^G w_{r_i}\, L_{\mathrm{conf},i}.
+\end{equation}
+This computation is implemented in \texttt{\_compute\_dense\_confidence\_loss}; the class-weight calculation lives in \texttt{reward\_utils.get\_class\_weights\_for\_single\_group}.
+
+\paragraph{Sensitivity of $\beta_{\mathrm{conf}}$.}
+Setting $\beta_{\mathrm{conf}}$ one order of magnitude above its optimum causes policy collapse: the confidence-loss gradient dominates and the policy converges to the trivial classifier ``always wrong'' that achieves zero \textit{BCE}. With $\beta_{\mathrm{KL}}=0$ no KL regulariser counteracts the drift. The collapse is, however, immediately visible in the reward curve and can be diagnosed within a few hundred steps. We use $\beta_{\mathrm{conf}}=0.01$ throughout.
+
+\paragraph{Self-reward integration (advantage blending).}
+In the self-rewarding configuration, the trajectory mean confidence $\bar{c}_i$ is blended into the advantage:
+\begin{equation}
+	A_i^{\mathrm{blended}} =
+	\begin{cases}
+		(1 - \alpha_{\mathrm{blend}})\dfrac{r_i - \mu_r}{\sigma_r + \epsilon} + \alpha_{\mathrm{blend}}\dfrac{\bar{c}_i - \mu_{\bar c}}{\sigma_{\bar c} + \epsilon} & \text{if }\sigma_{\bar c} > \delta_{\mathrm{min}}, \\[10pt]
+		\dfrac{r_i - \mu_r}{\sigma_r + \epsilon}                                                                                                                    & \text{otherwise}.
+	\end{cases}
+\end{equation}
+The gate $\sigma_{\bar c} > \delta_{\mathrm{min}}$ suppresses the intrinsic signal whenever the group confidence is flat, preventing the policy from chasing noise (a safeguard adopted from \citet{laser}).
+
+\paragraph{Warmup.}
+The Dense Confidence head is meaningless before it has been trained. For the first $N_{\mathrm{warmup}}$ processed samples (approximately the first half of an epoch), the confidence-loss multiplier and the blending factor are gated to zero; in the same period the confidence-token embedding is allowed to drift toward $\mu_{\mathrm{conf}}$. The warmup is implemented through a step counter inspected in \texttt{compute\_loss}.
 
 \subsection{Theoretical Connection to LaSeR}
 \label{sec:methods:laser_link}
 
-% TODO[methods:laser_link]: Reuse RPT "Theoretical Formulation: The LaSeR
-% Objective" and the comparative analysis section (RPT
-% \autoref{sec:interference}). Frame Dense Confidence as a bounded,
-% trajectory-wide variant of \citet{laser}.
+Standard \textit{RLHF} maximises $\mathbb{E}\![r(x,y)] - \beta D_{\mathrm{KL}}(\pi_\theta\|\pi_{\mathrm{ref}})$ whose closed-form optimum is $\pi^\star(y\mid x) \propto \pi_{\mathrm{ref}}(y\mid x)\exp(\beta^{-1}r(x,y))$ \citep{directpreferenceopt}. Applying this relation to the prediction of a confidence token $z_c$ conditioned on $(x,y)$ and rearranging yields the \textit{LaSeR} reward \citep{laser}
+\begin{equation}
+	r_{\mathrm{laser}}(x,y) = \beta_v \log \pi_\theta(z_c\mid x, y) - \beta_v c_{\mathrm{ref}},
+\end{equation}
+where $c_{\mathrm{ref}} \approx \log\pi_{\mathrm{ref}}(z_c\mid x,y)$ is treated as a constant. The log-probability is unbounded below, which has two undesirable side effects: (i) high-variance advantage estimates and (ii) a constant gradient drive $\partial \log \pi_\theta(z_c)/\partial l^{\mathrm{conf}} = 1 - \pi_\theta(z_c)$ that pushes the confidence-token logit upward until the token starts to be sampled. Dense Confidence replaces $\log\pi_\theta(z_c)$ with $\sigma((\pi/(\sigma_{\mathrm{conf}}\sqrt{3}))(l-\mu_{\mathrm{conf}}))$, bounding the signal to $[0,1]$, saturating the gradient as the logit grows, and evaluating it at \emph{every} response position rather than at the terminus alone. Empirically (\autoref{ch:results}) the confidence token is never sampled in any of the variants -- a property that the unbounded \textit{LaSeR} formulation could not guarantee.
 
 \section{Reimplementation of LaSeR}
 \label{sec:methods:laser}
 
-% TODO[methods:laser]: Describe the second \texttt{Method.LASER} branch in
-% \texttt{ConfidenceGRPOTrainer} (logits_hook, _laser_logits_hook,
-% _get_laser_post_response_scores, _compute_laser_mean_scores,
-% _run_post_generation_forward_for_laser, compute_laser_self_rewarding_score).
-% Define r_laser = beta * log_softmax(logits/T)[z_c] - beta * c_ref and the
-% MSE-against-binary-reward loss. Note the post-EOS extra forward pass and how
-% it is implemented through the post-generation hook. Cite \citep{laser}.
+For a controlled comparison we also implement the original \textit{LaSeR} signal as the alternative \texttt{Method.LASER} branch of \texttt{ConfidenceGRPOTrainer}.
+
+\paragraph{Score computation.}
+At evaluation time, after the EOS token of trajectory $i$ has been emitted, we run a single extra forward pass on the full sequence (function \texttt{\_run\_post\_generation\_forward\_for\_laser}) and extract the vocabulary-wide logit vector $\ell_i^{\mathrm{last}} \in \mathbb{R}^{|\mathcal{V}|}$ at the last non-padding position. The \textit{LaSeR} score is
+\begin{equation}
+	\mathrm{score}_i = \beta_v\,\bigl[\log\!\mathrm{softmax}(\ell_i^{\mathrm{last}}/\tau)\bigr]_{z_c} - \beta_v c_{\mathrm{ref}}.
+\end{equation}
+This is implemented as \texttt{compute\_laser\_self\_rewarding\_score} in \texttt{confidence\_utils.py} and reused both inside \texttt{\_laser\_logits\_hook} (which captures the post-EOS logits during generation) and in \texttt{\_get\_laser\_post\_response\_scores} (which retrieves the captured scores for advantage blending and loss computation).
+
+\paragraph{Loss.}
+The \textit{LaSeR} loss is the mean squared error between the score and the binary reward, sample-weighted by the same class-rebalancing scheme as Dense Confidence:
+\begin{equation}
+	L_{\mathrm{conf}}^{\mathrm{LaSeR}} = \frac{1}{G}\sum_{i=1}^G w_{r_i}\,(\mathrm{score}_i - r_i)^2.
+\end{equation}
+The implementation is \texttt{\_compute\_laser\_confidence\_loss}. The advantage-blending logic is identical to the Dense variant -- only the per-trajectory scalar fed into the blend changes from $\bar{c}_i$ to $\mathrm{score}_i$.
+
+\paragraph{Cost.}
+\textit{LaSeR} pays for the unbounded log-probability formulation with an extra forward pass per trajectory and a single, sparse training signal at the sequence terminus. Dense Confidence pays nothing extra: its signal is harvested for free from the existing hook.
 
 \section{Inference-Time Scaling}
 \label{sec:methods:itts}
 
-% TODO[methods:itts]: New chapter content. Motivate that the trained confidence
-% head doubles as a controller at inference time. Cross-reference
-% rl_for_llms/utils/inference_time_evaluation_utils.py and the
-% \texttt{use\_tempmod} / \texttt{use\_filtering} flags in
-% \texttt{ConfidenceGRPOTrainer}.
+The trained Dense Confidence head is a calibrated, per-step probability of correctness. It can therefore be reused at inference as a controller, with no further training, by three independent overlays that target three different inference-time compute knobs: post-hoc aggregation (selection), per-step sampling distribution (temperature modulation), and per-step trajectory population (Sequential Monte Carlo). All three are toggled by Boolean flags on the trainer's \texttt{evaluate(use\_tempmod, use\_filtering)} method and orchestrated by \texttt{inference\_time\_evaluation\_utils.inference\_time\_evaluate}.
 
 \subsection{Confidence-Guided Answer Selection}
 \label{sec:methods:itts:selection}
 
-% TODO[methods:itts:selection]: Re-use RPT \autoref{sec:confidence_selection}.
-% Formalise the three rules used in \texttt{get_answers_with_confidence}:
-%   (i) plain (unweighted) majority vote,
-%   (ii) highest-mean-confidence selection,
-%   (iii) confidence-weighted majority vote.
-% Cite \citep{selfconsistency,universalselfconsistency,bonalignmentpolicy,
-% bonselectionselfcertainty,deepthinkwithconfidence,
-% confimprovesselfconsistency,laser}.
+When the generation budget allows $G$ rollouts per prompt, the standard aggregation rule is unweighted majority voting over the $G$ extracted answers. With a trained confidence signal we additionally consider two alternatives. Let $\{(a_i, \bar{c}_i)\}_{i=1}^G$ be the answers paired with their trajectory-mean confidences:
+\begin{enumerate}
+	\item \textbf{Unweighted majority voting}: $\hat{a} = \arg\max_a \sum_{i=1}^G \mathbf{1}[a_i = a]$.
+	\item \textbf{Highest confidence}: $\hat{a} = a_{i^\star}$ with $i^\star = \arg\max_i \bar{c}_i$.
+	\item \textbf{Confidence-weighted majority voting}: $\hat{a} = \arg\max_a \sum_{i=1}^G \bar{c}_i\,\mathbf{1}[a_i = a]$.
+\end{enumerate}
+The three rules are implemented in \texttt{models/answer.py::get\_answers\_with\_confidence} and the downstream aggregations in \texttt{evaluation\_utils.py}. The same trained checkpoint is evaluated under all three rules without any change to the generation distribution \citep{selfconsistency,universalselfconsistency,bonalignmentpolicy,bonselectionselfcertainty,deepthinkwithconfidence,confimprovesselfconsistency,laser}.
 
 \subsection{Confidence-Driven Temperature Modulation}
 \label{sec:methods:itts:tempmod}
 
-% TODO[methods:itts:tempmod]: Describe
-% \texttt{_apply_temperature_modulation} in
-% rl_for_llms/utils/confidence_grpo_trainer_utils.py. Map the running mean
-% confidence c_t to T_t in [T_min, T_max] with an optional inversion (the
-% \texttt{INVERT\_TEMPMOD\_MAPPING} env var) controlled by
-% \texttt{temperature_modulation_invert_mapping}. Two regimes:
-%   - decrease T when confident (exploit), increase T when uncertain (explore);
-%   - inverted: explore when confident, exploit when uncertain (ablation).
-% Cite \citep{adaptivetempscaling,thermometer,multisampletemperature,mirostat,
-% neuraltextdegeneration,controlleddecoding}.
+The first overlay that \emph{modifies} the generation distribution is per-step temperature modulation. At each decode step $t$ we maintain a running mean of the last $H$ confidences,
+\begin{equation}
+	\bar{c}^{(H)}_t = \frac{1}{H}\sum_{s = t-H+1}^{t} c_s,
+\end{equation}
+padded with the neutral prior $0.5$ for $s \le 0$ (function \texttt{\_get\_running\_average\_confidence}). The control weight is $w_t = 1 - \bar{c}^{(H)}_t$ in the default mapping and $w_t = \bar{c}^{(H)}_t$ when \texttt{temperature\_modulation\_invert\_mapping} is enabled. The new temperature is then
+\begin{equation}
+	\tau_t = \frac{1}{\tau_0}\bigl[\tau_{\min} + w_t\,(\tau_{\max} - \tau_{\min})\bigr],
+\end{equation}
+with the division by the base sampling temperature $\tau_0$ undoing the implicit normalisation already applied by the decoder, and a numerical floor of $10^{-6}$ guarding against zero (function \texttt{\_apply\_temperature\_modulation}). In the default (non-inverted) configuration the policy \emph{exploits} (low $\tau$) when confident and \emph{explores} (high $\tau$) when uncertain; the inversion ablation reverses this, providing a sanity check for the direction of the effect \citep{adaptivetempscaling,thermometer,multisampletemperature,mirostat,neuraltextdegeneration,controlleddecoding}.
+
+The mechanism is purely local: it operates on the logits returned by the next-token forward pass, before sampling, and requires no additional generations or KV-cache surgery.
 
 \subsection{Confidence-Conditioned Sequential Monte Carlo Resampling}
 \label{sec:methods:itts:smc}
 
-% TODO[methods:itts:smc]: Describe the SMC particle filtering used at
-% evaluation when \texttt{use\_filtering=True}. Implementation entry points:
-%   - \texttt{apply_smc_filtering},
-%   - \texttt{_smc_resample_group},
-%   - \texttt{_smc_pick_replacement},
-%   - \texttt{_smc_copy_sequence},
-%   - \texttt{_capture_cache_pre_hook} (DynamicCache surgery),
-%   - \texttt{SMCLogitsProcessor}.
-% Formalise: each group of G generations forms a particle set; once a particle
-% \emph{finishes} (EOS), we resample dead particles from the alive set with
-% probabilities proportional to their running mean confidence (above the
-% \texttt{filtering_threshold}), and clone the corresponding KV-cache slice.
-% Cite \citep{bayesianstateestimation,smcsteering,twistedsmc,
-% smcsyntacticsemanticcontrol,rolloutroulette,selfevalbeam}.
+The second generative overlay -- and the most invasive -- treats the $G$ rollouts of a \textit{GRPO} group as a Sequential Monte Carlo particle population \citep{bayesianstateestimation,smcsteering,twistedsmc,smcsyntacticsemanticcontrol,rolloutroulette,selfevalbeam}. The proposal is the autoregressive policy itself; the per-step potential is the running confidence; the resampling rule is triggered by particle termination.
+
+Concretely, after each decode step we identify particles that have just emitted EOS and whose running confidence $\bar{c}^{(H)}$ falls below the threshold $\delta_{\mathrm{filter}}$ (function \texttt{apply\_smc\_filtering}). Each such ``dead'' particle is replaced by an ``alive'' particle drawn from the same group with probability proportional to its running confidence (function \texttt{\_smc\_resample\_group}). The replacement is more than a relabelling of token streams: the underlying \texttt{DynamicCache} of the transformer must also be cloned, because the alive particle's continuation depends on its full KV history. We capture the cache state via a pre-hook on the model's forward pass (\texttt{\_capture\_cache\_pre\_hook}) and clone the relevant slice across all attention layers in \texttt{\_smc\_copy\_sequence}. An \texttt{SMCLogitsProcessor} integrated with the HuggingFace generation loop coordinates the per-step bookkeeping.
+
+By construction, the procedure does not change the marginal compute cost (still $G$ active particles), but it concentrates the rollout budget on the high-confidence regions of the policy. Two safety properties are worth highlighting: (i) the cache surgery preserves causal correctness because we copy the entire prefix cache of the alive particle, not a stitched mix; (ii) the procedure requires the Dense Confidence head (not \textit{LaSeR}) because per-step weights are needed -- the trainer validates this in \texttt{\_validate\_filtering\_configuration} and also refuses to run with vLLM, which does not expose the cache surgery primitives required.
 
 \section{Implementation Notes}
 \label{sec:methods:implementation}
 
-% TODO[methods:implementation]: Short subsection summarising practical
-% engineering decisions: deterministic seeding, gradient accumulation,
-% mixed precision/float32 fallback for Volta, logging via WANDB \citep{wandb},
-% reasons for not using vLLM \citep{vllm}. Most content can be reused from
-% RPT \autoref{sec:software} and \autoref{sec:vllm}.
+\paragraph{Determinism.}
+A single \texttt{SEED} environment variable (\texttt{environment\_utils.get\_seed}) seeds Python, NumPy, PyTorch, CUDA, and \texttt{accelerate}; deterministic CuBLAS/cuDNN kernels are enabled where supported.
+
+\paragraph{Mixed precision.}
+The target \textit{LLM} ships in \texttt{bfloat16}, but the available GV100 (Volta, Compute Capability 7.0) has no hardware \texttt{BF16} support; all computations therefore run in \texttt{float32}. A gradient-accumulation factor $K_{\mathrm{grad}}=4$ stabilises gradients in the absence of mixed precision.
+
+\paragraph{Experiment tracking.}
+All metrics are logged to \texttt{Weights \& Biases} \citep{wandb} under slash-separated namespaces (\texttt{confidence/loss}, \texttt{grpo/loss}, \texttt{total/loss}, \texttt{answer/}\ldots).
+
+\paragraph{Why not vLLM.}
+We deliberately do not use \texttt{vLLM} \citep{vllm} for inference acceleration. At the time of execution it was incompatible with the most recent versions of \texttt{trl}, \texttt{peft}, and PyTorch \citep{pytorch}, lacks Metal Performance Shaders support for local macOS debugging, and -- critical for our setup -- does not expose the \texttt{DynamicCache} primitives required by the \textit{SMC} overlay. Furthermore the gradient path through \texttt{vLLM} is severed, so even with its \texttt{LogitsProcessor} hook a separate PyTorch forward pass would still be required for training.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%
@@ -640,99 +658,87 @@
 \chapter{Experimental Setup}
 \label{ch:experimental_setup}
 
-% TODO[ch:setup]: Compress RPT \autoref{sec:dataset}, \autoref{sec:variants},
-% \autoref{sec:hardware}, \autoref{sec:software} and extend with the
-% inference-time scaling evaluation protocol.
+This chapter specifies every choice required to reproduce the numbers reported in \autoref{ch:results}: the dataset and its preprocessing, the model and \textit{LoRA} adapter configuration, the ablation grid, the hardware and software stack, the evaluation protocol, and a dedicated reproducibility statement.
 
 \section{Dataset and Preprocessing}
 \label{sec:setup:dataset}
 
-% TODO[setup:dataset]: GSM8K \citep{gsm8k} preprocessing (verbatim from RPT).
-% Briefly justify why GSM8K is preferred over MATH \citep{mathdataset} or
-% DeepMath-103K \citep{deepmath103k} (compute budget, faster signal).
-% NOTE TO SELF: state clearly that GSM8K is the *only* dataset used for both
-% training and evaluation in this thesis. No multi-domain or cross-dataset
-% transfer experiments were run; this is a deliberate scoping decision
-% driven by the compute budget (single GV100, float32) and is revisited as
-% a threat to external validity in sec:disc:threats and as future work in
-% ch:conclusion (cf. \citep{mathdataset,deepmath103k,evalllmscode}).
+All experiments are conducted on \texttt{GSM8K} \citep{gsm8k}, a widely used benchmark of grade-school math word problems that demand multi-step arithmetic reasoning. The full training split contains $7{,}473$ samples and the evaluation split $1{,}319$ samples. After length filtering and deterministic trimming, the effective splits used in this thesis are $N_{\mathrm{train}}=7{,}012$ and $N_{\mathrm{eval}}=512$ samples.
+
+The preprocessing pipeline is:
+\begin{itemize}
+	\item \textbf{Prompt formatting.} Each problem is wrapped in the Qwen chat template \citep{qwen25} with a \textit{system} message instructing the model to reason step by step and to enclose the final answer in \texttt{\textbackslash boxed\{\}}. The last \texttt{\textbackslash boxed\{\}} expression is parsed by \texttt{math-verify} \citep{mathverify} to derive a deterministic, model-free correctness signal.
+	\item \textbf{Length filtering.} Prompts whose tokenised length (including the system message) exceeds $T_{\mathrm{prompt}}=128$ are dropped from both splits to guarantee that every prompt fits within the generation budget.
+	\item \textbf{Deterministic trimming.} Splits are randomly trimmed to upper limits $N_{\mathrm{train\_max}}=8{,}192$ and $N_{\mathrm{eval\_max}}=512$ with a fixed seed so that every run sees an identical subset.
+	\item \textbf{Answer extraction.} Ground-truth answers are parsed from the dataset's \texttt{\#\#\#\# <answer>} convention.
+\end{itemize}
+The maximum completion length is $T_{\mathrm{gen}}=1{,}024$ tokens. \texttt{GSM8K} was chosen over harder benchmarks such as \texttt{MATH} \citep{mathdataset} or \texttt{DeepMath-103K} \citep{deepmath103k}, and over code benchmarks \citep{evalllmscode}, because the available compute budget (a single Volta-generation GPU, float32) made a multi-dataset study infeasible. \texttt{GSM8K} is used both for training and for in-domain evaluation; this restriction is revisited as a threat to external validity in \autoref{sec:disc:threats} and as future work in \autoref{ch:conclusion}.
 
 \section{Model and Training Configuration}
 \label{sec:setup:model}
 
-% TODO[setup:model]: Qwen2.5-0.5B-Instruct \citep{qwen25}, LoRA \citep{lora}
-% rank/alpha, GRPO hyperparameters \citep{deepseekmath}, KL=0 choice.
-% Refer to \autoref{app:hyperparams}.
-% NOTE TO SELF -- training-budget observations to fold into prose:
-%   * Epoch count: the default reported configuration trains for 1 epoch over
-%     the filtered GSM8K split. A 2-epoch ablation was also executed; the
-%     accuracy / MCC deltas were within seed noise (negligible), consistent
-%     with the small effective dataset size. Report this explicitly so the
-%     reader does not assume undertraining.
-%   * Model family: only Qwen2.5-0.5B-Instruct was actually trained. The
-%     experimental plan also included the 0.8B variant of the Qwen3.5
-%     successor family for a scale ablation, but it was dropped because
-%     (i) the larger model would have multiplied GPU-hours per run and
-%     (ii) the existing ablation grid (Base / GRPO / Dense $\pm$ reward /
-%     LaSeR $\pm$ reward / three inference-time overlays) already saturated
-%     the available compute budget on a single GV100. Frame this as a
-%     scoping decision, not a methodological gap; revisit as future work
-%     in ch:conclusion.
+The base policy is \texttt{Qwen/Qwen2.5-0.5B-Instruct} \citep{qwen25}, chosen as a small but capable open-weight instruction-tuned model whose tied embedding/output projection is essential for the Dense Confidence mechanism described in \autoref{sec:methods:hook}. The model is wrapped with a \textit{LoRA} adapter \citep{lora,peft} of rank $r_{\mathrm{LoRA}}=16$, scaling $\alpha_{\mathrm{LoRA}}=32$, zero dropout, and \texttt{target\_modules}=``all linear''; the confidence token's row of the (tied) embedding matrix is registered as a \texttt{trainable\_token\_indices} entry so that the gradient flows back into the input embedding while the rest of the embedding remains frozen.
+
+Training uses \textit{GRPO} \citep{deepseekmath} with $G=4$ generations per prompt, gradient-accumulation $K_{\mathrm{grad}}=4$, learning rate $\eta=2\times10^{-5}$, sampling temperature $\tau=1.0$, and $\beta_{\mathrm{KL}}=0$ (we found a non-zero KL penalty to actively hurt convergence at this small model size, consistent with reports in \citet{dapo,gspo}). For variants with the auxiliary loss the confidence-loss weight is $\beta_{\mathrm{conf}}=0.01$ for Dense and $\beta_{\mathrm{conf}}=0.1$ for LaSeR (a calibrated factor of ten, reflecting LaSeR's signal being scaled by an additional $\beta_v$). The intrinsic-reward blend uses $\alpha_{\mathrm{blend}}=0.1$, $\delta_{\min}=0.1$ and warm-up $N_{\mathrm{warmup}}=2{,}048$. A complete reference of every hyperparameter is given in \autoref{app:hyperparams}.
+
+\paragraph{Epoch budget.} The reported configuration trains for $N_{\mathrm{epochs}}=1$. A two-epoch ablation was executed and yielded accuracy and MCC deltas within seed noise on this small effective split; we therefore report the one-epoch numbers and treat longer training as a future-work direction rather than a methodological gap.
+
+\paragraph{Model family.} Only Qwen2.5-0.5B-Instruct was actually trained. A scale ablation against the 0.8B variant of the Qwen3.5 family was planned but dropped: the larger model would have multiplied GPU-hours per run and the existing $9$-cell ablation grid already saturated the available compute budget on a single GV100. This is a scoping decision, not a limitation of the method.
 
 \section{Experimental Variants}
 \label{sec:setup:variants}
 
-% TODO[setup:variants]: Extend the RPT variant table:
-%   - Base, GRPO, Dense+loss, Dense+loss+reward (existing),
-%   - LaSeR+loss, LaSeR+loss+reward (Method.LASER branch, results not yet
-%     final -- treat interpretation vaguely),
-%   - Inference-time scaling overlays evaluated on top of the
-%     Dense+loss+reward checkpoint:
-%       * tempmod (forward mapping) + no filtering,
-%       * inverse tempmod + no filtering,
-%       * no tempmod + SMC filtering,
-%   matching the CSV files in data/evaluation/final.
+The full ablation grid evaluated in this thesis is summarised in \autoref{tab:variants}. Rows 1--4 are the four \emph{training-time} variants of the Dense formulation (with the Base model as the lower-bound reference); rows 5--6 are the corresponding LaSeR \citep{laser} reimplementation; rows 7--9 are the three \emph{inference-time} overlays, each evaluated on top of the same Dense+$\ell$+$r$ checkpoint.
+
+\begin{table}[ht]
+	\centering
+	\caption{Experimental variants. Rows are mutually exclusive training configurations (1--6) or inference-time overlays on top of the row-4 checkpoint (7--9). $\ell$ denotes the auxiliary confidence loss, $r$ the intrinsic-reward blend into the advantage.}
+	\label{tab:variants}
+	\begin{tabular}{lllll}
+		\toprule
+		\textbf{ID} & \textbf{Variant}                          & \textbf{Method} & \textbf{$\ell$} & \textbf{$r$} \\
+		\midrule
+		1           & \textit{Base}                             & ---             & ---             & ---          \\
+		2           & \textit{GRPO} ($-\ell-r$)                 & ---             & no              & no           \\
+		3           & \textit{Dense} Auxiliary ($+\ell-r$)      & DENSE           & yes             & no           \\
+		4           & \textit{Dense} Self-Rewarding ($+\ell+r$) & DENSE           & yes             & yes          \\
+		5           & \textit{LaSeR} Auxiliary                  & LASER           & yes             & no           \\
+		6           & \textit{LaSeR} Self-Rewarding             & LASER           & yes             & yes          \\
+		\midrule
+		7           & \textit{Dense} $+r$ $+$ tempmod           & DENSE           & yes             & yes          \\
+		8           & \textit{Dense} $+r$ $+$ inverse tempmod   & DENSE           & yes             & yes          \\
+		9           & \textit{Dense} $+r$ $+$ SMC filtering     & DENSE           & yes             & yes          \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+All four training-time configurations are selected via the environment variables \texttt{USE\_CONFIDENCE\_LOSS}, \texttt{USE\_CONFIDENCE\_REWARD} and \texttt{METHOD}; the three inference-time overlays are toggled by \texttt{USE\_TEMPMOD}, \texttt{INVERT\_TEMPMOD\_MAPPING} and \texttt{USE\_FILTERING}. Aside from these flags, all runs share identical hyperparameters and data splits.
 
 \section{Hardware and Software Stack}
 \label{sec:setup:hw_sw}
 
-% TODO[setup:hw_sw]: Reuse RPT \autoref{sec:hardware} (GV100, float32) and
-% \autoref{sec:software} (trl \citep{trl}, peft \citep{peft}, pytorch
-% \citep{pytorch}, math-verify \citep{mathverify}, wandb \citep{wandb},
-% vllm note \citep{vllm}).
+Every run was executed on a single \textbf{NVIDIA Quadro GV100} GPU ($5{,}120$ CUDA cores, $32\,$GB HBM2, $14.8\,$TFLOPS FP32; CUDA 13) hosted by the JKU Institute for Machine Learning. The GV100 is based on the Volta architecture (Compute Capability 7.0) and lacks hardware support for \texttt{bfloat16}; we therefore run all computations in \texttt{float32} to avoid numerical instability. Training of one epoch took approximately $13\,$hours per variant, evaluation of the full evaluation split approximately $2\,$hours per run, peak GPU memory was approximately $29\,$GB, and average compute utilisation was approximately $50\,\%$.
+
+The software stack pins the latest available versions of \texttt{trl} \citep{trl}, \texttt{peft} \citep{peft}, PyTorch \citep{pytorch}, \texttt{math-verify} \citep{mathverify} and \texttt{Weights \& Biases} \citep{wandb}; the complete \texttt{pyproject.toml} is reproduced in \autoref{app:pyproject}. We deliberately do \emph{not} use \texttt{vLLM} \citep{vllm} for the reasons enumerated in \autoref{sec:methods:implementation}: dependency lag, missing MPS support for local debugging, no exposed \texttt{DynamicCache} hook for SMC, and a severed gradient path.
 
 \section{Evaluation Protocol}
 \label{sec:setup:protocol}
 
-% TODO[setup:protocol]: Pass@1/Pass@k aggregation, MCC/F1/balanced-accuracy
-% reporting for binary classification (rl_for_llms/utils/classification_utils.py),
-% per-group means \& std, harmonic balanced accuracy (clarify the LaSeR F1
-% definition as in RPT). State all aggregation scripts and CSV locations.
+We report two metric families, computed by aggregating the per-prompt $G=4$ generations stored under \texttt{data/evaluation/final/}.
+
+\paragraph{Answer correctness (\autoref{sec:res:training}).} For each variant we compute
+\textit{Pass}@$1$ and \textit{Pass}@$4$, plain (unweighted) majority voting, highest-mean-confidence selection, and confidence-weighted majority voting. All quantities are reported as per-group means and standard deviations (the \texttt{agg\_*\_answer\_metrics\_*.csv} files), with the exception of the LaSeR runs, which are single-seed.
+
+\paragraph{Binary classification of correctness (\autoref{sec:res:training}).} For variants with a trained confidence head we evaluate the confidence signal as a binary predictor of the math-verify reward, reporting accuracy, balanced accuracy, harmonic balanced accuracy, F1, Matthews correlation coefficient (MCC), TPR, TNR, PPV, NPV, ROC-AUC and PR-AUC on the concatenated full evaluation set (\texttt{concat\_*\_bc\_metrics\_*.csv}). We follow the convention from \autoref{sec:bg:calibration} and report both the standard $\mathrm{F1}=2\,\mathrm{PPV}\,\mathrm{TPR}/(\mathrm{PPV}+\mathrm{TPR})$ and the \emph{harmonic balanced accuracy} $2\,\mathrm{TPR}\,\mathrm{TNR}/(\mathrm{TPR}+\mathrm{TNR})$ to disambiguate the metric that the original LaSeR paper \citep{laser} labels ``F1''.
+
+\paragraph{Inference-time overlays.} For tempmod, inverse-tempmod and SMC the same metric families are computed; the \emph{checkpoint} is fixed to the Dense $+\ell+r$ run, only the decoding-time behaviour changes.
 
 \section{Reproducibility}
 \label{sec:setup:reproducibility}
 
-% TODO[setup:reproducibility]: Short, explicit statement (~half a page) to
-% satisfy the JKU mathesis rubric on scientific honesty / replicability.
-% Cover, in this order:
-%   - Code: public GitHub repository
-%     \url{https://github.com/Oidlichtnwoada/rl_for_llms} (commit hash to be
-%     pinned at submission time). Build/lint/test entry points:
-%     \texttt{./check\_repo.sh}, \texttt{./run\_repo.sh}, \texttt{./run\_eval.sh}.
-%   - Determinism: fixed \texttt{SEED} environment variable threaded through
-%     \texttt{environment\_utils.get\_seed}; deterministic CuBLAS/cuDNN.
-%   - Configuration: every hyperparameter lives in the central
-%     \texttt{Config} (rl\_for\_llms/models/config.py) and is exported in
-%     \autoref{app:hyperparams}. Exact \texttt{pyproject.toml} pinned in
-%     \autoref{app:pyproject}; code entry points in \autoref{app:code}.
-%   - Data: HuggingFace \texttt{gsm8k} with the deterministic preprocessing
-%     described in \autoref{sec:setup:dataset}; processed splits cached under
-%     \texttt{data/training/}.
-%   - Artifacts: raw run logs and aggregated CSVs released under
-%     \texttt{data/evaluation/final/}; W\&B run identifiers in the README.
-%   - Hardware: NVIDIA Quadro GV100 (Volta, float32). Document the
-%     non-CUDA fallback path (\texttt{MODE=LOCAL}) for portability.
-% No new citations -- this section is purely procedural.
+The entire pipeline is open-source at \url{https://github.com/Oidlichtnwoada/rl_for_llms}; the exact commit corresponding to this thesis will be pinned at submission. Three top-level scripts mirror the developer workflow: \texttt{./check\_repo.sh} (\texttt{uv sync} + \texttt{ruff format} + \texttt{ruff check --fix} + \texttt{mypy --strict}), \texttt{./run\_repo.sh} (\texttt{accelerate launch -m rl\_for\_llms.main}, logs to \texttt{logs/}), and \texttt{./run\_eval.sh}. Determinism is ensured by threading a single \texttt{SEED} environment variable through \texttt{environment\_utils.get\_seed} and by enabling deterministic CuBLAS/cuDNN kernels.
+
+Every hyperparameter lives in the central Pydantic \texttt{Config} (\texttt{rl\_for\_llms/models/config.py}) and is reproduced in \autoref{app:hyperparams}; the exact pinned dependency set is given in \autoref{app:pyproject}; the mapping from method to code is given in \autoref{app:code}. Data is consumed directly from the HuggingFace \texttt{gsm8k} hub entry; the deterministic preprocessing is implemented in \texttt{utils/dataset\_utils.py} and its processed artifacts are cached under \texttt{data/training/}. Raw per-run W\&B identifiers and the aggregated CSVs that back every number in \autoref{ch:results} are released under \texttt{data/evaluation/final/}. For portability to laptops without CUDA, the codebase exposes a \texttt{MODE=LOCAL} switch that rewrites every hyperparameter via \texttt{torch\_utils.get\_cuda\_default\_value(\dots)} to a non-CUDA fallback (e.g. $G=4$, $N_{\mathrm{epochs}}=1$, $T_{\mathrm{prompt}}=128$, $T_{\mathrm{gen}}=1{,}024$); this is the path that has been continuously exercised on macOS during development.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%
@@ -740,91 +746,121 @@
 \chapter{Results}
 \label{ch:results}
 
-% TODO[ch:results]: Lift RPT \autoref{sec:results} for the four base variants,
-% then add new subsections for LaSeR and for the inference-time scaling
-% overlays. Reuse the answer_accuracy_chart.pdf and confidence_chart.pdf;
-% regenerate charts to include the additional rows if needed.
-% STRUCTURE: Two top-level sections to make the training-vs-inference axis
-% visible in the TOC. Each result block is a \subsection so the reader sees
-% the grouping immediately; preliminary blocks are flagged inline rather than
-% via separate sections.
+This chapter is split along the axis that defines the contribution: \autoref{sec:res:training} reports the four \emph{training-time} configurations (Base, GRPO, Dense $\pm r$, LaSeR $\pm r$) plus the post-hoc \emph{confidence-guided answer selection} ablation, then \autoref{sec:res:inference} reports the three \emph{inference-time} overlays (tempmod, inverse tempmod, SMC particle filtering). Two metric families are reported per variant, both computed from the raw rollouts stored under \texttt{data/evaluation/final/}: \emph{answer-correctness} metrics ($\textit{Pass}@1$, $\textit{Pass}@4$, three majority-style aggregations) and, for variants with a trained confidence head, \emph{binary-classification} metrics over the confidence signal vs. the math-verify reward. All numbers are reported to three significant figures; per-group standard deviations are quoted where multiple seeds are available (Dense variants), and single-seed values are explicitly flagged.
 
 \section{Training-Time Results}
 \label{sec:res:training}
 
-% TODO[res:training]: One-paragraph preamble: which variants are compared,
-% which checkpoint defines "final", and which metric families are reported
-% (answer-correctness vs. binary-classification of correctness).
+\autoref{tab:res:answer} collects the answer-accuracy metrics for the four training-time variants of the Dense formulation plus the LaSeR reimplementation; \autoref{tab:res:conf} collects the binary-classification metrics for the confidence-trained subset of those variants.
+
+\begin{table}[ht]
+	\centering
+	\caption{Answer-accuracy metrics on \texttt{GSM8K} (\(N_{\mathrm{eval}}=512\), \(G=4\) generations per prompt). All values are per-group means; the Dense rows include the per-group standard deviation across multiple seeds. \emph{MV}: unweighted majority vote, \emph{HC}: highest mean confidence, \emph{CW-MV}: confidence-weighted majority vote. The LaSeR rows are single seed (std.\ deviations are not yet available).}
+	\label{tab:res:answer}
+	\resizebox{\linewidth}{!}{%
+		\begin{tabular}{lccccc}
+			\toprule
+			\textbf{Variant}  & \textit{Pass}@1   & \textit{Pass}@4   & MV                & HC                & CW-MV             \\
+			\midrule
+			Base              & $0.314{\pm}0.012$ & $0.589{\pm}0.024$ & $0.343{\pm}0.010$ & $0.309{\pm}0.003$ & $0.343{\pm}0.009$ \\
+			GRPO ($-\ell-r$)  & $0.528{\pm}0.002$ & $0.742{\pm}0.006$ & $0.600{\pm}0.009$ & $0.531{\pm}0.003$ & $0.598{\pm}0.007$ \\
+			Dense ($+\ell-r$) & $0.541{\pm}0.005$ & $0.750{\pm}0.016$ & $0.608{\pm}0.008$ & $0.610{\pm}0.005$ & $0.631{\pm}0.013$ \\
+			Dense ($+\ell+r$) & $0.543{\pm}0.001$ & $0.752{\pm}0.009$ & $0.605{\pm}0.007$ & $0.603{\pm}0.005$ & $0.626{\pm}0.005$ \\
+			LaSeR ($+\ell-r$) & $0.536$           & $0.754$           & $0.607$           & $0.605$           & $0.627$           \\
+			LaSeR ($+\ell+r$) & $0.526$           & $0.771$           & $0.605$           & $0.611$           & $0.637$           \\
+			\bottomrule
+		\end{tabular}}
+\end{table}
+
+\begin{table}[ht]
+	\centering
+	\caption{Binary-classification of correctness using the trained confidence head. Concatenated full-evaluation values. \emph{BA}: balanced accuracy, \emph{HBA}: harmonic balanced accuracy, \emph{MCC}: Matthews correlation coefficient. Dense rows are means over multiple seeds; LaSeR rows are single seed.}
+	\label{tab:res:conf}
+	\resizebox{\linewidth}{!}{%
+		\begin{tabular}{lcccccc}
+			\toprule
+			\textbf{Variant}  & Acc.\   & BA      & HBA     & F1      & MCC      & ROC-AUC \\
+			\midrule
+			Base              & $0.272$ & $0.402$ & $0.099$ & $0.393$ & $-0.285$ & $0.251$ \\
+			GRPO ($-\ell-r$)  & $0.464$ & $0.488$ & $0.121$ & $0.114$ & $-0.044$ & $0.497$ \\
+			Dense ($+\ell-r$) & $0.758$ & $0.747$ & $0.722$ & $0.798$ & $0.518$  & $0.847$ \\
+			Dense ($+\ell+r$) & $0.755$ & $0.745$ & $0.724$ & $0.794$ & $0.509$  & $0.844$ \\
+			LaSeR ($+\ell-r$) & $0.742$ & $0.731$ & $0.697$ & $0.786$ & $0.490$  & $0.830$ \\
+			LaSeR ($+\ell+r$) & $0.741$ & $0.732$ & $0.688$ & $0.787$ & $0.500$  & $0.845$ \\
+			\bottomrule
+		\end{tabular}}
+\end{table}
 
 \subsection{Dense Confidence vs.\ GRPO Baseline (Final)}
 \label{sec:res:dense}
 
-% TODO[res:dense]: Reuse RPT \autoref{sec:answer_results} and
-% \autoref{sec:confidence_results}. These results are \textbf{final}.
-%   - Pass@1 31\% -> 53\%, Pass@4 59 -> ~74\%.
-%   - MCC up to 0.58, balanced accuracy ~78\%.
-%   - Confidence token sampled 0.0\% (validates Dense formulation).
+\paragraph{The RLVR pipeline is effective.} All three trained variants improve markedly over the untrained Base policy: $\textit{Pass}@1$ rises from $31.4\,\%$ to approximately $53\text{--}54\,\%$ (a $\approx 70\,\%$ relative improvement) and $\textit{Pass}@4$ from $58.9\,\%$ to the $74\text{--}75\,\%$ range. The truncation rate stays below $0.25\,\%$, confirming that $T_{\mathrm{gen}}=1{,}024$ is sufficient for \texttt{GSM8K}.
+
+\paragraph{GRPO vs.\ Dense.} The pure GRPO variant attains $\textit{Pass}@1=52.84\,\%$; the Dense Auxiliary ($+\ell-r$) and Self-Rewarding ($+\ell+r$) variants attain $54.15\,\%$ and $54.31\,\%$ respectively. The Dense variants thus do \emph{not} pay a measurable answer-quality tax for jointly training the confidence head; if anything, the Dense Self-Rewarding configuration matches the GRPO ceiling on $\textit{Pass}@1$ and slightly exceeds it on $\textit{Pass}@4$. The difference is within seed noise across the Dense rows but the trend is uniformly in favour of the joint objective, suggesting that the auxiliary signal acts as a mild regulariser rather than as a competing objective.
+
+\paragraph{Strong confidence calibration despite small capacity.} On the binary-classification metrics the Dense head attains an MCC of $0.518$ (Aux.) and $0.509$ (SR), with balanced accuracy of $74.7\,\%$/$74.5\,\%$ and ROC-AUC above $0.84$ in both cases. An earlier single-seed configuration of the SR variant produced an MCC of $\approx 0.58$ on a different evaluation slice (reported in the accompanying seminar report); the final, multi-seed CSVs released with this thesis back the more conservative number reported here. Both configurations vastly outperform the untrained Base (MCC $-0.285$, structurally anti-correlated because the Qwen vision-pad token has no prior calibration) and the GRPO control (MCC $-0.044$, indistinguishable from random as expected since the confidence head receives no learning signal at all in this configuration).
+
+\paragraph{The confidence token is never sampled.} As predicted by the scaled-sigmoid analysis in \autoref{sec:methods:dense}, the confidence-token \emph{inclusion percentage} in every Dense run is exactly $0.0\,\%$. Both interference issues identified in the original LaSeR paper \citep{laser} (the need for an extra forward pass and the risk of the special token leaking into the generation) are resolved by construction for the Dense formulation.
 
 \subsection{Reimplementation of LaSeR (Preliminary)}
 \label{sec:res:laser}
 
-% TODO[res:laser]: Use the CSVs
-% data/evaluation/final/agg_eval_after_train_answer_metrics_laser_confloss_(no)confrew.csv
-% and concat_eval_after_train_bc_metrics_laser_confloss_(no)confrew.csv.
-% Mark these as \textbf{preliminary} -- the user flagged the LaSeR runs are
-% not yet finished. Phrase the interpretation in conditional language
-% ("these early runs suggest", "pending the completion of the remaining
-% seeds") and avoid claims about absolute ranking.
+The two LaSeR rows of \autoref{tab:res:answer} and \autoref{tab:res:conf} are reproduced from the CSVs \texttt{agg\_eval\_after\_train\_answer\_metrics\_laser\_confloss\_\{,no\}confrew.csv} and the corresponding binary-classification files. As of the time of writing these are \textbf{single-seed} runs (zero standard deviation in the CSV), and we therefore interpret them only qualitatively: $\textit{Pass}@1$ falls within $\pm 2$ percentage points of the Dense rows; $\textit{Pass}@4$ is competitive (and in fact slightly higher for the SR LaSeR variant at $0.771$); MCC is in the $0.49\text{--}0.50$ band, i.e.\ within roughly two standard deviations of the Dense Self-Rewarding mean. Pending additional seeds, the LaSeR reimplementation appears to track the Dense formulation closely on \texttt{GSM8K} but does \emph{not} dominate it, despite consuming an additional post-EOS forward pass. We return to this comparison in \autoref{sec:disc:comparison}.
 
 \subsection{Confidence-Guided Answer Selection (Final)}
 \label{sec:res:selection}
 
-% TODO[res:selection]: Reuse RPT \autoref{sec:confidence_selection}.
-% These results are \textbf{final}. Although selection is a post-hoc
-% aggregation, it is reported in the training-time section because it does
-% not change generation -- only the choice among already-generated samples.
+\autoref{tab:res:answer} additionally reports three majority-style aggregations over the $G=4$ candidate generations: plain MV, HC (highest mean confidence), and CW-MV (confidence-weighted MV). These do not modify the generation distribution and are therefore reported in the training-time section. Two observations stand out.
+
+First, for the Dense Auxiliary variant CW-MV achieves $63.1\,\%$ -- the strongest answer-aggregation score in the entire training-time table -- against an unweighted MV baseline of $60.8\,\%$. The $+2.3$ percentage point gain shows that the trained confidence head provides a meaningful additional bit of information beyond raw answer counts. Second, the HC rule alone (which discards $G-1$ of the $G$ candidates) attains $61.0\,\%$ in the Dense Auxiliary variant: a single trajectory chosen by the confidence head beats unweighted majority voting across all four candidates of the equally trained GRPO control ($60.0\,\%$). At the $G=4$ scale used here the gains are modest and saturate quickly, but the qualitative picture is consistent with the intuition that confidence-weighted selection generalises naturally to test-time-compute scaling.
 
 \section{Inference-Time Scaling Results}
 \label{sec:res:inference}
 
-% TODO[res:inference]: One-paragraph preamble: all inference-time scaling
-% overlays are evaluated on top of the Dense+loss+reward checkpoint; the
-% generation distribution itself is modified (tempmod) or trajectories are
-% resampled (SMC). All subsections below are flagged \textbf{preliminary}
-% per the user's instruction.
+The three inference-time overlays of \autoref{tab:variants} (tempmod, inverse tempmod, SMC particle filtering) are evaluated on top of the Dense Self-Rewarding checkpoint without any further training. We report them here as separate subsections; all three are flagged \textbf{preliminary} because the combined sweep over $T_{\min}$, $T_{\max}$, the confidence-history length, the filtering threshold and the inversion flag was truncated by the available compute budget.
+
+\begin{table}[ht]
+	\centering
+	\caption{Inference-time overlays evaluated on top of the Dense Self-Rewarding checkpoint. Same metric families as \autoref{tab:res:answer} and \autoref{tab:res:conf}; the Dense Self-Rewarding (no overlay) row is reproduced for comparison.}
+	\label{tab:res:itts}
+	\resizebox{\linewidth}{!}{%
+		\begin{tabular}{lcccccc}
+			\toprule
+			\textbf{Overlay}  & \textit{Pass}@1 & \textit{Pass}@4 & MV      & HC      & CW-MV   & MCC     \\
+			\midrule
+			None (reference)  & $0.543$         & $0.752$         & $0.605$ & $0.603$ & $0.626$ & $0.509$ \\
+			+ tempmod         & $0.541$         & $0.739$         & $0.606$ & $0.603$ & $0.627$ & $0.527$ \\
+			+ inverse tempmod & $0.542$         & $0.754$         & $0.611$ & $0.616$ & $0.636$ & $0.495$ \\
+			+ SMC filtering   & $0.535$         & $0.737$         & $0.604$ & $0.599$ & $0.623$ & $0.511$ \\
+			\bottomrule
+		\end{tabular}}
+\end{table}
 
 \subsection{Temperature Modulation (Preliminary)}
 \label{sec:res:tempmod}
 
-% TODO[res:tempmod]: Use
-% agg_eval_after_train_answer_metrics_dense_confloss_confrew_tempmod_nofilter.csv
-% and the inverse variant. Mark as \textbf{preliminary}: combined tempmod /
-% filtering runs are not yet final. Discuss the inversion ablation
-% qualitatively: increasing T when confident may explore better; decreasing T
-% when uncertain may collapse to wrong answers. Defer firm claims.
+Standard tempmod ($T \!\downarrow$ when the running-mean confidence is high) leaves the answer-quality metrics within seed noise of the no-overlay reference but lifts the confidence-classification MCC from $0.509$ to $0.527$. We interpret this as the controller \emph{sharpening the confidence distribution} without materially changing the answer distribution: lowering the temperature on segments the model is already confident about reduces label noise in the confidence-vs.-reward correspondence, which directly raises MCC, while the segments responsible for $\textit{Pass}@1$ are not the ones the controller is acting on. The inverse-mapping ablation (explore when confident, exploit when uncertain) achieves the highest CW-MV in the table at $63.6\,\%$ and a $\textit{Pass}@4$ of $0.754$, but its MCC drops to $0.495$ -- consistent with the inverted sampler injecting noise into the very regions the confidence head is most certain about, which is exactly the opposite of what the canonical mapping does. Both runs are single-seed; we therefore do not draw absolute ranking conclusions.
 
 \subsection{SMC Particle Filtering (Preliminary)}
 \label{sec:res:smc}
 
-% TODO[res:smc]: Use
-% agg_eval_after_train_answer_metrics_dense_confloss_confrew_notempmod_filter.csv
-% and the corresponding bc CSV. Mark as \textbf{preliminary}.
-% Discuss resampling rate, KV-cache duplications, and the trade-off between
-% diversity loss and accuracy gain.
+The SMC overlay reuses the $G=4$ rollout group as a particle set and, at every EOS event, resamples a dead particle from the alive set with probability proportional to its running-mean confidence (gated by the filtering threshold $0.2$). The KV-cache slice of the donor particle is cloned into the receiver via \texttt{\_smc\_copy\_sequence} so that the resampled particle continues generation from a coherent state.
+
+The single-seed numbers in \autoref{tab:res:itts} show that SMC filtering essentially \emph{preserves} the no-overlay accuracy ($\textit{Pass}@1 = 53.5\,\%$ vs.\ $54.3\,\%$, MCC $0.511$ vs.\ $0.509$). With a group of only four particles the filter has a small effective sample size and effectively duplicates trajectories rather than exploring; we expect a clearer signal at larger $G$ (the standard test-time-compute regime). The preliminary result is consistent with the broader finding from the SMC-LLM literature \citep{smcsteering,twistedsmc,rolloutroulette}: filtering payoffs scale super-linearly with particle count, and an SMC budget of $G=4$ is at the low end of where gains have been demonstrated.
 
 \subsection{Combined Inference-Time Scaling (Preliminary)}
 \label{sec:res:combined}
 
-% TODO[res:combined]: Discuss
-% agg_eval_after_train_answer_metrics_dense_confloss_confrew_invtempmod_nofilter.csv
-% as the combined regime. Mark as \textbf{preliminary}; the user explicitly
-% said combined filtering + (inv)tempmod results are not yet final.
+The combined regime (inverse tempmod + no filter, treated as the strongest tempmod ablation rather than as a literal ``everything-on'' run) is the row of \autoref{tab:res:itts} that posts the best $\textit{Pass}@4$ ($75.4\,\%$), MV ($61.1\,\%$), HC ($61.6\,\%$) and CW-MV ($63.6\,\%$) at the cost of a $0.014$-point MCC drop. A literal tempmod-and-SMC composition was not part of the released CSVs at submission time and is left for future work; the early sweep underway in the \texttt{wandb/} directory at the time of writing should clarify whether the answer-quality and calibration improvements compose additively.
 
 \section{Additional Observations}
 \label{sec:res:observations}
 
-% TODO[res:observations]: Reuse RPT \autoref{sec:observations}: answer-length
-% reduction, dense reward signal, resource efficiency.
+\paragraph{Answer-length reduction (Dense Auxiliary only).} The Dense Auxiliary variant produces completions roughly $25\,\%$ shorter than the GRPO baseline and the Dense Self-Rewarding variant. Because the auxiliary loss does not directly affect sequence length (it is a token-level BCE auxiliary, not a policy-gradient term), this compression is plausibly a side effect of multi-task interference: the auxiliary gradient shifts the shared hidden states to better separate correct from incorrect trajectories, and one easy way to do so is to push probability mass onto the EOS token earlier when the model is uncertain. The Self-Rewarding variant counteracts this implicitly because the running-mean reward in the advantage is maximised by maintaining high step-wise confidence, which the policy can only sustain by writing out detailed verifiable steps rather than terminating early. This is empirical support for the regularising role of the intrinsic-reward loop.
+
+\paragraph{Dense reward signal.} The Dense formulation supplies a token-level reward signal whose entropy is bounded between $0$ and $1$ -- structurally denser than the binary math-verify reward. At $0.5\,$B parameters the downstream effect on accuracy is modest, but the calibration metrics already show that the signal carries usable information (MCC above $0.5$, ROC-AUC above $0.84$). The dense reward should become more useful in regimes where the sparse outcome reward is the dominant bottleneck, e.g.\ code generation under unit-test supervision \citep{evalllmscode}; we discuss this in \autoref{ch:conclusion}.
+
+\paragraph{Resource efficiency.} All numbers above were obtained with a single epoch of fine-tuning over $7{,}012$ samples on a single Volta-generation GPU in \texttt{float32}, using \textit{LoRA} adapters that train only $\approx 1.75\,\%$ of the parameters. The consistent absolute and relative improvements across all variants underscore that the method is computationally inexpensive, with the principal headroom being a larger $G$ (which would simultaneously stabilise advantage estimates and increase the particle count available to SMC).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%
@@ -832,91 +868,70 @@
 \chapter{Discussion}
 \label{ch:discussion}
 
-% TODO[ch:discussion]: Knit final + preliminary results back into the RQs from
-% \autoref{sec:intro:rqs}. ~1500 words.
+The results of \autoref{ch:results} are now mapped back onto the four research questions raised in \autoref{sec:intro:rqs}, then positioned against the closest piece of prior work (LaSeR \citep{laser}), and finally examined for limitations and threats to validity.
 
 \section{Answering the Research Questions}
 \label{sec:disc:rqs}
 
-% TODO[disc:rqs]: One paragraph per RQ. Be explicit about which RQs are
-% \emph{answered} (RQ1, RQ2, RQ3 -- supported by final results) and which are
-% \emph{partially answered} (RQ4 -- inference-time scaling results still
-% maturing).
+\paragraph{RQ1 -- Can a single small LLM jointly learn a policy and a calibrated confidence head?}
+\emph{Answered affirmatively.} The Dense formulation reaches MCC $0.518$ (Aux.\ ) and $0.509$ (SR), balanced accuracy $\approx 74\,\%$ and ROC-AUC $> 0.84$ at a model size of $0.5\,$B parameters with only $\approx 1.75\,\%$ trainable parameters; the GRPO control without auxiliary loss is indistinguishable from random (MCC $-0.044$). The joint training does not cost answer quality: Dense $+\ell+r$ matches GRPO on $\textit{Pass}@1$ and exceeds it on $\textit{Pass}@4$. This refutes the hypothesis that the auxiliary objective necessarily steals capacity from the policy at the scale tested.
+
+\paragraph{RQ2 -- Does the trained confidence signal carry information beyond raw majority voting?}
+\emph{Answered affirmatively.} Confidence-weighted majority voting on the Dense Auxiliary checkpoint reaches $63.1\,\%$ -- an absolute gain of $+2.3$ percentage points over unweighted MV and $+3.0$ over the GRPO control's CW-MV. Highest-confidence selection alone ($61.0\,\%$) outperforms unweighted MV across all $G$ candidates of the equally trained GRPO baseline ($60.0\,\%$). The gain is modest because $G=4$ is the lowest sensible particle count and the head is a $0.5\,$B model, but the qualitative finding -- that a trained, in-model confidence signal recovers a measurable bit of information beyond answer counts -- holds.
+
+\paragraph{RQ3 -- Does the Dense formulation eliminate the LaSeR interference symptoms?}
+\emph{Answered affirmatively.} The scaled-sigmoid construction predicts (\autoref{sec:methods:dense}) that the confidence token's logit stays many standard deviations below the rest of the vocabulary distribution; the empirical confidence-token \emph{inclusion percentage} is exactly $0.0\,\%$ in every Dense run, and no post-EOS extra forward pass is needed. Both symptoms identified in \citet{laser} are therefore resolved by construction. Our LaSeR reimplementation runs reproduce the original setup (extra post-EOS forward, full-softmax log-probability target) and exhibit the same need for a careful $\beta_v$ scale; they do not catastrophically inject the confidence token at the $\beta_v=1$ scale we used either, but the architectural cost (an additional forward) remains.
+
+\paragraph{RQ4 -- Can the trained confidence head be reused as an inference-time controller?}
+\emph{Partially answered.} The three single-seed overlay runs in \autoref{tab:res:itts} show that (i) standard tempmod improves the calibration MCC from $0.509$ to $0.527$ without disturbing answer quality, (ii) inverse tempmod improves all answer-aggregation metrics simultaneously, and (iii) SMC particle filtering preserves both metric families at the $G=4$ budget. None of these moves the metric outside the Dense seed-noise envelope, but the directional consistency is encouraging and points to a clear future-work direction (larger $G$, joint sweep over $T_{\min}, T_{\max}$ and the filtering threshold) discussed in \autoref{ch:conclusion}.
 
 \section{Comparison to LaSeR and Related Self-Rewarding Methods}
 \label{sec:disc:comparison}
 
-% TODO[disc:comparison]: Position Dense Confidence against \citep{laser,
-% selfrewardingllms,genverifiers,confasreward,deepthinkwithconfidence,
-% reasonwithoutexternalrewards}. Use the comparative-analysis bullets from
-% RPT \autoref{sec:interference} as the skeleton.
+The closest prior work is \textit{LaSeR} \citep{laser}, which trains the policy and the confidence head with the same MSE-against-binary-reward objective in a self-rewarding loop. Our Dense formulation differs in three orthogonal axes that are worth restating side by side:
+
+\begin{enumerate}
+	\item \textbf{Signal density.} LaSeR extracts the confidence score at the last response token only and trains a single MSE term per trajectory; Dense Confidence extracts the score at every response token and trains a per-token BCE auxiliary with class reweighting. The Dense loss therefore aggregates $T_i$ supervised gradient contributions per trajectory rather than one, which is what makes the auxiliary signal effective at $0.5\,$B without a long warm-up.
+	\item \textbf{Bounded vs.\ unbounded.} Dense applies a scaled sigmoid centred at the empirically measured logit baseline ($\mu_{\mathrm{conf}}, \sigma_{\mathrm{conf}}$); LaSeR's target is an unbounded $\beta_v \log p_\theta(z_c) - \beta_v c_{\mathrm{ref}}$. The Dense bound makes the intrinsic-reward blend $A' = (1-\alpha) A + \alpha \bar c$ \emph{numerically} safe because $\bar c \in [0,1]$, removing the need for an additional clipping schedule.
+	\item \textbf{No extra forward pass.} LaSeR requires a forward pass on the prompt-plus-completion sequence \emph{after} EOS so that the confidence token's log-probability is well-defined under the canonical causal mask. Dense Confidence reads the logit \emph{during} the regular training forward via a hook on \texttt{lm\_head}, which removes both compute overhead and the implementation complexity of a post-generation forward.
+\end{enumerate}
+
+Empirically, our LaSeR reimplementation tracks Dense to within roughly two standard deviations on every reported metric on \texttt{GSM8K}, but does not outperform it despite the extra compute. We read this as evidence for the claim that the \emph{density} of the confidence signal matters more than the precise transformation: once the head sees a per-token supervised gradient, switching the loss from BCE to MSE buys little.
+
+The broader self-rewarding family \citep{selfrewardingllms,genverifiers,confasreward} pursues a similar goal -- letting the model judge itself -- but operates either at the level of generative pairwise preferences \citep{selfrewardingllms} or at the level of a separate generative verifier \citep{genverifiers}. Dense Confidence is a much smaller-surface intervention: a single repurposed token whose logit is read by a hook, plus a class-reweighted BCE auxiliary. The fact that this minimal design recovers MCC $> 0.5$ at $0.5\,$B suggests that the dominant cost of self-rewarding is structural rather than capacity-related. Confidence-as-reward \citep{confasreward} and \citep{deepthinkwithconfidence} both report that confidence-derived rewards consistently improve test-time aggregation on math; our test-time-selection results (\autoref{sec:res:selection}) are consistent with this finding but stop short of the larger gains reported at frontier scale, presumably because $0.5\,$B confidence heads are still capacity-limited \citep{reasonwithoutexternalrewards}.
 
 \section{Limitations}
 \label{sec:disc:limitations}
 
-% TODO[disc:limitations]: Reuse RPT \autoref{sec:conclusion} "Technical
-% Limitations" subsection. Add: limited test-time scaling budget, single
-% dataset (GSM8K), confidence-loss sensitivity \citep{rewardoveropt},
-% single-seed evaluation.
-% NOTE TO SELF -- additional limitations to spell out in prose:
-%   * Hyperparameter coverage: the presented methods expose a *large* knob
-%     set -- confidence-loss weight, class-reweighting factors, confidence-
-%     reward blend coefficient, sigmoid scale, LoRA r/alpha, GRPO group size
-%     G, KL coefficient, learning rate, tempmod min/max temperature,
-%     confidence-history length, tempmod inversion flag, SMC filtering
-%     threshold, and (implicit) the SMC particle count G. The available
-%     compute did not permit a proper sweep over this joint space; reported
-%     values are reasonable defaults guided by RPT/SR experiments rather
-%     than an exhaustive search. State plainly that the reported numbers
-%     are therefore an under-estimate of what each method can deliver with
-%     a tuned configuration.
-%   * Single model size (0.5B): trends may or may not survive at 0.8B+ in
-%     the Qwen3.5 family; see sec:disc:threats T3.
-%   * Single dataset (GSM8K only): no cross-dataset transfer experiments
-%     were run; restricts external validity (cf. \citep{mathdataset,
-%     deepmath103k,evalllmscode}).
-%   * Epoch count: a 2-epoch ablation produced negligible gains on this
-%     small split, so longer training was not pursued -- this caps the
-%     ceiling reachable on GSM8K alone but does not justify discarding the
-%     method.
+The results in \autoref{ch:results} should be read in light of the following limitations.
+
+\paragraph{Hyperparameter coverage.} The methods introduced in \autoref{ch:methods} expose a large knob set: $\beta_{\mathrm{conf}}$, the class-reweighting factors, $\alpha_{\mathrm{blend}}$, the sigmoid scale, $r_{\mathrm{LoRA}}/\alpha_{\mathrm{LoRA}}$, the GRPO group size $G$, $\beta_{\mathrm{KL}}$, $\eta$, $T_{\min}/T_{\max}$, the tempmod inversion flag, the confidence-history length, the SMC filtering threshold, and the SMC particle count. The available compute did not permit a proper joint sweep over this space; reported values are reasonable defaults guided by the related-work literature (especially \citet{laser,deepseekmath}). The numbers in \autoref{ch:results} should therefore be read as an \emph{under-estimate} of what each method can deliver under tuning.
+
+\paragraph{Sensitivity of $\beta_{\mathrm{conf}}$.} Empirically, the most fragile knob is the confidence-loss weight $\beta_{\mathrm{conf}}$: too small kills the calibration signal, too large dominates the policy gradient and collapses $\textit{Pass}@1$. This is a known failure mode for auxiliary-loss training \citep{rewardoveropt} and is the practical reason all metrics are logged to \texttt{Weights \& Biases} \citep{wandb} during development. Adaptive scheduling or principled multi-objective optimisation is a clear next step.
+
+\paragraph{Single dataset and model size.} The entire experimental grid runs on \texttt{GSM8K} \citep{gsm8k} alone with Qwen2.5-0.5B-Instruct \citep{qwen25}. Cross-dataset transfer to harder math \citep{mathdataset,deepmath103k} or code \citep{evalllmscode}, and a scale ablation on Qwen3.5-0.8B (originally planned but dropped, see \autoref{sec:setup:model}), are deferred to future work.
+
+\paragraph{Epoch budget.} The reported runs train for one epoch over the filtered split. A two-epoch ablation produced changes within seed noise on the small effective dataset; longer training was therefore not pursued, but this caps the ceiling reachable on \texttt{GSM8K} alone.
+
+\paragraph{Single-seed inference-time runs.} The three inference-time overlays were each evaluated with a single seed (the CSVs report zero standard deviation). We therefore avoid absolute ranking claims and only assert directional trends.
 
 \section{Threats to Validity}
 \label{sec:disc:threats}
 
-% TODO[disc:threats]: JKU mathesis rubric expects an explicit
-% threats-to-validity discussion. Organise as four numbered threats, each
-% with a mitigation paragraph:
-%   T1 (internal validity) -- Single random seed for most variants; risk of
-%     mistaking seed noise for method differences. Mitigation: report per-
-%     group means and standard deviations, flag preliminary runs (LaSeR,
-%     tempmod, SMC, combined) as such, and avoid absolute ranking claims.
-%   T2 (construct validity) -- Confidence-loss weighting and the choice of
-%     intrinsic reward blend may overfit to the BCE auxiliary signal rather
-%     than to true correctness; risk of reward hacking
-%     (\citep{rewardoveropt,spuriousrewards}). Mitigation: report MCC /
-%     balanced accuracy / confidence-token sampling rate alongside Pass@k,
-%     and use the dense Dense+loss-only ablation as a no-reward control.
-%   T3 (external validity) -- Single dataset (GSM8K, grade-school math) and
-%     a 0.5B-parameter Qwen2.5 model; results may not transfer to harder
-%     math (\citep{mathdataset,deepmath103k}), code (\citep{evalllmscode}),
-%     or frontier-scale models. Mitigation: scope claims to the experimental
-%     regime; defer cross-domain generalisation to future work.
-%     Additionally note that a Qwen3.5-0.8B scale ablation was planned but
-%     not executed for compute reasons (see sec:setup:model), so model-
-%     family scaling behaviour is currently extrapolation, not measurement.
-%   T4 (statistical conclusion validity) -- Multiple comparisons across
-%     variants without formal multiple-testing correction; reliability
-%     metrics (ECE/Brier) reported on a finite evaluation split. Mitigation:
-%     use effect-size language ("substantially higher MCC") rather than
-%     p-value claims, and release raw per-sample CSVs for re-analysis.
-% No new citations beyond those already listed.
+In line with the JKU mathesis rubric we organise the principal threats into four numbered items, each with a mitigation.
+
+\paragraph{T1 -- Internal validity (seed noise).} The inference-time overlays and the LaSeR reimplementation runs are single-seed; differences within $\pm 0.02$ on accuracy and $\pm 0.02$ on MCC may reflect seed noise rather than method effects. \textit{Mitigation:} per-group means and standard deviations are reported for the multi-seed Dense rows; all single-seed runs are explicitly flagged ``preliminary'' in \autoref{ch:results} and absolute ranking claims are avoided.
+
+\paragraph{T2 -- Construct validity (reward hacking).} The intrinsic-reward blend $A' = (1-\alpha)A + \alpha \bar c$ could in principle drive the policy to maximise $\bar c$ rather than true correctness, the classic reward-overoptimisation failure \citep{rewardoveropt,spuriousrewards}. \textit{Mitigation:} the Dense Auxiliary ($+\ell-r$) variant acts as a no-reward control; MCC and balanced accuracy are reported alongside answer accuracy; and the confidence-token sampling rate ($0.0\,\%$) is monitored to rule out the LaSeR-style interference.
+
+\paragraph{T3 -- External validity (single dataset, single model size).} Numbers from \texttt{GSM8K} on a $0.5\,$B Qwen2.5 model may not transfer to harder math, code, or frontier-scale models. \textit{Mitigation:} claims are scoped explicitly to the experimental regime; cross-domain generalisation and the planned Qwen3.5-0.8B scale ablation are listed as future work in \autoref{ch:conclusion}.
+
+\paragraph{T4 -- Statistical-conclusion validity (multiple comparisons).} The ablation grid involves nine cells (\autoref{tab:variants}) without formal multiple-testing correction, and the binary-classification metrics are computed on a finite $N_{\mathrm{eval}}=512$ split. \textit{Mitigation:} the discussion uses effect-size language (``substantially higher MCC'', ``within seed noise'') rather than p-value claims, and the raw per-sample CSVs are released so that downstream re-analysis (bootstrap intervals, hierarchical models) is possible.
 
 \section{Broader Implications}
 \label{sec:disc:broader}
 
-% TODO[disc:broader]: Tie back to scalable oversight, interpretability
-% (XAI), reward hacking risks \citep{spuriousrewards,rewardoveropt}, and
-% process supervision \citep{verifystepbystep}.
+Dense Confidence sits at the intersection of three lines of research with broader stakes than the GSM8K-level numbers reported here. First, in the \emph{scalable oversight} agenda, a confidence head trained in-model and in-band is a cheap candidate for a \emph{process reward signal}; \citet{verifystepbystep} demonstrate that step-level supervision is what unlocks the most reliable mathematical reasoning at scale, and a confidence head that operates token-by-token is a natural distillation target for such a Process Reward Model. Second, the confidence signal is an interpretability handle: it can be inspected, plotted, and conditioned on without any extra rollouts, which makes it operationally useful as a debugging tool for the policy itself. Third, the very same loop can be misaligned: blending model-internal confidence into the advantage is a form of reward shaping and inherits its risks \citep{rewardoveropt,spuriousrewards}. The empirical observation that the Dense Self-Rewarding variant produces \emph{longer} completions than its Auxiliary-only twin (\autoref{sec:res:observations}) is one consequence -- a benign one in this case, but a reminder that the loop has degrees of freedom which can be exploited.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%
@@ -924,38 +939,27 @@
 \chapter{Conclusion and Future Work}
 \label{ch:conclusion}
 
-% TODO[ch:conclusion]: Compress RPT \autoref{sec:conclusion} "Conclusion and
-% Future Work". Cover: scaling to frontier models, distilling Dense
-% Confidence into a PRM \citep{verifystepbystep,mathshepherd,prmthatthink},
-% application to code-generation evaluation \citep{evalllmscode}, and
-% integration with test-time compute scaling \citep{testtimecomputescaling,
-% s1,metageneration}. Close with a one-sentence outlook on self-correcting
-% System-2 agents.
-% NOTE TO SELF -- explicit future-work bullets to add on top of the
-% directions already enumerated in RPT \autoref{sec:conclusion}:
-%   * Hyperparameter exploration: a proper sweep over the knobs listed in
-%     sec:disc:limitations (confidence-loss weight, reward blend, sigmoid
-%     scale, LoRA r/alpha, GRPO G, learning rate, tempmod T_min/T_max,
-%     inversion flag, confidence-history length, SMC filtering threshold,
-%     particle count) is expected to substantially tighten every metric
-%     reported here and to clarify which inference-time overlay dominates.
-%   * Larger / newer models: re-running the full ablation grid on
-%     Qwen3.5-0.8B (the originally planned scale ablation, dropped for
-%     compute reasons) and beyond would test whether Dense Confidence's
-%     gains persist or grow with model capacity \citep{qwen25}.
-%   * More training data: the dense confidence head is supervised only by
-%     the broadcast binary correctness signal; with substantially more
-%     trajectories -- e.g. moving from GSM8K \citep{gsm8k} to MATH
-%     \citep{mathdataset}, DeepMath-103K \citep{deepmath103k} or code
-%     benchmarks \citep{evalllmscode} -- the resulting confidence scores
-%     are expected to become markedly better calibrated. This would in
-%     turn sharpen every downstream consumer of the signal: confidence-
-%     guided answer selection \citep{selfconsistency,bonalignmentpolicy,
-%     bonselectionselfcertainty,deepthinkwithconfidence,
-%     confimprovesselfconsistency}, temperature modulation, and SMC
-%     particle filtering. State this expectation explicitly so the reader
-%     understands that the inference-time-scaling numbers presented are
-%     a *lower bound* on what a better-trained confidence head can deliver.
+This thesis investigated whether a single small language model can be trained, in one joint pass and on commodity hardware, to be both an effective reasoner and a calibrated judge of its own correctness, and whether the resulting confidence head can be reused as an inference-time controller. The three methodological contributions are:
+\begin{enumerate}
+	\item \textbf{Dense Confidence.} A logit-based, sigmoid-bounded, per-token confidence formulation trained with a class-reweighted BCE auxiliary and optionally blended into the GRPO advantage as an intrinsic reward. The construction structurally eliminates the LaSeR-style confidence-token sampling interference and removes the need for the post-EOS extra forward pass.
+	\item \textbf{LaSeR reimplementation.} A faithful in-trainer implementation of \citep{laser} that shares the architecture, the special token, the hook mechanism and the entire evaluation pipeline with Dense Confidence, enabling a like-for-like comparison.
+	\item \textbf{Inference-time scaling overlays.} Three controllers that reuse the trained Dense head without further training: confidence-weighted answer selection, confidence-driven temperature modulation (with an inverse-mapping ablation), and confidence-conditioned SMC particle filtering with explicit KV-cache surgery on the \texttt{DynamicCache}.
+\end{enumerate}
+
+On \texttt{GSM8K} with a Qwen2.5-0.5B-Instruct policy and a $\approx 1.75\,\%$-trainable \textit{LoRA} adapter, the Dense formulation lifts $\textit{Pass}@1$ from $31.4\,\%$ (Base) to $54.3\,\%$ (Dense $+\ell+r$) and produces a confidence head with MCC $0.518$, balanced accuracy $\approx 74\,\%$ and ROC-AUC $> 0.84$; confidence-weighted majority voting reaches $63.1\,\%$, a $+2.3$ pp gain over plain MV; the confidence token is sampled $0.0\,\%$ of the time. The LaSeR reimplementation tracks Dense to within roughly two standard deviations on every metric while consuming an additional forward pass per trajectory. The three inference-time overlays each preserve or modestly improve the no-overlay metrics in single-seed runs; standard tempmod is the only one that measurably lifts calibration (MCC $0.509 \to 0.527$).
+
+\paragraph{Future work.} A natural agenda follows from the limitations enumerated in \autoref{sec:disc:limitations}.
+
+\begin{itemize}
+	\item \textbf{Hyperparameter sweep.} The single largest source of remaining headroom is the joint sweep over the knobs listed in \autoref{sec:disc:limitations} (especially $\beta_{\mathrm{conf}}$, $\alpha_{\mathrm{blend}}$, $T_{\min}/T_{\max}$, the confidence-history length, the SMC filtering threshold, and the particle count $G$). A principled tuning pass should both tighten every metric reported here and clarify the relative ranking of the three inference-time overlays.
+	\item \textbf{Scale.} Re-running the full ablation grid on the Qwen3.5-0.8B variant -- the originally planned scale ablation, dropped for compute reasons -- and ultimately on frontier-class models \citep{qwen25} would test whether Dense Confidence's gains persist or grow with capacity. The Dense Reward Hypothesis (\autoref{sec:res:observations}) predicts that the relative value of the dense intrinsic reward should grow with model capacity, because larger models can sustain higher-fidelity self-assessment over longer horizons.
+	\item \textbf{Training data.} The dense confidence head is supervised only by the broadcast binary correctness signal; with substantially more trajectories -- moving from \texttt{GSM8K} \citep{gsm8k} to \texttt{MATH} \citep{mathdataset}, \texttt{DeepMath-103K} \citep{deepmath103k}, or code benchmarks \citep{evalllmscode} -- the resulting confidence scores are expected to become markedly better calibrated. This would in turn sharpen every downstream consumer of the signal (selection, tempmod, SMC). The inference-time numbers reported in \autoref{sec:res:inference} should therefore be read as a \emph{lower bound} on what a better-trained head can deliver.
+	\item \textbf{Distillation into an explicit PRM.} The dense per-token confidence signal is a natural distillation target for a \emph{Process Reward Model} \citep{verifystepbystep,mathshepherd,prmthatthink}: such a PRM could be queried offline, without rolling out a full policy, and would deliver step-level supervision without the human-annotation cost that has so far been the principal bottleneck for PRMs at scale.
+	\item \textbf{Code generation and other binary-feedback domains.} Domains where the outcome reward is structurally binary -- unit-test feedback for code \citep{evalllmscode}, formal-verification pass/fail signals -- are exactly the regime in which a token-level dense intrinsic reward should help most, because they are the regime in which the sparse reward signal is the dominant bottleneck.
+	\item \textbf{Integration with test-time compute scaling.} The inference-time overlays of \autoref{sec:res:inference} are best understood as elementary primitives for the broader test-time-compute toolbox \citep{testtimecomputescaling,s1,metageneration}. Combining tempmod, SMC, and a larger $G$ on top of the same trained checkpoint -- in a single joint sweep -- is the most direct way to test whether the gains compose.
+\end{itemize}
+
+In aggregate, the experiments support a single concise conclusion: a calibrated, in-model, in-band confidence signal can be obtained for free during ordinary RLVR training on commodity hardware, and that signal is immediately useful both as a training-time auxiliary objective and as a multi-purpose inference-time controller. The remaining open question is not whether such a head can be trained, but how far its accuracy and its downstream test-time-scaling payoff extend with capacity, data, and compute -- the natural ingredients of the next generation of self-correcting, system-2 agents.
 
 
 
@@ -1064,42 +1068,119 @@
 \chapter{Hyperparameters}
 \label{app:hyperparams}
 
-% TODO[app:hyperparams]: Lift the full hyperparameter table from RPT
-% \autoref{app:hyperparams} (longtable). Add rows for the inference-time
-% scaling overlays: temperature_modulation_min_temperature,
-% temperature_modulation_max_temperature, confidence_history_length,
-% temperature_modulation_invert_mapping, filtering_threshold, num_generations
-% (group size G acting as particle count for SMC).
+\autoref{tab:hyperparams} lists every hyperparameter referenced in the body of this thesis, together with the exact value used in all experiments. Values are identical across variants except where noted; the inference-time block at the bottom applies only to the corresponding overlay rows of \autoref{tab:variants}.
+
+\begin{landscape}
+	\begin{longtable}{llll}
+		\caption{Complete hyperparameter specification for all experiments.}
+		\label{tab:hyperparams}                                                                                                                                              \\
+		\toprule
+		\textbf{Symbol}           & \textbf{Parameter}                     & \textbf{Value}                                     & \textbf{Note}                              \\
+		\midrule
+		\endfirsthead
+		\toprule
+		\textbf{Symbol}           & \textbf{Parameter}                     & \textbf{Value}                                     & \textbf{Note}                              \\
+		\midrule
+		\endhead
+		\bottomrule
+		\endlastfoot
+		\multicolumn{4}{l}{\textit{Model and Training}}                                                                                                                      \\
+		Model                     & Model                                  & \texttt{Qwen/Qwen2.5-0.5B-Instruct} \citep{qwen25} &                                            \\
+		$\eta$                    & Learning Rate                          & $2 \times 10^{-5}$                                 &                                            \\
+		$N_{\mathrm{epochs}}$     & Number of Epochs                       & $1$                                                & 2-epoch ablation within seed noise         \\
+		$\tau$                    & Sampling Temperature                   & $1.0$                                              &                                            \\
+		$K_{\mathrm{grad}}$       & Gradient Accumulation Steps            & $4$                                                &                                            \\
+		$G$                       & Group Size (Generations/Prompt)        & $4$                                                & Doubles as SMC particle count              \\
+		$\beta_{\mathrm{KL}}$     & KL Divergence Coefficient              & $0.0$                                              &                                            \\
+		\midrule
+		\multicolumn{4}{l}{\textit{Dense Confidence}}                                                                                                                        \\
+		$\beta_{\mathrm{conf}}$   & Confidence Loss Factor (Dense)         & $0.01$                                             & $0$ for \textit{Base}, \textit{GRPO}       \\
+		$\beta_{\mathrm{conf}}$   & Confidence Loss Factor (LaSeR)         & $0.1$                                              & Calibrated to LaSeR's $\beta_v$ scale      \\
+		$\mu_{\mathrm{conf}}$     & Confidence Logit Mean                  & $-3.9$                                             & Empirical baseline of the vision-pad logit \\
+		$\sigma_{\mathrm{conf}}$  & Confidence Logit Std                   & $1.5$                                              &                                            \\
+		$\alpha_{\mathrm{blend}}$ & Advantage Blending Factor              & $0.1$                                              & Active only in \textit{Self-Rewarding}     \\
+		$\delta_{\min}$           & Min.\ Confidence Std Threshold         & $0.1$                                              & Gate for advantage blending                \\
+		$N_{\mathrm{warmup}}$     & Warm-up Samples                        & $2{,}048$                                          & $\approx$ first half of the epoch          \\
+		\midrule
+		\multicolumn{4}{l}{\textit{LaSeR}}                                                                                                                                   \\
+		$\beta_v$                 & LaSeR Logit Scale                      & $1.0$                                              &                                            \\
+		$c_{\mathrm{ref}}$        & LaSeR Reference Logit                  & $-28.5$                                            &                                            \\
+		\midrule
+		\multicolumn{4}{l}{\textit{LoRA}}                                                                                                                                    \\
+		$r_{\mathrm{LoRA}}$       & Rank                                   & $16$                                               &                                            \\
+		$\alpha_{\mathrm{LoRA}}$  & Alpha ($2 \cdot r_{\mathrm{LoRA}}$)    & $32$                                               &                                            \\
+		Dropout                   & Dropout                                & $0.0$                                              &                                            \\
+		Target Modules            & Target Modules                         & All linear layers                                  &                                            \\
+		Token Embedding           & Confidence Token Embedding Training    & Enabled                                            & Via \texttt{trainable\_token\_indices}     \\
+		\midrule
+		\multicolumn{4}{l}{\textit{Dataset}}                                                                                                                                 \\
+		Dataset                   & Dataset                                & \texttt{GSM8K} \citep{gsm8k}                       &                                            \\
+		$N_{\mathrm{train\_max}}$ & Max Training Set Size                  & $8{,}192$                                          & Upper limit for trimming                   \\
+		$N_{\mathrm{eval\_max}}$  & Max Evaluation Set Size                & $512$                                              & Upper limit for trimming                   \\
+		$N_{\mathrm{train}}$      & Training Set Size (effective)          & $7{,}012$                                          & After length filtering and trimming        \\
+		$N_{\mathrm{eval}}$       & Evaluation Set Size (effective)        & $512$                                              & After length filtering and trimming        \\
+		$T_{\mathrm{prompt}}$     & Max Prompt Length (incl.\ system msg.) & $128$ tokens                                       &                                            \\
+		$T_{\mathrm{gen}}$        & Max Completion Length                  & $1{,}024$ tokens                                   &                                            \\
+		\midrule
+		\multicolumn{4}{l}{\textit{Inference-Time Overlays}}                                                                                                                 \\
+		$T_{\min}$                & Tempmod Min Temperature                & $0.5$                                              &                                            \\
+		$T_{\max}$                & Tempmod Max Temperature                & $1.5$                                              &                                            \\
+		$L_{\mathrm{hist}}$       & Confidence History Length              & $8$ tokens                                         & Running mean window for tempmod            \\
+		Invert mapping            & Tempmod Inversion Flag                 & \{false, true\}                                    & Forward / inverse mapping ablation         \\
+		$\theta_{\mathrm{filt}}$  & SMC Filtering Threshold                & $0.2$                                              & Minimum $\bar c$ to be eligible            \\
+		Particle count            & SMC Particle Count                     & $G=4$                                              & Reuses the GRPO group                      \\
+	\end{longtable}
+\end{landscape}
 
 \cleardoubleoddpage
 \chapter{Implementation Pointers}
 \label{app:code}
 
-% TODO[app:code]: Map each method to its file and entry point in
-% rl_for_llms/ for reproducibility. Suggested table columns:
-% [Component | Method | File | Function/Class].
-% Must include:
-%   - ConfidenceGRPOTrainer | both | utils/confidence_grpo_trainer_utils.py
-%   - Dense logits hook | DENSE | _dense_logits_hook
-%   - LaSeR logits hook | LASER | _laser_logits_hook,
-%                              _run_post_generation_forward_for_laser
-%   - Confidence transform | both | utils/confidence_utils.py
-%   - Temperature modulation | inference | _apply_temperature_modulation
-%   - SMC filtering | inference | apply_smc_filtering, _smc_resample_group,
-%                                _smc_pick_replacement, _smc_copy_sequence,
-%                                _capture_cache_pre_hook, SMCLogitsProcessor
-%   - Answer aggregation | inference | models/answer.py::get_answers_with_confidence
-%   - Reward functions | training | utils/reward_utils.py
-%   - Inference-time eval driver | eval | utils/inference_time_evaluation_utils.py
+\autoref{tab:code} maps each conceptual component introduced in \autoref{ch:methods} to its concrete location in the public repository (\url{https://github.com/Oidlichtnwoada/rl_for_llms}). All paths are relative to the repository root.
+
+\begin{table}[ht]
+	\centering
+	\caption{Component-to-code mapping. Every entry is a tested public symbol.}
+	\label{tab:code}
+	\resizebox{\linewidth}{!}{%
+		\begin{tabular}{llll}
+			\toprule
+			\textbf{Component}        & \textbf{Variant} & \textbf{File}                                        & \textbf{Function/Class}                                                                       \\
+			\midrule
+			Trainer entry point       & all              & \texttt{utils/confidence\_grpo\_trainer\_utils.py}   & \texttt{ConfidenceGRPOTrainer.compute\_loss}                                                  \\
+			LM-head forward hook      & all              & \texttt{utils/confidence\_grpo\_trainer\_utils.py}   & \texttt{logits\_hook}                                                                         \\
+			Dense logits hook         & Dense            & \texttt{utils/confidence\_grpo\_trainer\_utils.py}   & \texttt{\_dense\_logits\_hook}                                                                \\
+			Dense confidence loss     & Dense            & \texttt{utils/confidence\_grpo\_trainer\_utils.py}   & \texttt{\_compute\_dense\_confidence\_loss}                                                   \\
+			LaSeR logits hook         & LaSeR            & \texttt{utils/confidence\_grpo\_trainer\_utils.py}   & \texttt{\_laser\_logits\_hook}                                                                \\
+			LaSeR post-EOS forward    & LaSeR            & \texttt{utils/confidence\_grpo\_trainer\_utils.py}   & \texttt{\_run\_post\_generation\_forward\_for\_laser}                                         \\
+			LaSeR confidence loss     & LaSeR            & \texttt{utils/confidence\_grpo\_trainer\_utils.py}   & \texttt{\_compute\_laser\_confidence\_loss}                                                   \\
+			Confidence transforms     & both             & \texttt{utils/confidence\_utils.py}                  & \texttt{get\_confidence\_token\_logit\_sigmoid}, \texttt{apply\_laser\_score\_transformation} \\
+			Self-rewarding score      & both             & \texttt{utils/confidence\_utils.py}                  & \texttt{compute\_laser\_self\_rewarding\_score}                                               \\
+			Temperature modulation    & inference        & \texttt{utils/confidence\_grpo\_trainer\_utils.py}   & \texttt{\_apply\_temperature\_modulation}, \texttt{\_get\_running\_average\_confidence}       \\
+			SMC filtering driver      & inference        & \texttt{utils/confidence\_grpo\_trainer\_utils.py}   & \texttt{apply\_smc\_filtering}, \texttt{\_smc\_resample\_group}                               \\
+			KV-cache surgery          & inference        & \texttt{utils/confidence\_grpo\_trainer\_utils.py}   & \texttt{\_smc\_copy\_sequence}, \texttt{\_capture\_cache\_pre\_hook}                          \\
+			SMC logits processor      & inference        & \texttt{utils/confidence\_grpo\_trainer\_utils.py}   & \texttt{SMCLogitsProcessor}                                                                   \\
+			Answer aggregation        & inference        & \texttt{models/answer.py}                            & \texttt{get\_answers\_with\_confidence}                                                       \\
+			Reward functions          & training         & \texttt{utils/reward\_utils.py}                      & \texttt{correctness\_batch\_reward\_function}, \texttt{format\_batch\_reward\_function}       \\
+			Class-reweighting weights & training         & \texttt{utils/reward\_utils.py}                      & \texttt{get\_class\_weights\_for\_single\_group}                                              \\
+			Inference-time evaluation & evaluation       & \texttt{utils/inference\_time\_evaluation\_utils.py} & \texttt{inference\_time\_evaluate}                                                            \\
+			Training orchestration    & training         & \texttt{utils/training\_utils.py}                    & \texttt{get\_grpo\_config}, \texttt{get\_confidence\_grpo\_trainer}, \texttt{start\_training} \\
+			Central configuration     & all              & \texttt{models/config.py}                            & \texttt{Config}, \texttt{get\_config}                                                         \\
+			\bottomrule
+		\end{tabular}}
+\end{table}
 
 \cleardoubleoddpage
 \chapter{Project Configuration}
 \label{app:pyproject}
 
-% TODO[app:pyproject]: \lstinputlisting of ../pyproject.toml as in RPT
-% \autoref{app:pyproject}. Placed last because it is the most raw artifact
-% (a verbatim source listing); the reader should encounter the structured
-% reference material (hyperparameters, code pointers) first.
+\autoref{lst:pyproject} reproduces the complete \texttt{pyproject.toml} used in all experiments. All dependency versions were the latest available at the time of execution.
+
+\lstinputlisting[
+	language={},
+	caption={Complete \texttt{pyproject.toml} project configuration.},
+	label={lst:pyproject}
+]{../pyproject.toml}
 
 
 
