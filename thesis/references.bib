@@ -160,7 +160,7 @@
 @misc{selfrewardingllms,
 		title={Self-Rewarding Language Models},
 		author={Weizhe Yuan and Richard Yuanzhe Pang and Kyunghyun Cho and Xian Li and Sainbayar Sukhbaatar and Jing Xu and Jason Weston},
-		year={2024},
+		year={2025},
 		eprint={2401.10020},
 		archivePrefix={arXiv},
 		primaryClass={cs.CL},
@@ -169,33 +169,49 @@
 @misc{genverifiers,
 		title={Generative Verifiers: Reward Modeling as Next-Token Prediction},
 		author={Lunjun Zhang and Arian Hosseini and Hritik Bansal and Mehran Kazemi and Aviral Kumar and Rishabh Agarwal},
-		year={2024},
+		year={2025},
 		eprint={2408.15240},
 		archivePrefix={arXiv},
 		primaryClass={cs.LG},
 		url={https://arxiv.org/abs/2408.15240},
 	}
 @misc{trustbutverify,
-		title={Trust, but Verify: A Self-Verification Approach to Reinforcement Learning with Verifiable Rewards},
+		title={Trust, But Verify: A Self-Verification Approach to Reinforcement Learning with Verifiable Rewards},
 		author={Xiaoyuan Liu and Tian Liang and Zhiwei He and Jiahao Xu and Wenxuan Wang and Pinjia He and Zhaopeng Tu and Haitao Mi and Dong Yu},
 		year={2025},
 		eprint={2505.13445},
 		archivePrefix={arXiv},
-		primaryClass={cs.CL},
+		primaryClass={cs.AI},
 		url={https://arxiv.org/abs/2505.13445},
 	}
 @inproceedings{confestcalibsurvey,
-		title={A Survey of Confidence Estimation and Calibration in Large Language Models},
-		author={Jiahui Geng and Fengyu Cai and Yuxia Wang and Heinz Koeppl and Preslav Nakov and Iryna Gurevych},
-		booktitle={Proceedings of the 2024 Conference of the North American Chapter of the Association for Computational Linguistics},
-		year={2024},
-		url={https://aclanthology.org/2024.naacl-long.366/},
+		title = "A Survey of Confidence Estimation and Calibration in Large Language Models",
+		author = "Geng, Jiahui  and
+		Cai, Fengyu  and
+		Wang, Yuxia  and
+		Koeppl, Heinz  and
+		Nakov, Preslav  and
+		Gurevych, Iryna",
+		editor = "Duh, Kevin  and
+		Gomez, Helena  and
+		Bethard, Steven",
+		booktitle = "Proceedings of the 2024 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies (Volume 1: Long Papers)",
+		month = jun,
+		year = "2024",
+		address = "Mexico City, Mexico",
+		publisher = "Association for Computational Linguistics",
+		url = "https://aclanthology.org/2024.naacl-long.366/",
+		doi = "10.18653/v1/2024.naacl-long.366",
+		pages = "6577--6595",
+		abstract = "Large language models (LLMs) have demonstrated remarkable capabilities across a wide range of tasks in various domains. Despite their impressive performance, they can be unreliable due to factual errors in their generations. Assessing their confidence and calibrating them across different tasks can help mitigate risks and enable LLMs to produce better generations. There has been a lot of recent research aiming to address this, but there has been no comprehensive overview to organize it and to outline the main lessons learned. The present survey aims to bridge this gap. In particular, we outline the challenges and we summarize recent technical advancements for LLM confidence estimation and calibration. We further discuss their applications and suggest promising directions for future work."
 	}
 @inproceedings{confelicitation,
-		title={Can {LLM}s Express Their Uncertainty? An Empirical Evaluation of Confidence Elicitation in {LLM}s},
+		title={Can LLMs Express Their Uncertainty? An Empirical Evaluation of Confidence Elicitation in LLMs},
 		author={Miao Xiong and Zhiyuan Hu and Xinyang Lu and Yifei Li and Jie Fu and Junxian He and Bryan Hooi},
-		booktitle={International Conference on Learning Representations (ICLR)},
 		year={2024},
+		eprint={2306.13063},
+		archivePrefix={arXiv},
+		primaryClass={cs.CL},
 		url={https://arxiv.org/abs/2306.13063},
 	}
 @misc{processoutcomefeedback,
@@ -208,14 +224,31 @@
 		url={https://arxiv.org/abs/2211.14275},
 	}
 @inproceedings{mathshepherd,
-		title={Math-Shepherd: Verify and Reinforce {LLM}s Step-by-Step without Human Annotations},
-		author={Peiyi Wang and Lei Li and Zhihong Shao and R.X. Xu and Damai Dai and Yifei Li and Deli Chen and Yu Wu and Zhifang Sui},
-		booktitle={Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (ACL)},
-		year={2024},
-		url={https://aclanthology.org/2024.acl-long.510/},
+		title = "Math-Shepherd: Verify and Reinforce {LLM}s Step-by-step without Human Annotations",
+		author = "Wang, Peiyi  and
+		Li, Lei  and
+		Shao, Zhihong  and
+		Xu, Runxin  and
+		Dai, Damai  and
+		Li, Yifei  and
+		Chen, Deli  and
+		Wu, Yu  and
+		Sui, Zhifang",
+		editor = "Ku, Lun-Wei  and
+		Martins, Andre  and
+		Srikumar, Vivek",
+		booktitle = "Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)",
+		month = aug,
+		year = "2024",
+		address = "Bangkok, Thailand",
+		publisher = "Association for Computational Linguistics",
+		url = "https://aclanthology.org/2024.acl-long.510/",
+		doi = "10.18653/v1/2024.acl-long.510",
+		pages = "9426--9439",
+		abstract = "In this paper, we present an innovative process-oriented math process reward model called Math-shepherd, which assigns a reward score to each step of math problem solutions. The training of Math-shepherd is achieved using automatically constructed process-wise supervision data, breaking the bottleneck of heavy reliance on manual annotation in existing work. We explore the effectiveness of Math-shepherd in two scenarios: 1) $\textit{Verification}$: Math-shepherd is utilized for reranking multiple outputs generated by Large Language Models (LLMs); 2) $\textit{Reinforcement Learning (RL)}$: Math-shepherd is employed to reinforce LLMs.With Math-shepherd, a series of open-source LLMs demonstrates exceptional performance. For instance, process RL with Math-shepherd significantly enhances Mistral-7B (77.9{\%}$\to$84.1{\%} on GSM8K and 28.6{\%}$\to$33.0{\%} on MATH).The accuracy can be further improved to 89.1{\%} and 43.5{\%} on two benchmarks with verification of Math-shepherd.We believe that automatic process supervision holds significant potential for the future evolution of LLMs."
 	}
 @misc{scalingverifiers,
-		title={Rewarding Progress: Scaling Automated Process Verifiers for {LLM} Reasoning},
+		title={Rewarding Progress: Scaling Automated Process Verifiers for LLM Reasoning},
 		author={Amrith Setlur and Chirag Nagpal and Adam Fisch and Xinyang Geng and Jacob Eisenstein and Rishabh Agarwal and Alekh Agarwal and Jonathan Berant and Aviral Kumar},
 		year={2024},
 		eprint={2410.08146},
@@ -229,7 +262,7 @@
 		year={2025},
 		eprint={2504.16828},
 		archivePrefix={arXiv},
-		primaryClass={cs.CL},
+		primaryClass={cs.LG},
 		url={https://arxiv.org/abs/2504.16828},
 	}
 @misc{selfconsistency,
@@ -242,7 +275,7 @@
 		url={https://arxiv.org/abs/2203.11171},
 	}
 @misc{testtimecomputescaling,
-		title={Scaling {LLM} Test-Time Compute Optimally Can Be More Effective Than Scaling Model Parameters},
+		title={Scaling LLM Test-Time Compute Optimally can be More Effective than Scaling Model Parameters},
 		author={Charlie Snell and Jaehoon Lee and Kelvin Xu and Aviral Kumar},
 		year={2024},
 		eprint={2408.03314},
@@ -251,7 +284,7 @@
 		url={https://arxiv.org/abs/2408.03314},
 	}
 @misc{metageneration,
-		title={From Decoding to Meta-Generation: Inference-Time Algorithms for Large Language Models},
+		title={From Decoding to Meta-Generation: Inference-time Algorithms for Large Language Models},
 		author={Sean Welleck and Amanda Bertsch and Matthew Finlayson and Hailey Schoelkopf and Alex Xie and Graham Neubig and Ilia Kulikov and Zaid Harchaoui},
 		year={2024},
 		eprint={2406.16838},
@@ -271,8 +304,10 @@
 @inproceedings{nncalibration,
 		title={On Calibration of Modern Neural Networks},
 		author={Chuan Guo and Geoff Pleiss and Yu Sun and Kilian Q. Weinberger},
-		booktitle={Proceedings of the 34th International Conference on Machine Learning (ICML)},
 		year={2017},
+		eprint={1706.04599},
+		archivePrefix={arXiv},
+		primaryClass={cs.LG},
 		url={https://arxiv.org/abs/1706.04599},
 	}
 @misc{adaptivetempscaling,
@@ -281,7 +316,7 @@
 		year={2024},
 		eprint={2409.19817},
 		archivePrefix={arXiv},
-		primaryClass={cs.CL},
+		primaryClass={cs.LG},
 		url={https://arxiv.org/abs/2409.19817},
 	}
 @misc{thermometer,
@@ -299,7 +334,7 @@
 		year={2025},
 		eprint={2502.05234},
 		archivePrefix={arXiv},
-		primaryClass={cs.CL},
+		primaryClass={cs.LG},
 		url={https://arxiv.org/abs/2502.05234},
 	}
 @misc{smcsteering,
@@ -308,7 +343,7 @@
 		year={2023},
 		eprint={2306.03081},
 		archivePrefix={arXiv},
-		primaryClass={cs.CL},
+		primaryClass={cs.AI},
 		url={https://arxiv.org/abs/2306.03081},
 	}
 @misc{twistedsmc,
@@ -323,29 +358,37 @@
 @inproceedings{smcsyntacticsemanticcontrol,
 		title={Syntactic and Semantic Control of Large Language Models via Sequential Monte Carlo},
 		author={João Loula and Benjamin LeBrun and Li Du and Ben Lipkin and Clemente Pasti and Gabriel Grand and Tianyu Liu and Yahya Emara and Marjorie Freedman and Jason Eisner and Ryan Cotterell and Vikash Mansinghka and Alexander K. Lew and Tim Vieira and Timothy J. O'Donnell},
-		booktitle={International Conference on Learning Representations (ICLR)},
 		year={2025},
+		eprint={2504.13139},
+		archivePrefix={arXiv},
+		primaryClass={cs.CL},
 		url={https://arxiv.org/abs/2504.13139},
 	}
-@inproceedings{pbmcmethods,
-		title={A Probabilistic Inference Approach to Inference-Time Scaling of {LLM}s using Particle-Based {M}onte {C}arlo Methods},
+@misc{rolloutroulette,
+		title={Rollout Roulette: A Probabilistic Inference Approach to Inference-Time Scaling of LLMs using Particle-Based Monte Carlo Methods},
 		author={Isha Puri and Shivchander Sudalairaj and Guangxuan Xu and Kai Xu and Akash Srivastava},
-		booktitle={Advances in Neural Information Processing Systems (NeurIPS)},
 		year={2025},
+		eprint={2502.01618},
+		archivePrefix={arXiv},
+		primaryClass={cs.LG},
 		url={https://arxiv.org/abs/2502.01618},
 	}
-@inproceedings{attention,
+@misc{attention,
 		title={Attention Is All You Need},
-		author={Ashish Vaswani and Noam Shazeer and Niki Parmar and Jakob Uszkoreit and Llion Jones and Aidan N. Gomez and Łukasz Kaiser and Illia Polosukhin},
-		booktitle={Advances in Neural Information Processing Systems (NeurIPS)},
-		year={2017},
+		author={Ashish Vaswani and Noam Shazeer and Niki Parmar and Jakob Uszkoreit and Llion Jones and Aidan N. Gomez and Lukasz Kaiser and Illia Polosukhin},
+		year={2023},
+		eprint={1706.03762},
+		archivePrefix={arXiv},
+		primaryClass={cs.CL},
 		url={https://arxiv.org/abs/1706.03762},
 	}
-@inproceedings{cot,
+@misc{cot,
 		title={Chain-of-Thought Prompting Elicits Reasoning in Large Language Models},
 		author={Jason Wei and Xuezhi Wang and Dale Schuurmans and Maarten Bosma and Brian Ichter and Fei Xia and Ed Chi and Quoc Le and Denny Zhou},
-		booktitle={Advances in Neural Information Processing Systems (NeurIPS)},
-		year={2022},
+		year={2023},
+		eprint={2201.11903},
+		archivePrefix={arXiv},
+		primaryClass={cs.CL},
 		url={https://arxiv.org/abs/2201.11903},
 	}
 @misc{verbalizedconfidence,
@@ -357,11 +400,13 @@
 		primaryClass={cs.CL},
 		url={https://arxiv.org/abs/2205.14334},
 	}
-@inproceedings{treeofthoughts,
+@misc{treeofthoughts,
 		title={Tree of Thoughts: Deliberate Problem Solving with Large Language Models},
 		author={Shunyu Yao and Dian Yu and Jeffrey Zhao and Izhak Shafran and Thomas L. Griffiths and Yuan Cao and Karthik Narasimhan},
-		booktitle={Advances in Neural Information Processing Systems (NeurIPS)},
 		year={2023},
+		eprint={2305.10601},
+		archivePrefix={arXiv},
+		primaryClass={cs.CL},
 		url={https://arxiv.org/abs/2305.10601},
 	}
 @article{bayesianstateestimation,
