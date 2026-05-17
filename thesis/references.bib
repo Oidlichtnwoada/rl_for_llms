@@ -50,7 +50,7 @@
 		archivePrefix = {arXiv},
 		primaryClass = {cs.CL},
 		url = {https://arxiv.org/abs/2504.11456},
-		topics = {dataset,mathematics-benchmark,math-reasoning,rlvr},
+		topics = {dataset,math-benchmark,math-reasoning,rlvr},
 		aisummary = {Releases DeepMath-103K, a decontaminated, difficulty-balanced, machine-verifiable math dataset designed for RL training of reasoning models, with documented contamination filtering against MATH/AIME/Olympiad benchmarks.}
 	}
 @misc{directpreferenceopt,
@@ -94,7 +94,7 @@
 		archivePrefix = {arXiv},
 		primaryClass = {cs.LG},
 		url = {https://arxiv.org/abs/1707.06347},
-		topics = {ppo,policy-gradient,reinforcement-learning},
+		topics = {ppo,policy-gradient,rl},
 		aisummary = {Proximal Policy Optimization introduces a clipped surrogate objective that bounds the importance-sampling ratio, making on-policy policy gradient stable, sample-efficient and easy to tune with first-order optimization.}
 	}
 @misc{gsm8k,
@@ -105,7 +105,7 @@
 		archivePrefix = {arXiv},
 		primaryClass = {cs.LG},
 		url = {https://arxiv.org/abs/2110.14168},
-		topics = {dataset,mathematics-benchmark,math-reasoning,benchmark,outcome-reward-model},
+		topics = {dataset,math-benchmark,math-reasoning,benchmark,outcome-reward-model},
 		aisummary = {Releases GSM8K, 8.5K grade-school math word problems with natural-language solutions, and shows that training a verifier and reranking many sampled solutions outperforms simply fine-tuning a generator.}
 	}
 @misc{trl,
@@ -151,7 +151,7 @@
 		url = {https://www.wandb.com/},
 		author = {Biewald, Lukas},
 		topics = {experiment-tracking,software-tool},
-		aisummary = {Weights & Biases is a hosted experiment-tracking platform for logging metrics, hyperparameters, system stats, artifacts and run comparisons during ML training.}
+		aisummary = {Weights and Biases is a hosted experiment-tracking platform for logging metrics, hyperparameters, system stats, artifacts and run comparisons during ML training.}
 	}
 @misc{pytorch,
 		title = {PyTorch: An Imperative Style, High-Performance Deep Learning Library},
@@ -172,7 +172,7 @@
 		archivePrefix = {arXiv},
 		primaryClass = {cs.LG},
 		url = {https://arxiv.org/abs/1602.01783},
-		topics = {a2c-a3c,policy-gradient,reinforcement-learning},
+		topics = {actor-critic,policy-gradient,rl},
 		aisummary = {Asynchronous Advantage Actor-Critic runs many CPU actor-learners in parallel that asynchronously update a shared policy/value network, matching GPU DQN-style methods on Atari at a fraction of the wall-clock and compute.}
 	}
 @misc{mathverify,
@@ -193,7 +193,7 @@
 		primaryClass = {cs.CL},
 		url = {https://arxiv.org/abs/2207.05221},
 		topics = {confidence-estimation,calibration,self-verification,hallucination-detection},
-		aisummary = {Anthropic study showing that large LMs can produce reasonably calibrated answer-correctness probabilities (`P(IK)`) and self-evaluations that improve with scale and light fine-tuning, suggesting genuine introspective access to their own knowledge boundaries.}
+		aisummary = {Anthropic study showing that large LMs can produce reasonably calibrated answer-correctness probabilities and self-evaluations that improve with scale and light fine-tuning, suggesting partial introspective access to their own knowledge boundaries.}
 	}
 @misc{selfrewardingllms,
 		title = {Self-Rewarding Language Models},
@@ -324,7 +324,7 @@
 		primaryClass = {cs.LG},
 		url = {https://arxiv.org/abs/2408.03314},
 		topics = {test-time-scaling,llm-reasoning,best-of-n,process-reward-model},
-		aisummary = {Studies how to optimally spend test-time compute between revisions and verifier-guided search; for a fixed budget, compute-optimal scaling of test-time inference can outperform a >14x larger base model on MATH.}
+		aisummary = {Studies how to optimally spend test-time compute between revisions and verifier-guided search; for a fixed budget, compute-optimal inference can outperform a base model more than 14 times larger on MATH.}
 	}
 @misc{metageneration,
 		title = {From Decoding to Meta-Generation: Inference-time Algorithms for Large Language Models},
@@ -335,7 +335,7 @@
 		primaryClass = {cs.CL},
 		url = {https://arxiv.org/abs/2406.16838},
 		topics = {survey,test-time-scaling,decoding,llm-reasoning},
-		aisummary = {Survey of inference-time `meta-generation` algorithms (best-of-N, search, refinement, debate, MCTS) that wrap a base LM as an inner module, unifying them under a common probabilistic framework.}
+		aisummary = {Survey of inference-time meta-generation algorithms (best-of-N, search, refinement, debate, MCTS) that wrap a base LM as an inner module, unifying them under a common probabilistic framework.}
 	}
 @misc{controlleddecoding,
 		title = {Controlled Decoding from Language Models},
@@ -345,7 +345,7 @@
 		archivePrefix = {arXiv},
 		primaryClass = {cs.LG},
 		url = {https://arxiv.org/abs/2310.17022},
-		topics = {decoding,alignment,reinforcement-learning},
+		topics = {decoding,alignment,rl},
 		aisummary = {Controlled Decoding trains a small prefix-scorer with KL-regularized RL and uses it to steer a frozen base LM at decoding time, achieving RLHF-like alignment without modifying the base policy weights.}
 	}
 @inproceedings{nncalibration,
@@ -467,7 +467,7 @@
 		primaryClass = {cs.CL},
 		url = {https://arxiv.org/abs/2205.14334},
 		topics = {verbalized-confidence,calibration,confidence-estimation,fine-tuning},
-		aisummary = {Fine-tunes GPT-3 to emit natural-language probability statements about its own answers on math; the resulting `verbalized` probabilities are reasonably well calibrated and transfer beyond the training distribution.}
+		aisummary = {Fine-tunes GPT-3 to emit natural-language probability statements about its own answers on math; the resulting verbalized probabilities are reasonably well calibrated and transfer beyond the training distribution.}
 	}
 @misc{treeofthoughts,
 		title = {Tree of Thoughts: Deliberate Problem Solving with Large Language Models},
@@ -478,7 +478,7 @@
 		primaryClass = {cs.CL},
 		url = {https://arxiv.org/abs/2305.10601},
 		topics = {tree-of-thoughts,search,llm-reasoning,chain-of-thought},
-		aisummary = {Tree of Thoughts generalizes CoT to deliberate search over branching `thought` states with LM-based value heuristics and BFS/DFS, solving previously hard puzzles like Game of 24 that defeat plain CoT.}
+		aisummary = {Tree of Thoughts generalizes CoT to deliberate search over branching thought states with LM-based value heuristics and BFS/DFS, solving previously hard puzzles like Game of 24 that defeat plain CoT.}
 	}
 @article{bayesianstateestimation,
 		author = {N.J. Gordon and D.J. Salmond and A.F.M. Smith },
@@ -521,7 +521,7 @@
 		title = {Simple statistical gradient-following algorithms for connectionist reinforcement learning},
 		volume = {8},
 		year = {1992},
-		topics = {reinforcement-learning,policy-gradient,theory},
+		topics = {rl,policy-gradient,theory},
 		aisummary = {Williams' REINFORCE: a class of likelihood-ratio policy-gradient estimators for stochastic units in connectionist networks, providing the unbiased Monte Carlo gradient that underlies modern policy-gradient RL.}
 	}
 @misc{neuraltextdegeneration,
@@ -543,7 +543,7 @@
 		archivePrefix = {arXiv},
 		primaryClass = {cs.LG},
 		url = {https://arxiv.org/abs/2103.03874},
-		topics = {dataset,mathematics-benchmark,math-reasoning,benchmark},
+		topics = {dataset,math-benchmark,math-reasoning,benchmark},
 		aisummary = {Releases MATH, 12.5K competition-style math problems with full step-by-step solutions, and shows that step-by-step solution pretraining substantially improves model accuracy while remaining far below human performance.}
 	}
 @misc{semanticuncertainty,
@@ -712,21 +712,21 @@
 		aisummary = {CoVo / Consistent Paths defines an intrinsic self-reward from the cross-rollout consistency of intermediate reasoning trajectories and trains with RLVR using only that signal, matching label-based RL on math.}
 	}
 @inproceedings{confimprovesselfconsistency,
-title = {Confidence Improves Self-Consistency in {LLM}s},
-author = {Taubenfeld, Amir and Sheffer, Tom and Ofek, Eran and Feder, Amir and Goldstein, Ariel and Gekhman, Zorik and Yona, Gal},
-editor = {Che, Wanxiang and Nabende, Joyce and Shutova, Ekaterina and Pilehvar, Mohammad Taher},
-booktitle = {Findings of the Association for Computational Linguistics: ACL 2025},
-month = {jul},
-year = {2025},
-address = {Vienna, Austria},
-publisher = {Association for Computational Linguistics},
-url = {https://aclanthology.org/2025.findings-acl.1030/},
-doi = {10.18653/v1/2025.findings-acl.1030},
-pages = {20090--20111},
-isbn = {979-8-89176-256-5},
-abstract = {Self-consistency decoding enhances LLMs' performance on reasoning tasks by sampling diverse reasoning paths and selecting the most frequent answer. However, it is computationally expensive, as sampling many of these (lengthy) paths is required to increase the chances that the correct answer emerges as the most frequent one. To address this, we introduce Confidence-Informed Self-Consistency (CISC). CISC performs a weighted majority vote based on confidence scores obtained directly from the model. By prioritizing high-confidence paths, it can identify the correct answer with a significantly smaller sample size. When tested on nine models and four datasets, CISC outperforms self-consistency in nearly all configurations, reducing the required number of reasoning paths by over 40{\%} on average. In addition, we introduce the notion of within-question confidence evaluation, after showing that standard evaluation methods are poor predictors of success in distinguishing correct and incorrect answers to the same question. In fact, the most calibrated confidence method proved to be the least effective for CISC. Lastly, beyond these practical implications, our results and analyses show that LLMs can effectively judge the correctness of their own outputs, contributing to the ongoing debate on this topic.},
-topics = {self-consistency,confidence-estimation,test-time-scaling,llm-reasoning},
-aisummary = {CISC replaces majority voting in self-consistency with a confidence-weighted vote using model-elicited per-trace confidence, cutting the number of samples required by ~40% on nine LMs and four datasets.}
+		title = {Confidence Improves Self-Consistency in {LLM}s},
+		author = {Taubenfeld, Amir and Sheffer, Tom and Ofek, Eran and Feder, Amir and Goldstein, Ariel and Gekhman, Zorik and Yona, Gal},
+		editor = {Che, Wanxiang and Nabende, Joyce and Shutova, Ekaterina and Pilehvar, Mohammad Taher},
+		booktitle = {Findings of the Association for Computational Linguistics: ACL 2025},
+		month = {jul},
+		year = {2025},
+		address = {Vienna, Austria},
+		publisher = {Association for Computational Linguistics},
+		url = {https://aclanthology.org/2025.findings-acl.1030/},
+		doi = {10.18653/v1/2025.findings-acl.1030},
+		pages = {20090--20111},
+		isbn = {979-8-89176-256-5},
+		abstract = {Self-consistency decoding enhances LLMs' performance on reasoning tasks by sampling diverse reasoning paths and selecting the most frequent answer. However, it is computationally expensive, as sampling many of these (lengthy) paths is required to increase the chances that the correct answer emerges as the most frequent one. To address this, we introduce Confidence-Informed Self-Consistency (CISC). CISC performs a weighted majority vote based on confidence scores obtained directly from the model. By prioritizing high-confidence paths, it can identify the correct answer with a significantly smaller sample size. When tested on nine models and four datasets, CISC outperforms self-consistency in nearly all configurations, reducing the required number of reasoning paths by over 40{\%} on average. In addition, we introduce the notion of within-question confidence evaluation, after showing that standard evaluation methods are poor predictors of success in distinguishing correct and incorrect answers to the same question. In fact, the most calibrated confidence method proved to be the least effective for CISC. Lastly, beyond these practical implications, our results and analyses show that LLMs can effectively judge the correctness of their own outputs, contributing to the ongoing debate on this topic.},
+		topics = {self-consistency,confidence-estimation,test-time-scaling,llm-reasoning},
+		aisummary = {CISC replaces majority voting in self-consistency with a confidence-weighted vote using model-elicited per-trace confidence, reducing the number of reasoning paths required by over 40 percent on nine LMs and four datasets.}
 	}
 @misc{bonselectionselfcertainty,
 		title = {Scalable Best-of-N Selection for Large Language Models via Self-Certainty},
@@ -737,7 +737,7 @@ aisummary = {CISC replaces majority voting in self-consistency with a confidence
 		primaryClass = {cs.CL},
 		url = {https://arxiv.org/abs/2502.18581},
 		topics = {best-of-n,confidence-estimation,self-verification,test-time-scaling},
-		aisummary = {Replaces external reward models in best-of-N with a `self-certainty` score derived from the model's own next-token distribution sharpness, giving a verifier-free, scalable selection rule for math and code.}
+		aisummary = {Replaces external reward models in best-of-N with a self-certainty score derived from the model's own next-token distribution sharpness, giving a verifier-free, scalable selection rule for math and code.}
 	}
 @misc{gspo,
 		title = {Group Sequence Policy Optimization},
@@ -769,24 +769,24 @@ aisummary = {CISC replaces majority voting in self-consistency with a confidence
 		archivePrefix = {arXiv},
 		primaryClass = {cs.LG},
 		url = {https://arxiv.org/abs/1506.02438},
-		topics = {policy-gradient,reinforcement-learning,theory},
-		aisummary = {Generalized Advantage Estimation interpolates between high-variance Monte Carlo and high-bias TD advantage estimates via a discount parameter `lambda`, enabling stable PPO/TRPO training on high-dimensional continuous control.}
+		topics = {policy-gradient,rl,theory},
+		aisummary = {Generalized Advantage Estimation interpolates between high-variance Monte Carlo and high-bias TD advantage estimates via a discount parameter lambda, enabling stable PPO/TRPO training on high-dimensional continuous control.}
 	}
 @inproceedings{internalstatelying,
-title = {The Internal State of an {LLM} Knows When It{'}s Lying},
-author = {Azaria, Amos and Mitchell, Tom},
-editor = {Bouamor, Houda and Pino, Juan and Bali, Kalika},
-booktitle = {Findings of the Association for Computational Linguistics: EMNLP 2023},
-month = {dec},
-year = {2023},
-address = {Singapore},
-publisher = {Association for Computational Linguistics},
-url = {https://aclanthology.org/2023.findings-emnlp.68/},
-doi = {10.18653/v1/2023.findings-emnlp.68},
-pages = {967--976},
-abstract = {While Large Language Models (LLMs) have shown exceptional performance in various tasks, one of their most prominent drawbacks is generating inaccurate or false information with a confident tone. In this paper, we provide evidence that the LLM{'}s internal state can be used to reveal the truthfulness of statements. This includes both statements provided to the LLM, and statements that the LLM itself generates. Our approach is to train a classifier that outputs the probability that a statement is truthful, based on the hidden layer activations of the LLM as it reads or generates the statement. Experiments demonstrate that given a set of test sentences, of which half are true and half false, our trained classifier achieves an average of 71{\%} to 83{\%} accuracy labeling which sentences are true versus false, depending on the LLM base model. Furthermore, we explore the relationship between our classifier{'}s performance and approaches based on the probability assigned to the sentence by the LLM. We show that while LLM-assigned sentence probability is related to sentence truthfulness, this probability is also dependent on sentence length and the frequencies of words in the sentence, resulting in our trained classifier providing a more reliable approach to detecting truthfulness, highlighting its potential to enhance the reliability of LLM-generated content and its practical applicability in real-world scenarios.},
-topics = {hallucination-detection,confidence-estimation,self-verification},
-aisummary = {Trains a small probe on the hidden activations of an LLM to classify whether the model's own statement is true or false, achieving 71-83% accuracy across LLaMA/Falcon and outperforming likelihood-based truthfulness signals.}
+		title = {The Internal State of an {LLM} Knows When It{'}s Lying},
+		author = {Azaria, Amos and Mitchell, Tom},
+		editor = {Bouamor, Houda and Pino, Juan and Bali, Kalika},
+		booktitle = {Findings of the Association for Computational Linguistics: EMNLP 2023},
+		month = {dec},
+		year = {2023},
+		address = {Singapore},
+		publisher = {Association for Computational Linguistics},
+		url = {https://aclanthology.org/2023.findings-emnlp.68/},
+		doi = {10.18653/v1/2023.findings-emnlp.68},
+		pages = {967--976},
+		abstract = {While Large Language Models (LLMs) have shown exceptional performance in various tasks, one of their most prominent drawbacks is generating inaccurate or false information with a confident tone. In this paper, we provide evidence that the LLM{'}s internal state can be used to reveal the truthfulness of statements. This includes both statements provided to the LLM, and statements that the LLM itself generates. Our approach is to train a classifier that outputs the probability that a statement is truthful, based on the hidden layer activations of the LLM as it reads or generates the statement. Experiments demonstrate that given a set of test sentences, of which half are true and half false, our trained classifier achieves an average of 71{\%} to 83{\%} accuracy labeling which sentences are true versus false, depending on the LLM base model. Furthermore, we explore the relationship between our classifier{'}s performance and approaches based on the probability assigned to the sentence by the LLM. We show that while LLM-assigned sentence probability is related to sentence truthfulness, this probability is also dependent on sentence length and the frequencies of words in the sentence, resulting in our trained classifier providing a more reliable approach to detecting truthfulness, highlighting its potential to enhance the reliability of LLM-generated content and its practical applicability in real-world scenarios.},
+		topics = {hallucination-detection,confidence-estimation,self-verification},
+		aisummary = {Trains a small probe on the hidden activations of an LLM to classify whether the model's own statement is true or false, achieving 71-83 percent accuracy across LLaMA/Falcon and outperforming likelihood-based truthfulness signals.}
 	}
 @inproceedings{selfcheckgpt,
 		title = {{S}elf{C}heck{GPT}: Zero-Resource Black-Box Hallucination Detection for Generative Large Language Models},
@@ -815,7 +815,7 @@ aisummary = {Trains a small probe on the hidden activations of an LLM to classif
 		pages = {278-287},
 		numpages = {10},
 		series = {ICML '99},
-		topics = {reward-shaping,reinforcement-learning,theory},
+		topics = {reward-shaping,rl,theory},
 		aisummary = {Proves that potential-based reward shaping is the unique class of state-dependent reward transformations that preserves the optimal policy, providing a principled tool for accelerating RL without changing the solution.}
 	}
 @article{forecastverification,
@@ -842,7 +842,7 @@ aisummary = {Trains a small probe on the hidden activations of an LLM to classif
 		primaryClass = {cs.LG},
 		url = {https://arxiv.org/abs/2410.01679},
 		topics = {ppo,credit-assignment,rlvr,math-reasoning},
-		aisummary = {VinePPO replaces PPO's learned critic with unbiased Monte Carlo value estimates obtained from intermediate `vine` rollouts, giving better credit assignment, more stable training and stronger math reasoning than vanilla PPO.}
+		aisummary = {VinePPO replaces PPO's learned critic with unbiased Monte Carlo value estimates obtained from intermediate vine rollouts, giving better credit assignment, more stable training and stronger math reasoning than vanilla PPO.}
 	}
 @inproceedings{revisitingreinforce,
 		title = {Back to Basics: Revisiting {REINFORCE}-Style Optimization for Learning from Human Feedback in {LLM}s},
@@ -857,7 +857,7 @@ aisummary = {Trains a small probe on the hidden activations of an LLM to classif
 		doi = {10.18653/v1/2024.acl-long.662},
 		pages = {12248--12267},
 		abstract = {AI alignment in the shape of Reinforcement Learning from Human Feedback (RLHF) is increasingly treated as a crucial ingredient for high performance large language models. Proximal Policy Optimization (PPO) has been installed by the seminal literature as the standard method for the RL part of RLHF. However, it involves both high computational cost and sensitive hyperparameter tuning. We posit that most of the motivational principles that led to the development of PPO are less of a practical concern in RLHF and advocate for a less computationally expensive method that preserves and even increases performance. We revisit how alignment from human preferences is formulated in the context of RL. Keeping simplicity as a guiding principle, we show that many components of PPO are unnecessary in an RLHF context and that far simpler REINFORCE-style optimization variants outperform both PPO and newly proposed ``RL-free'' methods such as DPO and RAFT. Our work suggests that careful adaptation to LLMs alignment characteristics allows benefiting from online RL optimization at low cost.},
-		topics = {rlhf,policy-gradient,reinforcement-learning},
+		topics = {rlhf,policy-gradient,rl},
 		aisummary = {Empirically shows that simpler REINFORCE-style estimators (REINFORCE, RLOO) match or beat PPO and DPO/RAFT for RLHF on LLMs, since several PPO design choices target issues that do not apply in the RLHF setting.}
 	}
 @misc{bonalignmentpolicy,
@@ -913,7 +913,7 @@ aisummary = {Trains a small probe on the hidden activations of an LLM to classif
 		primaryClass = {cs.CL},
 		url = {https://arxiv.org/abs/2501.19393},
 		topics = {test-time-scaling,llm-reasoning,supervised-fine-tuning},
-		aisummary = {s1 demonstrates simple test-time scaling: SFT a 32B model on just 1K curated reasoning traces, then use `budget forcing` (forcing more `wait` tokens) to spend extra inference compute, matching o1-preview on competition math.}
+		aisummary = {s1 demonstrates simple test-time scaling: SFT a 32B model on just 1K curated reasoning traces, then use budget forcing to spend extra inference compute, matching o1-preview on competition math.}
 	}
 @misc{beyondbinaryrewards,
 		title = {Beyond Binary Rewards: Training LMs to Reason About Their Uncertainty},
@@ -961,7 +961,7 @@ aisummary = {Trains a small probe on the hidden activations of an LLM to classif
 		url = {https://doi.org/10.1198/016214506000001437},
 		eprint = {https://doi.org/10.1198/016214506000001437},
 		topics = {scoring-rules,calibration,theory},
-		aisummary = {Gneiting & Raftery's reference treatment of strictly proper scoring rules for probabilistic forecasts and estimation, unifying log score, Brier score, CRPS and energy score under a common decision-theoretic framework.}
+		aisummary = {Gneiting and Raftery's reference treatment of strictly proper scoring rules for probabilistic forecasts and estimation, unifying log score, Brier score, CRPS and energy score under a common decision-theoretic framework.}
 	}
 @inproceedings{probabilisticoutputs,
 		abstract = {The output of a classifier should be a calibrated posterior probability to enable post-processing. Standard SVMs do not provide such probabilities. One method to create probabilities is to directly train a kernel classifier with a logit link function and a regularized maximum likelihood score. However, training with a maximum likelihood score will produce non-sparse kernel machines. Instead, we train an SVM, then train the parameters of an additional sigmoid function to map the SVM outputs into probabilities. This chapter compares classification error rate and likelihood scores for an SVM plus sigmoid versus a kernel method trained with a regularized likelihood error function. These methods are tested on three data-mining-style data sets. The SVM+sigmoid yields probabilities of comparable quality to the regularized maximum likelihood kernel method, while still retaining the sparseness of the SVM.},
@@ -1019,7 +1019,7 @@ aisummary = {Trains a small probe on the hidden activations of an LLM to classif
 		primaryClass = {cs.LG},
 		url = {https://arxiv.org/abs/2502.01456},
 		topics = {process-reward-model,rlvr,reward-modeling,math-reasoning},
-		aisummary = {PRIME shows that the log-ratio of a generative reward model trained only on outcome labels implicitly encodes dense process rewards; using these `implicit` PRM rewards in PPO yields strong math reasoning gains without step annotations.}
+		aisummary = {PRIME shows that the log-ratio of a generative reward model trained only on outcome labels implicitly encodes dense process rewards; using these implicit PRM rewards in PPO yields strong math reasoning gains without step annotations.}
 	}
 @inproceedings{ovm,
 		title = {{OVM}, Outcome-supervised Value Models for Planning in Mathematical Reasoning},
@@ -1061,7 +1061,7 @@ aisummary = {Trains a small probe on the hidden activations of an LLM to classif
 		pages = {7113--7139},
 		abstract = {Large language models (LLMs) have revolutionized numerous domains with their impressive performance but still face their challenges. A predominant issue is the propensity for these models to generate non-existent facts, a concern termed hallucination. Our research is motivated by the observation that previous instruction tuning methods force the model to complete a sentence no matter whether the model knows the knowledge or not. When the question is out of the parametric knowledge, it will try to make up something and fail to indicate when it lacks knowledge. In this paper, we present a new approach called Refusal-Aware Instruction Tuning (R-Tuning). This approach is formalized by first identifying the disparity in knowledge encompassed by pre-trained parameters compared to that of instruction tuning data. Then, we construct the refusal-aware data based on the knowledge intersection, to tune LLMs to refrain from responding to questions beyond its parametric knowledge. Experimental results demonstrate R-Tuning effectively improves a model{'}s ability to answer known questions and refrain from answering unknown questions. Furthermore, when tested on out-of-domain datasets, the refusal ability was found to be a meta-skill that could be generalized to other tasks. Further analysis surprisingly finds that learning the uncertainty results in better calibration and an improved ability to estimate the uncertainty than uncertainty-based testing. Our code is available at https://github.com/shizhediao/R-Tuning},
 		topics = {hallucination-detection,instruction-tuning,fine-tuning,calibration},
-		aisummary = {R-Tuning (Refusal-Aware Instruction Tuning) constructs an instruction dataset where the model learns to say `I don't know` on questions outside its parametric knowledge, improving honesty and calibration with minimal accuracy cost.}
+		aisummary = {R-Tuning (Refusal-Aware Instruction Tuning) constructs an instruction dataset where the model learns to say I don't know on questions outside its parametric knowledge, improving honesty and calibration with minimal accuracy cost.}
 	}
 @misc{mirostat,
 		title = {Mirostat: A Neural Text Decoding Algorithm that Directly Controls Perplexity},
@@ -1094,7 +1094,7 @@ aisummary = {Trains a small probe on the hidden activations of an LLM to classif
 		primaryClass = {cs.CL},
 		url = {https://arxiv.org/abs/2411.19943},
 		topics = {llm-reasoning,chain-of-thought,fine-tuning},
-		aisummary = {Critical Tokens Matter identifies a small subset of `critical` tokens in reasoning traces whose perturbation flips final correctness, then uses token-level contrastive estimation to upweight them during preference fine-tuning.}
+		aisummary = {Critical Tokens Matter identifies a small subset of critical tokens in reasoning traces whose perturbation flips final correctness, then uses token-level contrastive estimation to upweight them during preference fine-tuning.}
 	}
 @misc{highentropyminoritytokens,
 		title = {Beyond the 80/20 Rule: High-Entropy Minority Tokens Drive Effective Reinforcement Learning for LLM Reasoning},
@@ -1105,7 +1105,7 @@ aisummary = {Trains a small probe on the hidden activations of an LLM to classif
 		primaryClass = {cs.CL},
 		url = {https://arxiv.org/abs/2506.01939},
 		topics = {rlvr,grpo,llm-reasoning,policy-gradient},
-		aisummary = {Beyond-80/20 shows that only a small fraction of high-entropy `forking` tokens drive almost all the policy-gradient signal in RLVR, and restricting updates to them matches or beats full-trajectory GRPO on math benchmarks.}
+		aisummary = {Beyond-80/20 shows that only a small fraction of high-entropy forking tokens drive almost all the policy-gradient signal in RLVR, and restricting updates to them matches or beats full-trajectory GRPO on math benchmarks.}
 	}
 @misc{deepthinkwithconfidence,
 		title = {Deep Think with Confidence},
