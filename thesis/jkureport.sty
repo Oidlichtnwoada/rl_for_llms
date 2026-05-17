@@ -1788,26 +1788,26 @@
 }
 
 \newcommand{\jkureport@insertimprint}{%
-\parbox[t]{\jkureport@titlepage@marginpar}{%
-\raggedright%
-\linespread{1.0}%
-\setlength{\parindent}{0pt}%
-\setlength{\parskip}{0pt}%
-\usekomafont{imprint}%
-\begingroup
-\usekomafont{imprintname}%
-\MakeUppercase{Johannes Kepler}\\
-\ifcurrentbaselanguage{german}{%
-\MakeUppercase{Universit\"{a}t Linz}
-}{%
-\MakeUppercase{University Linz}
-}\\
-\endgroup
-Altenberger Stra{\ss}e 69\\
-4040 Linz, Austria\\
-\href{https://jku.at/}{\color{jkureport@fg}jku.at}\\
-%\hfill
-}%
+	\parbox[t]{\jkureport@titlepage@marginpar}{%
+		\raggedright%
+		\linespread{1.0}%
+		\setlength{\parindent}{0pt}%
+		\setlength{\parskip}{0pt}%
+		\usekomafont{imprint}%
+		\begingroup
+		\usekomafont{imprintname}%
+		\MakeUppercase{Johannes Kepler}\\
+		\ifcurrentbaselanguage{german}{%
+			\MakeUppercase{Universit\"{a}t Linz}
+		}{%
+			\MakeUppercase{University Linz}
+		}\\
+		\endgroup
+		Altenberger Stra{\ss}e 69\\
+		4040 Linz, Austria\\
+		\href{https://jku.at/}{\color{jkureport@fg}jku.at}\\
+		%\hfill
+	}%
 }
 
 \newcommand{\jkureport@inserttitle}{%
@@ -1835,17 +1835,17 @@ Altenberger Stra{\ss}e 69\\
 			}%
 			\ifdefempty{\jkureport@insertdegreeprogram}{}{%
 				{\usekomafont{subtitlesmall}%
-						\ifdefstring{\jkureport@docsubtype}{phd}{%
-							\jkureport@phdprogramname%
-						}{\ifdefstring{\jkureport@docsubtype}{master}{%
-								\jkureport@mastersprogramname%
-							}{\ifdefstring{\jkureport@docsubtype}{diploma}{%
-									\jkureport@diplomaprogramname%
-								}{\ifdefstring{\jkureport@docsubtype}{bachelor}{%
-										\jkureport@bachelorsprogramname%
-									}{%
-									}}}}%
-					}\par%
+					\ifdefstring{\jkureport@docsubtype}{phd}{%
+						\jkureport@phdprogramname%
+					}{\ifdefstring{\jkureport@docsubtype}{master}{%
+							\jkureport@mastersprogramname%
+						}{\ifdefstring{\jkureport@docsubtype}{diploma}{%
+								\jkureport@diplomaprogramname%
+							}{\ifdefstring{\jkureport@docsubtype}{bachelor}{%
+									\jkureport@bachelorsprogramname%
+								}{%
+								}}}}%
+				}\par%
 				\jkureport@insertdegreeprogram\par%
 			}%
 		}%
@@ -1919,15 +1919,15 @@ Altenberger Stra{\ss}e 69\\
 }
 \newcommand{\jkureport@insertpdfauthor}{}
 \newcommand{\jkureport@preparepdfauthor@extra}[1]{%
-\begingroup
-\def\ignorespaces{}%
-\def\unhbox{}%
-\def\voidb@x{}%
-\def\protect{}%
-\def\penalty{}%
-\def\@M{}%
-\def\ { }%
-\edef\@temp{\endgroup\def\noexpand\jkureport@insertpdfauthor{#1}}\@temp%
+	\begingroup
+	\def\ignorespaces{}%
+	\def\unhbox{}%
+	\def\voidb@x{}%
+	\def\protect{}%
+	\def\penalty{}%
+	\def\@M{}%
+	\def\ { }%
+	\edef\@temp{\endgroup\def\noexpand\jkureport@insertpdfauthor{#1}}\@temp%
 }
 \newcommand{\jkureport@preparepdfauthor@subst@one}[2]{%
 	\StrSubstitute{\jkureport@insertpdfauthor}{#1}{#2}[\jkureport@insertpdfauthor]%
@@ -2026,7 +2026,7 @@ Altenberger Stra{\ss}e 69\\
 	\gdef\@title{#1}%
 	\ifbool{jkureport@hyperref@automatic}{%
 		\hypersetup{pdftitle={\@title}}%
-}{}%
+	}{}%
 }
 
 \renewcommand{\author}[1]{%
@@ -2034,7 +2034,7 @@ Altenberger Stra{\ss}e 69\\
 	\jkureport@preparepdfauthor{#1}%
 	\ifbool{jkureport@hyperref@automatic}{%
 		\hypersetup{pdfauthor={\jkureport@insertpdfauthor}}%
-}{}%
+	}{}%
 }
 
 % Command \maketitle[FACULTY]: insert a title page, automatically wrap into a frame using the given color mode (mode defaults to global default color mode)
@@ -2095,15 +2095,15 @@ Altenberger Stra{\ss}e 69\\
 \renewcommand{\keywords}[1]{%
 	\ifbool{jkureport@hyperref@automatic}{%
 		\hypersetup{pdfkeywords={#1}}%
-}{}%
-\ifstrempty{#1}{%
-	\renewcommand{\jkureport@insertkeywords}{}%
-}{%
-	\renewcommand{\jkureport@insertkeywords}{%
-		\paragraph*{\usekomafont{abstractname}\keywordsname}%
-		{#1}%
+	}{}%
+	\ifstrempty{#1}{%
+		\renewcommand{\jkureport@insertkeywords}{}%
+	}{%
+		\renewcommand{\jkureport@insertkeywords}{%
+			\paragraph*{\usekomafont{abstractname}\keywordsname}%
+			{#1}%
+		}%
 	}%
-}%
 }
 
 % Command \revisionblock{text}: set the document revision block
@@ -2526,39 +2526,39 @@ Altenberger Stra{\ss}e 69\\
 \newenvironment{alertblock}[1][]{%
 	\setlength{\jkureport@outerparskip}{\parskip}
 	\begin{tcolorbox}[colback=jkuRed!20,opacityback=1.0,colframe=jkuRed,colbacktitle=jkuRed,title={#1}]%
-		\setlength{\parskip}{\jkureport@outerparskip}%
-		}{%
+	\setlength{\parskip}{\jkureport@outerparskip}%
+}{%
 	\end{tcolorbox}%
 }
 
 \newenvironment{alertblock*}[1][]{%
 	\setlength{\jkureport@outerparskip}{\parskip}
 	\begin{tcolorbox}[colback=jkuRed!20,opacityback=1.0,colframe=jkuRed,colbacktitle=jkuRed,title={#1},
-			detach title,
-			if odd page or oneside={%
-					sharp corners=northeast,
-					underlay={
-							\node[anchor=north west,line width=0mm,inner sep=0mm] at (frame.north east) {%
-								\begin{tcolorbox}[notitle,nobeforeafter,coltext=white,fontupper=\sfblackfamily,colframe=jkuRed,opacityframe=1.0,colback=jkuRed,opacityback=1.0,boxrule=0mm,arc=1mm,arc is curved,auto outer arc,boxsep=0mm,left=\dimexpr\marginparsep+0.5mm\relax,right=1em,top=1em,bottom=1em,width=\dimexpr\marginparwidth+\marginparsep\relax,sharp corners=west,grow to left by=0.5mm]%
-									\vphantom{Gg}%
-									#1%
-								\end{tcolorbox}%
-							};
-						},
-				}{%
-					sharp corners=northwest,
-					underlay={
-							\node[anchor=north east,line width=0mm,inner sep=0mm] at (frame.north west) {%
-								\begin{tcolorbox}[notitle,nobeforeafter,coltext=white,fontupper=\sfblackfamily,colframe=jkuRed,opacityframe=1.0,colback=jkuRed,opacityback=1.0,boxrule=0mm,arc=1mm,arc is curved,auto outer arc,boxsep=0mm,left=1em,right=\dimexpr\marginparsep+0.5mm\relax,top=1em,bottom=1em,width=\dimexpr\marginparwidth+\marginparsep\relax,sharp corners=east,grow to right by=0.5mm]%
-									\vphantom{Gg}%
-									#1%
-								\end{tcolorbox}%
-							};
-						},
-				},
-		]%
-		\setlength{\parskip}{\jkureport@outerparskip}%
-		}{%
+		detach title,
+		if odd page or oneside={%
+				sharp corners=northeast,
+				underlay={
+						\node[anchor=north west,line width=0mm,inner sep=0mm] at (frame.north east) {%
+							\begin{tcolorbox}[notitle,nobeforeafter,coltext=white,fontupper=\sfblackfamily,colframe=jkuRed,opacityframe=1.0,colback=jkuRed,opacityback=1.0,boxrule=0mm,arc=1mm,arc is curved,auto outer arc,boxsep=0mm,left=\dimexpr\marginparsep+0.5mm\relax,right=1em,top=1em,bottom=1em,width=\dimexpr\marginparwidth+\marginparsep\relax,sharp corners=west,grow to left by=0.5mm]%
+								\vphantom{Gg}%
+								#1%
+							\end{tcolorbox}%
+						};
+					},
+			}{%
+				sharp corners=northwest,
+				underlay={
+						\node[anchor=north east,line width=0mm,inner sep=0mm] at (frame.north west) {%
+							\begin{tcolorbox}[notitle,nobeforeafter,coltext=white,fontupper=\sfblackfamily,colframe=jkuRed,opacityframe=1.0,colback=jkuRed,opacityback=1.0,boxrule=0mm,arc=1mm,arc is curved,auto outer arc,boxsep=0mm,left=1em,right=\dimexpr\marginparsep+0.5mm\relax,top=1em,bottom=1em,width=\dimexpr\marginparwidth+\marginparsep\relax,sharp corners=east,grow to right by=0.5mm]%
+								\vphantom{Gg}%
+								#1%
+							\end{tcolorbox}%
+						};
+					},
+			},
+	]%
+	\setlength{\parskip}{\jkureport@outerparskip}%
+}{%
 	\end{tcolorbox}%
 }
 
@@ -2566,39 +2566,39 @@ Altenberger Stra{\ss}e 69\\
 \newenvironment{block}[1][]{%
 	\setlength{\jkureport@outerparskip}{\parskip}
 	\begin{tcolorbox}[colback=jkuDarkGray!20,opacityback=1.0,title={#1}]%
-		\setlength{\parskip}{\jkureport@outerparskip}%
-		}{%
+	\setlength{\parskip}{\jkureport@outerparskip}%
+}{%
 	\end{tcolorbox}%
 }
 
 \newenvironment{block*}[1][]{%
 	\setlength{\jkureport@outerparskip}{\parskip}
 	\begin{tcolorbox}[colback=jkuDarkGray!20,opacityback=1.0,title={#1},
-			detach title,
-			if odd page or oneside={%
-					sharp corners=northeast,
-					underlay={
-							\node[anchor=north west,line width=0mm,inner sep=0mm] at (frame.north east) {%
-								\begin{tcolorbox}[notitle,nobeforeafter,coltext=white,fontupper=\sfblackfamily,colframe=jkuDarkGray,opacityframe=1.0,colback=jkuDarkGray,opacityback=1.0,boxrule=0mm,arc=1mm,arc is curved,auto outer arc,boxsep=0mm,left=\dimexpr\marginparsep+0.5mm\relax,right=1em,top=1em,bottom=1em,width=\dimexpr\marginparwidth+\marginparsep\relax,sharp corners=west,grow to left by=0.5mm]%
-									\vphantom{Gg}%
-									#1%
-								\end{tcolorbox}%
-							};
-						},
-				}{%
-					sharp corners=northwest,
-					underlay={
-							\node[anchor=north east,line width=0mm,inner sep=0mm] at (frame.north west) {%
-								\begin{tcolorbox}[notitle,nobeforeafter,coltext=white,fontupper=\sfblackfamily,colframe=jkuDarkGray,opacityframe=1.0,colback=jkuDarkGray,opacityback=1.0,boxrule=0mm,arc=1mm,arc is curved,auto outer arc,boxsep=0mm,left=1em,right=\dimexpr\marginparsep+0.5mm\relax,top=1em,bottom=1em,width=\dimexpr\marginparwidth+\marginparsep\relax,sharp corners=east,grow to right by=0.5mm]%
-									\vphantom{Gg}%
-									#1%
-								\end{tcolorbox}%
-							};
-						},
-				},
-		]%
-		\setlength{\parskip}{\jkureport@outerparskip}%
-		}{%
+		detach title,
+		if odd page or oneside={%
+				sharp corners=northeast,
+				underlay={
+						\node[anchor=north west,line width=0mm,inner sep=0mm] at (frame.north east) {%
+							\begin{tcolorbox}[notitle,nobeforeafter,coltext=white,fontupper=\sfblackfamily,colframe=jkuDarkGray,opacityframe=1.0,colback=jkuDarkGray,opacityback=1.0,boxrule=0mm,arc=1mm,arc is curved,auto outer arc,boxsep=0mm,left=\dimexpr\marginparsep+0.5mm\relax,right=1em,top=1em,bottom=1em,width=\dimexpr\marginparwidth+\marginparsep\relax,sharp corners=west,grow to left by=0.5mm]%
+								\vphantom{Gg}%
+								#1%
+							\end{tcolorbox}%
+						};
+					},
+			}{%
+				sharp corners=northwest,
+				underlay={
+						\node[anchor=north east,line width=0mm,inner sep=0mm] at (frame.north west) {%
+							\begin{tcolorbox}[notitle,nobeforeafter,coltext=white,fontupper=\sfblackfamily,colframe=jkuDarkGray,opacityframe=1.0,colback=jkuDarkGray,opacityback=1.0,boxrule=0mm,arc=1mm,arc is curved,auto outer arc,boxsep=0mm,left=1em,right=\dimexpr\marginparsep+0.5mm\relax,top=1em,bottom=1em,width=\dimexpr\marginparwidth+\marginparsep\relax,sharp corners=east,grow to right by=0.5mm]%
+								\vphantom{Gg}%
+								#1%
+							\end{tcolorbox}%
+						};
+					},
+			},
+	]%
+	\setlength{\parskip}{\jkureport@outerparskip}%
+}{%
 	\end{tcolorbox}%
 }
 
@@ -2606,39 +2606,39 @@ Altenberger Stra{\ss}e 69\\
 \newenvironment{highlightblock}[1][]{%
 	\setlength{\jkureport@outerparskip}{\parskip}
 	\begin{tcolorbox}[colback=palette faculty highlight!20,opacityback=1.0,colframe=palette faculty highlight,colbacktitle=palette faculty highlight,title={#1}]%
-		\setlength{\parskip}{\jkureport@outerparskip}%
-		}{%
+	\setlength{\parskip}{\jkureport@outerparskip}%
+}{%
 	\end{tcolorbox}%
 }
 
 \newenvironment{highlightblock*}[1][]{%
 	\setlength{\jkureport@outerparskip}{\parskip}
 	\begin{tcolorbox}[colback=palette faculty highlight!20,opacityback=1.0,colframe=palette faculty highlight,colbacktitle=palette faculty highlight,title={#1},
-			detach title,
-			if odd page or oneside={%
-					sharp corners=northeast,
-					underlay={
-							\node[anchor=north west,line width=0mm,inner sep=0mm] at (frame.north east) {%
-								\begin{tcolorbox}[notitle,nobeforeafter,coltext=white,fontupper=\sfblackfamily,colframe=palette faculty highlight,opacityframe=1.0,colback=palette faculty highlight,opacityback=1.0,boxrule=0mm,arc=1mm,arc is curved,auto outer arc,boxsep=0mm,left=\dimexpr\marginparsep+0.5mm\relax,right=1em,top=1em,bottom=1em,width=\dimexpr\marginparwidth+\marginparsep\relax,sharp corners=west,grow to left by=0.5mm]%
-									\vphantom{Gg}%
-									#1%
-								\end{tcolorbox}%
-							};
-						},
-				}{%
-					sharp corners=northwest,
-					underlay={
-							\node[anchor=north east,line width=0mm,inner sep=0mm] at (frame.north west) {%
-								\begin{tcolorbox}[notitle,nobeforeafter,coltext=white,fontupper=\sfblackfamily,colframe=palette faculty highlight,opacityframe=1.0,colback=palette faculty highlight,opacityback=1.0,boxrule=0mm,arc=1mm,arc is curved,auto outer arc,boxsep=0mm,left=1em,right=\dimexpr\marginparsep+0.5mm\relax,top=1em,bottom=1em,width=\dimexpr\marginparwidth+\marginparsep\relax,sharp corners=east,grow to right by=0.5mm]%
-									\vphantom{Gg}%
-									#1%
-								\end{tcolorbox}%
-							};
-						},
-				},
-		]%
-		\setlength{\parskip}{\jkureport@outerparskip}%
-		}{%
+		detach title,
+		if odd page or oneside={%
+				sharp corners=northeast,
+				underlay={
+						\node[anchor=north west,line width=0mm,inner sep=0mm] at (frame.north east) {%
+							\begin{tcolorbox}[notitle,nobeforeafter,coltext=white,fontupper=\sfblackfamily,colframe=palette faculty highlight,opacityframe=1.0,colback=palette faculty highlight,opacityback=1.0,boxrule=0mm,arc=1mm,arc is curved,auto outer arc,boxsep=0mm,left=\dimexpr\marginparsep+0.5mm\relax,right=1em,top=1em,bottom=1em,width=\dimexpr\marginparwidth+\marginparsep\relax,sharp corners=west,grow to left by=0.5mm]%
+								\vphantom{Gg}%
+								#1%
+							\end{tcolorbox}%
+						};
+					},
+			}{%
+				sharp corners=northwest,
+				underlay={
+						\node[anchor=north east,line width=0mm,inner sep=0mm] at (frame.north west) {%
+							\begin{tcolorbox}[notitle,nobeforeafter,coltext=white,fontupper=\sfblackfamily,colframe=palette faculty highlight,opacityframe=1.0,colback=palette faculty highlight,opacityback=1.0,boxrule=0mm,arc=1mm,arc is curved,auto outer arc,boxsep=0mm,left=1em,right=\dimexpr\marginparsep+0.5mm\relax,top=1em,bottom=1em,width=\dimexpr\marginparwidth+\marginparsep\relax,sharp corners=east,grow to right by=0.5mm]%
+								\vphantom{Gg}%
+								#1%
+							\end{tcolorbox}%
+						};
+					},
+			},
+	]%
+	\setlength{\parskip}{\jkureport@outerparskip}%
+}{%
 	\end{tcolorbox}%
 }
 
