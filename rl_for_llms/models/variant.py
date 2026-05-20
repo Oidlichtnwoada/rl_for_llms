@@ -1,9 +1,10 @@
 from enum import StrEnum
 
 from rl_for_llms.utils.constant_utils import (
+    get_base_name,
     get_confidence_loss_name,
     get_confidence_reward_name,
-    get_no_name, get_base_name,
+    get_no_name,
 )
 
 

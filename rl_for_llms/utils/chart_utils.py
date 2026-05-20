@@ -101,11 +101,17 @@ def get_inference_time_color_map() -> dict[
 ]:
     """Return a mapping from (tempmod, filtering) to consistent color string."""
     return {
-        (TemperatureModulationVariant.NO_TEMP_MOD, FilteringVariant.NO_FILTER): "#1f77b4",
+        (
+            TemperatureModulationVariant.NO_TEMP_MOD,
+            FilteringVariant.NO_FILTER,
+        ): "#1f77b4",
         (TemperatureModulationVariant.NO_TEMP_MOD, FilteringVariant.FILTER): "#ff7f0e",
         (TemperatureModulationVariant.TEMP_MOD, FilteringVariant.NO_FILTER): "#2ca02c",
         (TemperatureModulationVariant.TEMP_MOD, FilteringVariant.FILTER): "#d62728",
-        (TemperatureModulationVariant.INV_TEMP_MOD, FilteringVariant.NO_FILTER): "#9467bd",
+        (
+            TemperatureModulationVariant.INV_TEMP_MOD,
+            FilteringVariant.NO_FILTER,
+        ): "#9467bd",
         (TemperatureModulationVariant.INV_TEMP_MOD, FilteringVariant.FILTER): "#8c564b",
     }
 
@@ -210,7 +216,10 @@ def get_csv_path(
     """Return the CSV path for metrics of a key."""
     final_dir = get_evaluation_final_dir()
     prefix = get_eval_prefix(key.variant)
-    return final_dir / f"{aggregation}_{prefix}_{metric_type}_metrics_{key.shorthand()}.csv"
+    return (
+        final_dir
+        / f"{aggregation}_{prefix}_{metric_type}_metrics_{key.shorthand()}.csv"
+    )
 
 
 def load_agg_metrics_from_csv(

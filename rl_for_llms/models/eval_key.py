@@ -54,4 +54,3 @@ class EvalKey(BaseModel):
     def has_confidence_metrics(self) -> bool:
         """Return True if this key produces confidence-related metrics."""
         return self.variant.has_trained_confidence()
-

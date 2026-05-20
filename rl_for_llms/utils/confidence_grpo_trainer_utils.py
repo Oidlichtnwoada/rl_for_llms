@@ -38,6 +38,7 @@ from rl_for_llms.utils.confidence_utils import (
 )
 from rl_for_llms.utils.constant_utils import (
     get_answer_namespace,
+    get_base_name,
     get_boolean_classification_threshold,
     get_confidence_namespace,
     get_default_confidence_score,
@@ -49,7 +50,7 @@ from rl_for_llms.utils.constant_utils import (
     get_loss_name,
     get_no_name,
     get_tempmod_name,
-    get_total_namespace, get_base_name,
+    get_total_namespace,
 )
 from rl_for_llms.utils.evaluation_utils import (
     aggregate_metrics,
