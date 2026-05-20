@@ -883,6 +883,22 @@ The three inference-time overlays of \autoref{tab:variants} (tempmod, inverse te
 		\end{tabular}}
 \end{table}
 
+\autoref{fig:res:itts:answer} and \autoref{fig:res:itts:conf} visualise the same six rows of \autoref{tab:res:itts} on the two metric families used throughout this chapter. The horizontal axis groups variants by the temperature-modulation setting (\texttt{notempmod}, \texttt{tempmod}, \texttt{invtempmod}), the colour distinguishes the SMC-filtering flag (\texttt{nofilter} vs.\ \texttt{filter}), and the error bars are the per-group standard deviations over the three independent seeds. The reference \texttt{notempmod\_nofilter} bar in each figure is the same Dense Self-Rewarding checkpoint already reported in \autoref{tab:res:answer} and \autoref{tab:res:conf}, so the figures display the inference-time overlay deltas directly against that reference.
+
+\begin{figure}[ht]
+	\centering
+	\resizebox{\linewidth}{!}{\includegraphics{charts/answer_accuracy_chart_inference_time.pdf}}
+	\caption{Answer-accuracy metrics ($\textit{Pass}@1$, $\textit{Pass}@4$, MV, HC, CW-MV) for the six inference-time overlays of \autoref{tab:res:itts}, evaluated on top of the Dense Self-Rewarding checkpoint. Bars are per-group means with per-group standard deviations over three independent seeds. Visualisation of the data in the upper half of \autoref{tab:res:itts}.}
+	\label{fig:res:itts:answer}
+\end{figure}
+
+\begin{figure}[ht]
+	\centering
+	\resizebox{\linewidth}{!}{\includegraphics{charts/confidence_chart_inference_time.pdf}}
+	\caption{Binary-classification metrics of the confidence head (accuracy, balanced accuracy, harmonic balanced accuracy, F1, MCC, ROC-AUC) for the six inference-time overlays of \autoref{tab:res:itts}, evaluated on top of the Dense Self-Rewarding checkpoint. Bars are per-group means with per-group standard deviations over three independent seeds. Visualisation of the MCC column of \autoref{tab:res:itts} together with the remaining binary-classification metrics that the table omits.}
+	\label{fig:res:itts:conf}
+\end{figure}
+
 \subsection{Temperature Modulation}
 \label{sec:res:tempmod}
 
