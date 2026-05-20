@@ -49,7 +49,7 @@ from rl_for_llms.utils.constant_utils import (
     get_loss_name,
     get_no_name,
     get_tempmod_name,
-    get_total_namespace,
+    get_total_namespace, get_base_name,
 )
 from rl_for_llms.utils.evaluation_utils import (
     aggregate_metrics,
@@ -789,7 +789,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
                 self._loaded_variant, self._loaded_method
             )
         if self.state.global_step == 0:
-            return "base"
+            return get_base_name()
         return self.config.get_config_shorthand()
 
     def get_eval_shorthand(self) -> str:

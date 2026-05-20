@@ -1,3 +1,4 @@
+from rl_for_llms.models.family import Family
 from rl_for_llms.models.method import Method
 from rl_for_llms.models.variant import Variant
 from rl_for_llms.utils.chart_utils import (
@@ -13,8 +14,10 @@ from rl_for_llms.utils.inference_time_evaluation_utils import inference_time_eva
 
 def main() -> None:
     """Execute the main function of the module."""
-    create_answer_accuracy_chart()
-    create_confidence_chart()
+    create_answer_accuracy_chart(Family.CONFIDENCE)
+    create_answer_accuracy_chart(Family.INFERENCE_TIME)
+    create_confidence_chart(Family.CONFIDENCE)
+    create_confidence_chart(Family.INFERENCE_TIME)
     inference_time_evaluate(
         Variant.WITH_CONFREW,
         Method.DENSE,

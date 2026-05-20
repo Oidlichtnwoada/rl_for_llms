@@ -12,6 +12,12 @@ from matplotlib.container import BarContainer
 from matplotlib.figure import Figure
 
 from rl_for_llms.models.config import Config
+from rl_for_llms.models.eval_key import EvalKey
+from rl_for_llms.models.family import Family
+from rl_for_llms.models.inference_time_variant_enums import (
+    FilteringVariant,
+    TemperatureModulationVariant,
+)
 from rl_for_llms.models.method import Method
 from rl_for_llms.models.response_confidence import ResponseConfidenceResult
 from rl_for_llms.models.variant import Variant
@@ -90,33 +96,73 @@ def get_variant_method_color_map() -> dict[tuple[Variant, Method | None], str]:
     }
 
 
+def get_inference_time_color_map() -> dict[
+    tuple[TemperatureModulationVariant, FilteringVariant], str
+]:
+    """Return a mapping from (tempmod, filtering) to consistent color string."""
+    return {
+        (TemperatureModulationVariant.NO_TEMP_MOD, FilteringVariant.NO_FILTER): "#1f77b4",
+        (TemperatureModulationVariant.NO_TEMP_MOD, FilteringVariant.FILTER): "#ff7f0e",
+        (TemperatureModulationVariant.TEMP_MOD, FilteringVariant.NO_FILTER): "#2ca02c",
+        (TemperatureModulationVariant.TEMP_MOD, FilteringVariant.FILTER): "#d62728",
+        (TemperatureModulationVariant.INV_TEMP_MOD, FilteringVariant.NO_FILTER): "#9467bd",
+        (TemperatureModulationVariant.INV_TEMP_MOD, FilteringVariant.FILTER): "#8c564b",
+    }
+
+
+def get_key_color(key: EvalKey) -> str:
+    """Return the bar color for an EvalKey."""
+    if key.tempmod is not None and key.filtering is not None:
+        return get_inference_time_color_map()[(key.tempmod, key.filtering)]
+    return get_variant_method_color_map()[(key.variant, key.method)]
+
+
 def get_variant_method_shorthand(variant: Variant, method: Method | None = None) -> str:
     """Return the file shorthand for a variant and optional method."""
-    if variant.has_trained_confidence() and method is not None:
-        return f"{method.value.lower()}_{variant.value}"
-    return variant.value
+    return EvalKey(variant=variant, method=method)._variant_method_shorthand()  # noqa: SLF001
 
 
 def get_variant_method_label(variant: Variant, method: Method | None = None) -> str:
     """Return the display label for a variant and optional method."""
-    shorthand = variant.get_shorthand()
-    if method is not None:
-        return f"{shorthand} ({method.value.lower()})"
-    return shorthand
+    return EvalKey(variant=variant, method=method).label()
 
 
 def build_variant_method_keys(
     variants: tuple[Variant, ...],
     methods: tuple[Method, ...],
-) -> list[tuple[Variant, Method | None]]:
-    """Build a list of (variant, method) keys, expanding confidence variants by method."""
-    keys: list[tuple[Variant, Method | None]] = []
+) -> list[EvalKey]:
+    """Build a list of EvalKeys, expanding confidence variants by method."""
+    keys: list[EvalKey] = []
     for variant in variants:
         if variant.has_trained_confidence():
-            keys.extend((variant, method) for method in methods)
+            keys.extend(EvalKey(variant=variant, method=method) for method in methods)
         else:
-            keys.append((variant, None))
+            keys.append(EvalKey(variant=variant))
     return keys
+
+
+def build_inference_time_keys(variant: Variant, method: Method) -> list[EvalKey]:
+    """Build the six EvalKeys covering all (tempmod, filtering) combinations."""
+    return [
+        EvalKey(variant=variant, method=method, tempmod=tempmod, filtering=filtering)
+        for tempmod in TemperatureModulationVariant
+        for filtering in FilteringVariant
+    ]
+
+
+def build_keys_for_family(
+    family: Family,
+    config: Config,
+    inference_variant: Variant,
+) -> list[EvalKey]:
+    """Build the list of EvalKeys for the given family."""
+    match family:
+        case Family.CONFIDENCE:
+            return build_variant_method_keys(
+                config.evaluation_variants, config.evaluation_methods
+            )
+        case Family.INFERENCE_TIME:
+            return build_inference_time_keys(inference_variant, Method.DENSE)
 
 
 def configure_matplotlib_fonts() -> None:
@@ -157,26 +203,23 @@ def get_eval_prefix(variant: Variant) -> str:
 
 
 def get_csv_path(
-    variant: Variant,
+    key: EvalKey,
     metric_type: str,
     aggregation: Literal["agg", "concat"],
-    method: Method | None = None,
 ) -> pathlib.Path:
-    """Return the CSV path for metrics of a variant."""
+    """Return the CSV path for metrics of a key."""
     final_dir = get_evaluation_final_dir()
-    prefix = get_eval_prefix(variant)
-    shorthand = get_variant_method_shorthand(variant, method)
-    return final_dir / f"{aggregation}_{prefix}_{metric_type}_metrics_{shorthand}.csv"
+    prefix = get_eval_prefix(key.variant)
+    return final_dir / f"{aggregation}_{prefix}_{metric_type}_metrics_{key.shorthand()}.csv"
 
 
 def load_agg_metrics_from_csv(
-    variant: Variant,
+    key: EvalKey,
     metric_type: str,
     metric_keys: tuple[str, ...],
-    method: Method | None = None,
 ) -> dict[str, float]:
-    """Load aggregated metrics from CSV for a variant, filtered to given keys."""
-    all_metrics = load_all_agg_metrics_from_csv(variant, metric_type, method=method)
+    """Load aggregated metrics from CSV for a key, filtered to given keys."""
+    all_metrics = load_all_agg_metrics_from_csv(key, metric_type)
     return {k: v for k, v in all_metrics.items() if k in metric_keys}
 
 
@@ -207,62 +250,49 @@ def _get_std_suffix() -> str:
 
 
 def _load_all_from_csv(
-    variant: Variant,
+    key: EvalKey,
     metric_type: str,
     aggregation: Literal["agg", "concat"],
     suffix: str,
-    method: Method | None = None,
 ) -> dict[str, float]:
     """Load metrics from a CSV by aggregation type and column suffix."""
     return _load_metrics_by_suffix(
-        get_csv_path(variant, metric_type, aggregation, method=method),
-        get_eval_prefix(variant),
+        get_csv_path(key, metric_type, aggregation),
+        get_eval_prefix(key.variant),
         suffix,
     )
 
 
 def load_all_agg_metrics_from_csv(
-    variant: Variant,
+    key: EvalKey,
     metric_type: str,
-    method: Method | None = None,
 ) -> dict[str, float]:
-    """Load all aggregated mean metrics from CSV for a variant."""
-    return _load_all_from_csv(
-        variant, metric_type, "agg", _get_mean_suffix(), method=method
-    )
+    """Load all aggregated mean metrics from CSV for a key."""
+    return _load_all_from_csv(key, metric_type, "agg", _get_mean_suffix())
 
 
 def load_all_agg_std_from_csv(
-    variant: Variant,
+    key: EvalKey,
     metric_type: str,
-    method: Method | None = None,
 ) -> dict[str, float]:
-    """Load all aggregated std metrics from CSV for a variant."""
-    return _load_all_from_csv(
-        variant, metric_type, "agg", _get_std_suffix(), method=method
-    )
+    """Load all aggregated std metrics from CSV for a key."""
+    return _load_all_from_csv(key, metric_type, "agg", _get_std_suffix())
 
 
 def load_all_concat_metrics_from_csv(
-    variant: Variant,
+    key: EvalKey,
     metric_type: str,
-    method: Method | None = None,
 ) -> dict[str, float]:
-    """Load all concatenated mean metrics from CSV for a variant."""
-    return _load_all_from_csv(
-        variant, metric_type, "concat", _get_mean_suffix(), method=method
-    )
+    """Load all concatenated mean metrics from CSV for a key."""
+    return _load_all_from_csv(key, metric_type, "concat", _get_mean_suffix())
 
 
 def load_all_concat_std_from_csv(
-    variant: Variant,
+    key: EvalKey,
     metric_type: str,
-    method: Method | None = None,
 ) -> dict[str, float]:
-    """Load all concatenated std metrics from CSV for a variant."""
-    return _load_all_from_csv(
-        variant, metric_type, "concat", _get_std_suffix(), method=method
-    )
+    """Load all concatenated std metrics from CSV for a key."""
+    return _load_all_from_csv(key, metric_type, "concat", _get_std_suffix())
 
 
 def _get_error_bar_kwargs(yerr: list[float] | None) -> dict[str, Any]:
@@ -349,13 +379,39 @@ def save_chart(filename: str) -> None:
     plt.close()
 
 
-def create_answer_accuracy_chart(*, show_std: bool = True) -> None:
-    """Create an answer accuracy chart comparing all variants."""
+def _family_title_suffix(family: Family, inference_variant: Variant) -> str:
+    """Return a title suffix describing the underlying weights for the family."""
+    match family:
+        case Family.CONFIDENCE:
+            return "Variant"
+        case Family.INFERENCE_TIME:
+            return (
+                f"Inference-Time Method "
+                f"[Weights: {get_variant_method_label(inference_variant, Method.DENSE)}]"
+            )
+
+
+def _family_filename_suffix(family: Family) -> str:
+    """Return a filename suffix for the family."""
+    match family:
+        case Family.CONFIDENCE:
+            return ""
+        case Family.INFERENCE_TIME:
+            return "_inference_time"
+
+
+def create_answer_accuracy_chart(
+    family: Family,
+    *,
+    inference_variant: Variant = Variant.WITH_CONFREW,
+    show_std: bool = True,
+) -> None:
+    """Create an answer accuracy chart comparing all variants for a family."""
+    if not inference_variant.has_trained_confidence():
+        raise ValueError
     configure_matplotlib_fonts()
     config = get_config()
-    all_keys = build_variant_method_keys(
-        config.evaluation_variants, config.evaluation_methods
-    )
+    all_keys = build_keys_for_family(family, config, inference_variant)
     common_metrics = get_common_answer_metrics(config)
     confidence_metrics = get_confidence_answer_metrics()
     all_metric_keys = tuple(
@@ -363,19 +419,15 @@ def create_answer_accuracy_chart(*, show_std: bool = True) -> None:
     )
 
     all_metrics = {
-        key: load_agg_metrics_from_csv(key[0], "answer", all_metric_keys, method=key[1])
+        key: load_agg_metrics_from_csv(key, "answer", all_metric_keys)
         for key in all_keys
     }
     all_stds = (
-        {
-            key: load_all_agg_std_from_csv(key[0], "answer", method=key[1])
-            for key in all_keys
-        }
+        {key: load_all_agg_std_from_csv(key, "answer") for key in all_keys}
         if show_std
         else {}
     )
 
-    color_map = get_variant_method_color_map()
     _, ax = plt.subplots(figsize=(14, 7))
     n_keys = len(all_keys)
     width = 0.8 / max(n_keys, 1)
@@ -384,7 +436,6 @@ def create_answer_accuracy_chart(*, show_std: bool = True) -> None:
     x_common = np.arange(len(common_metrics))
     offsets = np.arange(n_keys) - (n_keys - 1) / 2
     for i, key in enumerate(all_keys):
-        variant, method = key
         metrics = all_metrics[key]
         stds = all_stds.get(key, {})
         means = [metrics.get(f"answer/{m}_t=1.0", 0) * 100 for m in common_metrics]
@@ -398,19 +449,18 @@ def create_answer_accuracy_chart(*, show_std: bool = True) -> None:
             x_common + offsets[i] * width,
             means,
             width,
-            label=get_variant_method_label(variant, method),
-            color=color_map[key],
+            label=key.label(),
+            color=get_key_color(key),
             **_get_error_bar_kwargs(std_vals),
         )
         add_bar_labels(ax, bars, means, std_vals)
 
-    confidence_keys = [key for key in all_keys if key[0].has_trained_confidence()]
+    confidence_keys = [key for key in all_keys if key.has_confidence_metrics()]
     x_conf_start = len(common_metrics)
     conf_offsets = np.arange(len(confidence_keys)) - (len(confidence_keys) - 1) / 2
     for j, metric in enumerate(confidence_metrics):
         x_pos = x_conf_start + j
         for i, key in enumerate(confidence_keys):
-            variant, method = key
             metrics = all_metrics[key]
             stds = all_stds.get(key, {})
             m_key = f"answer/{metric}_t=1.0"
@@ -426,7 +476,7 @@ def create_answer_accuracy_chart(*, show_std: bool = True) -> None:
                     x_pos + conf_offsets[i] * width,
                     mean,
                     width,
-                    color=color_map[key],
+                    color=get_key_color(key),
                     **_get_error_bar_kwargs([std_val] if std_val is not None else None),
                 )
                 add_bar_labels(
@@ -443,27 +493,30 @@ def create_answer_accuracy_chart(*, show_std: bool = True) -> None:
         labels,
         x_all,
         all_max_values,
-        title="Answer Accuracy Metrics By Variant",
-        filename="answer_accuracy_chart.pdf",
+        title=f"Answer Accuracy Metrics By {_family_title_suffix(family, inference_variant)}",
+        filename=f"answer_accuracy_chart{_family_filename_suffix(family)}.pdf",
     )
 
 
-def create_confidence_chart(*, show_std: bool = True) -> None:
+def create_confidence_chart(
+    family: Family,
+    *,
+    inference_variant: Variant = Variant.WITH_CONFREW,
+    show_std: bool = True,
+) -> None:
     """Create a confidence prediction metrics chart comparing trained variants."""
+    if not inference_variant.has_trained_confidence():
+        raise ValueError
     configure_matplotlib_fonts()
     config = get_config()
-    confidence_keys = build_variant_method_keys(
-        tuple(v for v in config.evaluation_variants if v.has_trained_confidence()),
-        config.evaluation_methods,
-    )
+    all_keys = build_keys_for_family(family, config, inference_variant)
+    confidence_keys = [key for key in all_keys if key.has_confidence_metrics()]
 
     if not confidence_keys:
         return
 
     first_key = confidence_keys[0]
-    sample_metrics = load_all_concat_metrics_from_csv(
-        first_key[0], "bc", method=first_key[1]
-    )
+    sample_metrics = load_all_concat_metrics_from_csv(first_key, "bc")
     all_metric_keys = [k for k in sample_metrics if k.startswith("confidence/")]
 
     metric_order = [name for name, _ in get_metric_units()]
@@ -478,19 +531,14 @@ def create_confidence_chart(*, show_std: bool = True) -> None:
     mcc_key = next((k for k in all_metric_keys if not is_percentage_metric(k)), None)
 
     all_metrics = {
-        key: load_all_concat_metrics_from_csv(key[0], "bc", method=key[1])
-        for key in confidence_keys
+        key: load_all_concat_metrics_from_csv(key, "bc") for key in confidence_keys
     }
     all_stds = (
-        {
-            key: load_all_concat_std_from_csv(key[0], "bc", method=key[1])
-            for key in confidence_keys
-        }
+        {key: load_all_concat_std_from_csv(key, "bc") for key in confidence_keys}
         if show_std
         else {}
     )
 
-    color_map = get_variant_method_color_map()
     _, ax = plt.subplots(figsize=(14, 7))
     n_keys = len(confidence_keys)
     width = 0.8 / max(n_keys, 1)
@@ -499,7 +547,6 @@ def create_confidence_chart(*, show_std: bool = True) -> None:
     all_max_values: list[float] = []
 
     for i, key in enumerate(confidence_keys):
-        variant, method = key
         metrics = all_metrics[key]
         stds = all_stds.get(key, {})
         means = [metrics.get(k, 0) * 100 for k in percentage_keys]
@@ -508,7 +555,7 @@ def create_confidence_chart(*, show_std: bool = True) -> None:
         )
         extend_max_values_with_stds(all_max_values, means, std_vals)
 
-        legend_label = get_variant_method_label(variant, method)
+        legend_label = key.label()
         if mcc_key and mcc_key in metrics:
             mcc_value = metrics[mcc_key]
             if show_std:
@@ -524,7 +571,7 @@ def create_confidence_chart(*, show_std: bool = True) -> None:
             means,
             width,
             label=legend_label,
-            color=color_map[key],
+            color=get_key_color(key),
             **_get_error_bar_kwargs(std_vals),
         )
         add_bar_labels(ax, bars, means, std_vals, fontsize=4)
@@ -535,8 +582,8 @@ def create_confidence_chart(*, show_std: bool = True) -> None:
         labels,
         x,
         all_max_values,
-        title="Confidence Prediction Metrics By Variant",
-        filename="confidence_chart.pdf",
+        title=f"Confidence Prediction Metrics By {_family_title_suffix(family, inference_variant)}",
+        filename=f"confidence_chart{_family_filename_suffix(family)}.pdf",
     )
 
 

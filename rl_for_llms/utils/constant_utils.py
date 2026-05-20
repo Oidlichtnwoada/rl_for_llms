@@ -131,6 +131,11 @@ def get_no_name() -> str:
     return "no"
 
 
+def get_base_name() -> str:
+    """Return the name for the base variant."""
+    return "base"
+
+
 def get_confidence_loss_name() -> str:
     """Return the name for confidence loss."""
     return "confloss"

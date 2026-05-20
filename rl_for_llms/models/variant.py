@@ -3,14 +3,14 @@ from enum import StrEnum
 from rl_for_llms.utils.constant_utils import (
     get_confidence_loss_name,
     get_confidence_reward_name,
-    get_no_name,
+    get_no_name, get_base_name,
 )
 
 
 class Variant(StrEnum):
     """Model variant types."""
 
-    BASE = "base"
+    BASE = get_base_name()
     GRPO = f"{get_no_name()}{get_confidence_loss_name()}_{get_no_name()}{get_confidence_reward_name()}"
     ONLY_CONFLOSS = (
         f"{get_confidence_loss_name()}_{get_no_name()}{get_confidence_reward_name()}"
@@ -21,7 +21,7 @@ class Variant(StrEnum):
         """Return a shorthand representation of the variant."""
         match self:
             case Variant.BASE:
-                return "base"
+                return get_base_name()
             case Variant.GRPO:
                 return "-l-r"
             case Variant.ONLY_CONFLOSS:
