@@ -330,6 +330,13 @@ def extend_max_values_with_stds(
     )
 
 
+def _format_bar_label(mean: float, std: float | None, *, separator: str) -> str:
+    """Return the formatted bar label, always using mathtext for the ± sign."""
+    if std is None:
+        return f"{mean:.2f}%"
+    return f"{mean:.2f}%{separator}$\\pm${std:.2f}%"
+
+
 def add_bar_labels(
     ax: Axes,
     bars: BarContainer,
@@ -337,23 +344,24 @@ def add_bar_labels(
     stds: list[float] | None = None,
     *,
     fontsize: float = 5,
+    rotation: float = 0,
 ) -> None:
     """Add text labels on top of bars, optionally including ±std."""
+    separator = " " if rotation != 0 else "\n"
     for idx, (bar, mean) in enumerate(zip(bars, means, strict=False)):
-        if not np.isnan(mean):
-            std = stds[idx] if stds is not None else None
-            label = (
-                f"{mean:.2f}%\n$\\pm${std:.2f}%" if std is not None else f"{mean:.2f}%"
-            )
-            offset = (std if std is not None else 0.0) + 0.5
-            ax.text(
-                bar.get_x() + bar.get_width() / 2,
-                bar.get_height() + offset,
-                label,
-                ha="center",
-                va="bottom",
-                fontsize=fontsize,
-            )
+        if np.isnan(mean):
+            continue
+        std = stds[idx] if stds is not None else None
+        offset = (std if std is not None else 0.0) + 0.5
+        ax.text(
+            bar.get_x() + bar.get_width() / 2,
+            bar.get_height() + offset,
+            _format_bar_label(mean, std, separator=separator),
+            ha="center",
+            va="bottom",
+            fontsize=fontsize,
+            rotation=rotation,
+        )
 
 
 def finalize_chart(
@@ -554,6 +562,7 @@ def create_confidence_chart(
     x = np.arange(len(percentage_keys))
     offsets = np.arange(n_keys) - (n_keys - 1) / 2
     all_max_values: list[float] = []
+    label_rotation = 90 if family == Family.INFERENCE_TIME else 0
 
     for i, key in enumerate(confidence_keys):
         metrics = all_metrics[key]
@@ -583,7 +592,7 @@ def create_confidence_chart(
             color=get_key_color(key),
             **_get_error_bar_kwargs(std_vals),
         )
-        add_bar_labels(ax, bars, means, std_vals, fontsize=4)
+        add_bar_labels(ax, bars, means, std_vals, fontsize=4, rotation=label_rotation)
 
     labels = [format_metric_label(k) for k in percentage_keys]
     finalize_chart(
