@@ -83,6 +83,23 @@
 	\pgfmathprintnumber[fixed,fixed zerofill,precision=#5,print sign]{\pgfmathresult}%
 }
 
+%% \csvrelpct{<tableA>}{<tableB>}{<column>}{<precision>} -- (A-B)/B*100, the relative
+%% improvement of A over B on a shared column. Unsigned magnitude is printed.
+\newcommand{\csvrelpct}[4]{%
+	\pgfplotstablegetelem{0}{\detokenize{#3}}\of{#1}\edef\csvAval{\pgfplotsretval}%
+	\pgfplotstablegetelem{0}{\detokenize{#3}}\of{#2}\edef\csvBval{\pgfplotsretval}%
+	\pgfmathparse{(\csvAval-\csvBval)/\csvBval*100}%
+	\pgfmathprintnumber[fixed,fixed zerofill,precision=#4]{\pgfmathresult}%
+}
+
+%% \csvxrelpct{<tableA>}{<colA>}{<tableB>}{<colB>}{<precision>} -- (A-B)/B*100 across columns.
+\newcommand{\csvxrelpct}[5]{%
+	\pgfplotstablegetelem{0}{\detokenize{#2}}\of{#1}\edef\csvAval{\pgfplotsretval}%
+	\pgfplotstablegetelem{0}{\detokenize{#4}}\of{#3}\edef\csvBval{\pgfplotsretval}%
+	\pgfmathparse{(\csvAval-\csvBval)/\csvBval*100}%
+	\pgfmathprintnumber[fixed,fixed zerofill,precision=#5]{\pgfmathresult}%
+}
+
 %% Convenience wrappers for the recurring "eval_{after,before}_train/answer/accuracy/<rule>_t=1.0"
 %% and "eval_{after,before}_train/confidence/<metric>" column families.
 \newcommand{\AccAfter}[2]{\csvms{#1}{eval_after_train/answer/accuracy/#2_t=1.0}}
