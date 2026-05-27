@@ -72,14 +72,15 @@
 \usepackage{booktabs}
 \usepackage{listings}
 \usepackage{tikz}
+\usepackage{hyperref}
 \usetikzlibrary{arrows.meta,positioning,shapes.geometric,calc,fit,backgrounds}
 
-%% Capitalize chapter/section names produced by \autoref so that cross-references read
-%% ``Chapter X'' and ``Section Y'' rather than the lowercase hyperref defaults.
-\renewcommand{\chapterautorefname}{Chapter}
-\renewcommand{\sectionautorefname}{Section}
-\renewcommand{\subsectionautorefname}{Section}
-\renewcommand{\subsubsectionautorefname}{Section}
+\addto\extrasenglish{
+  \renewcommand{\chapterautorefname}{Chapter}
+  \renewcommand{\sectionautorefname}{Section}
+  \renewcommand{\subsectionautorefname}{Section}
+  \renewcommand{\subsubsectionautorefname}{Section}
+}
 
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
