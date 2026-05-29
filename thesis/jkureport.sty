@@ -538,7 +538,7 @@
 \RequirePackage{inconsolata}
 \RequirePackage{helvet}
 \ifluatex\else\ifxetex\else%
-		\RequirePackage{euler}
+		% \RequirePackage{euler}
 	\fi\fi
 \RequirePackage{fontawesome5}
 \ifluatex\else\ifxetex\else%
@@ -558,9 +558,9 @@
 		\RequirePackage[usefilenames]{firamath-otf}%
 	}{%
 		\@ifpackageloaded{unicode-math}{%
-			\setmathfont{Euler-Math.otf}
+			% \setmathfont{Euler-Math.otf}
 		}{%
-			\RequirePackage{euler-math}%
+			% \RequirePackage{euler-math}%
 		}%
 	}
 	%\RequirePackage{fontspec}
@@ -758,7 +758,7 @@
 		% might want to consider always doing that in future (not just for XeLaTeX):
 		%\PassOptionsToPackage{noplus,nominus,noequal}{mathastext}
 	\fi
-	\usepackage[italic,defaultmathsizes,eulergreek,nosmalldelims,unicodeminus]{mathastext}
+	\usepackage[italic,defaultmathsizes,nosmalldelims,unicodeminus]{mathastext}
 }{}
 
 %% 
