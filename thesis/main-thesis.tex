@@ -879,19 +879,21 @@ This chapter is split along the axis that defines the contribution: \autoref{sec
 
 \autoref{fig:res:train:answer} and \autoref{fig:res:train:conf} visualize the two metric families of \autoref{tab:res:answer} and \autoref{tab:res:conf} for the six training-time variants. The horizontal axis groups variants, the bars give the means and the error bars the standard deviation across the three independent seed runs. As in the tables, the highest-confidence and confidence-weighted aggregations are shown only for the four confidence-trained variants, and the binary-classification figure omits the \textit{Base} and \textit{GRPO} variants, which have no trained confidence head.
 
-\begin{figure}[ht]
-	\centering
-	\resizebox{\linewidth}{!}{\includegraphics{charts/answer_accuracy_chart.pdf}}
-	\caption{Answer-accuracy metrics ($\textit{Pass}@1$, $\textit{Pass}@4$, \textit{MV}, \textit{HC}, \textit{CW-MV}) for the six training-time variants of \autoref{tab:variants:train}. Bars are means over the per-prompt groups with error bars giving the standard deviation across the three independent seed runs. Visualisation of \autoref{tab:res:answer}.}
-	\label{fig:res:train:answer}
-\end{figure}
-
-\begin{figure}[ht]
-	\centering
-	\resizebox{\linewidth}{!}{\includegraphics{charts/confidence_chart.pdf}}
-	\caption{Binary-classification metrics of the confidence head (accuracy, balanced accuracy, harmonic balanced accuracy, \textit{F1}, \textit{MCC}, \textit{ROC-AUC}) for the four confidence-trained training-time variants. Bars are means with error bars giving the standard deviation across the three independent seed runs. Visualisation of \autoref{tab:res:conf}.}
-	\label{fig:res:train:conf}
-\end{figure}
+\begin{landscape}
+	\noindent\begin{minipage}{\linewidth}
+		\centering
+		\includegraphics[width=\linewidth,height=0.62\textheight,keepaspectratio]{charts/answer_accuracy_chart.pdf}
+		\captionof{figure}{Answer-accuracy metrics ($\textit{Pass}@1$, $\textit{Pass}@4$, \textit{MV}, \textit{HC}, \textit{CW-MV}) for the six training-time variants of \autoref{tab:variants:train}. Bars are means over the per-prompt groups with error bars giving the standard deviation across the three independent seed runs. Visualisation of \autoref{tab:res:answer}.}
+		\label{fig:res:train:answer}
+	\end{minipage}
+	\newpage
+	\noindent\begin{minipage}{\linewidth}
+		\centering
+		\includegraphics[width=\linewidth,height=0.62\textheight,keepaspectratio]{charts/confidence_chart.pdf}
+		\captionof{figure}{Binary-classification metrics of the confidence head (accuracy, balanced accuracy, harmonic balanced accuracy, \textit{F1}, \textit{MCC}, \textit{ROC-AUC}) for the four confidence-trained training-time variants. Bars are means with error bars giving the standard deviation across the three independent seed runs. Visualisation of \autoref{tab:res:conf}.}
+		\label{fig:res:train:conf}
+	\end{minipage}
+\end{landscape}
 
 \subsection{\textit{Dense Confidence} vs.\ \textit{GRPO} Baseline (Final)}
 \label{sec:res:dense}
@@ -947,19 +949,21 @@ The three inference-time overlays of \autoref{tab:variants:infer} (tempmod, inve
 
 \autoref{fig:res:itts:answer} and \autoref{fig:res:itts:conf} visualize the same six rows of \autoref{tab:res:itts} on the two metric families used throughout this chapter. The horizontal axis groups variants by the temperature-modulation setting (\texttt{notempmod}, \texttt{tempmod}, \texttt{invtempmod}), the color distinguishes the \textit{SMC}-filtering flag (\texttt{nofilter} vs.\ \texttt{filter}), and the error bars are the standard deviations across the three independent seed runs. The reference \texttt{notempmod\_nofilter} bar in each figure is the same \textit{Dense} \ac{SR} checkpoint already reported in \autoref{tab:res:answer} and \autoref{tab:res:conf}, so the figures display the inference-time overlay deltas directly against that reference.
 
-\begin{figure}[ht]
-	\centering
-	\resizebox{\linewidth}{!}{\includegraphics{charts/answer_accuracy_chart_inference_time.pdf}}
-	\caption{Answer-accuracy metrics ($\textit{Pass}@1$, $\textit{Pass}@4$, \textit{MV}, \textit{HC}, \textit{CW-MV}) for the six inference-time overlays of \autoref{tab:res:itts}, evaluated on top of the \textit{Dense} \ac{SR} checkpoint. Bars are means over the per-prompt groups with error bars giving the standard deviation across the three independent seed runs. Visualisation of the data in the upper half of \autoref{tab:res:itts}.}
-	\label{fig:res:itts:answer}
-\end{figure}
-
-\begin{figure}[ht]
-	\centering
-	\resizebox{\linewidth}{!}{\includegraphics{charts/confidence_chart_inference_time.pdf}}
-	\caption{Binary-classification metrics of the confidence head (accuracy, balanced accuracy, harmonic balanced accuracy, \textit{F1}, \textit{MCC}, \textit{ROC-AUC}) for the six inference-time overlays of \autoref{tab:res:itts}, evaluated on top of the \textit{Dense} \ac{SR} checkpoint. Bars are means with error bars giving the standard deviation across the three independent seed runs. Visualisation of the \textit{MCC} column of \autoref{tab:res:itts} together with the remaining binary-classification metrics that the table omits.}
-	\label{fig:res:itts:conf}
-\end{figure}
+\begin{landscape}
+	\noindent\begin{minipage}{\linewidth}
+		\centering
+		\includegraphics[width=\linewidth,height=0.45\textheight,keepaspectratio]{charts/answer_accuracy_chart_inference_time.pdf}
+		\captionof{figure}{Answer-accuracy metrics ($\textit{Pass}@1$, $\textit{Pass}@4$, \textit{MV}, \textit{HC}, \textit{CW-MV}) for the six inference-time overlays of \autoref{tab:res:itts}, evaluated on top of the \textit{Dense} \ac{SR} checkpoint. Bars are means over the per-prompt groups with error bars giving the standard deviation across the three independent seed runs. Visualisation of the data in the upper half of \autoref{tab:res:itts}.}
+		\label{fig:res:itts:answer}
+	\end{minipage}
+	\newpage
+	\noindent\begin{minipage}{\linewidth}
+		\centering
+		\includegraphics[width=\linewidth,height=0.45\textheight,keepaspectratio]{charts/confidence_chart_inference_time.pdf}
+		\captionof{figure}{Binary-classification metrics of the confidence head (accuracy, balanced accuracy, harmonic balanced accuracy, \textit{F1}, \textit{MCC}, \textit{ROC-AUC}) for the six inference-time overlays of \autoref{tab:res:itts}, evaluated on top of the \textit{Dense} \ac{SR} checkpoint. Bars are means with error bars giving the standard deviation across the three independent seed runs. Visualisation of the \textit{MCC} column of \autoref{tab:res:itts} together with the remaining binary-classification metrics that the table omits.}
+		\label{fig:res:itts:conf}
+	\end{minipage}
+\end{landscape}
 
 \subsection{Temperature Modulation}
 \label{sec:res:tempmod}
