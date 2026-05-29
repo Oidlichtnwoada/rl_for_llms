@@ -9,6 +9,9 @@ from rl_for_llms.utils.environment_utils import (
     get_inference_time_evaluation_use_filtering,
     get_inference_time_evaluation_use_tempmod,
 )
+from rl_for_llms.utils.evaluation_utils import (
+    get_response_and_confidence_tokens_for_answers,
+)
 from rl_for_llms.utils.inference_time_evaluation_utils import inference_time_evaluate
 
 
@@ -18,6 +21,10 @@ def main() -> None:
     create_answer_accuracy_chart(Family.INFERENCE_TIME)
     create_confidence_chart(Family.CONFIDENCE)
     create_confidence_chart(Family.INFERENCE_TIME)
+    _ = get_response_and_confidence_tokens_for_answers(
+        Variant.WITH_CONFREW,
+        sample_size=64,
+    )
     inference_time_evaluate(
         Variant.WITH_CONFREW,
         Method.DENSE,
