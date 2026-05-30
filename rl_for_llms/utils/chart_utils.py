@@ -753,7 +753,7 @@ def create_confidence_evolution_chart(
         n_rows = (n_tokens - 1) // tokens_per_row + 1
 
         correctness_label = "Correct" if sample.is_correct else "Incorrect"
-        wrapped_question = textwrap.fill(sample.question, width=200)
+        wrapped_question = textwrap.fill(sample.question, width=300)
         title_text = (
             f"Sample {idx + 1} [{correctness_label}]\n"
             f"Aggregated Confidence: {sample.aggregated_confidence_sigmoid:.3f}\n"
