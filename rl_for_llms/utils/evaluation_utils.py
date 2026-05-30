@@ -65,12 +65,12 @@ def get_variant_checkpoint_dir(
 
 def get_response_and_confidence_tokens_for_answers(
     variant: Variant,
-    sample_size: int = 1,
+    sample_size: int | tuple[int, ...] = 1,
     *,
     generate_chart: bool = True,
     log_result: bool = True,
 ) -> ResponseConfidenceResult:
-    """Return response and confidence data for sampled answers using a specific variant."""
+    """Get the model responses and confidence token values for the answers to the prompts in the evaluation dataset, optionally generating a chart of confidence evolution and logging the result."""
     method = Method.DENSE
     config = get_config()
     confidence_token_id = get_token_to_id_mapping(config.hf_model_id)[
@@ -93,7 +93,12 @@ def get_response_and_confidence_tokens_for_answers(
             "PreTrainedModel", load_checkpoint_weights(pipe.model, checkpoint_dir)
         )
 
-    rows = dataset.select(range(sample_size))
+    indices = (
+        tuple(sample_size)
+        if isinstance(sample_size, tuple)
+        else tuple(range(sample_size))
+    )
+    rows = dataset.select(indices)
     messages = [row["prompt"][-1]["content"] for row in rows]
     answers = [row["answer"] for row in rows]
 

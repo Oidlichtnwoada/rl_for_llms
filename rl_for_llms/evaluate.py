@@ -5,6 +5,7 @@ from rl_for_llms.utils.chart_utils import (
     create_answer_accuracy_chart,
     create_confidence_chart,
 )
+from rl_for_llms.utils.constant_utils import get_good_gsm8k_sample_indices
 from rl_for_llms.utils.environment_utils import (
     get_inference_time_evaluation_use_filtering,
     get_inference_time_evaluation_use_tempmod,
@@ -23,7 +24,7 @@ def main() -> None:
     create_confidence_chart(Family.INFERENCE_TIME)
     _ = get_response_and_confidence_tokens_for_answers(
         Variant.WITH_CONFREW,
-        sample_size=64,
+        sample_size=get_good_gsm8k_sample_indices(),
     )
     inference_time_evaluate(
         Variant.WITH_CONFREW,

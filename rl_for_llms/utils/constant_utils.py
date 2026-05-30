@@ -179,3 +179,8 @@ def get_inv_prefix() -> str:
 def get_filter_name() -> str:
     """Return the suffix name for SMC particle-filtering evaluation files."""
     return "filter"
+
+
+def get_good_gsm8k_sample_indices() -> tuple[int, ...]:
+    """Return the indices of good GSM8K samples."""
+    return 14, 54
