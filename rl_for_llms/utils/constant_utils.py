@@ -183,4 +183,4 @@ def get_filter_name() -> str:
 
 def get_good_gsm8k_sample_indices() -> tuple[int, ...]:
     """Return the indices of good GSM8K samples."""
-    return 14, 54
+    return 9, 36
