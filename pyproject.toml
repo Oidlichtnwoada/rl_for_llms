@@ -3,7 +3,7 @@ name = "rl_for_llms"
 version = "1.0.0"
 description = "rl_for_llms"
 readme = "README.md"
-requires-python = "==3.14.3"
+requires-python = "==3.14.6"
 dependencies = [
     "datasets==4.8.5",
     "peft==0.19.1",
