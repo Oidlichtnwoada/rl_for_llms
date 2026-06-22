@@ -33,6 +33,11 @@ print_usage() {
     echo "  --help            Show this help message"
     echo ""
     echo "If no source files are provided, defaults to: $DEFAULT_SOURCE"
+    echo ""
+    echo "Sources are LaTeX root files without the .tex suffix, e.g.:"
+    echo "  $0 main-thesis          Build the thesis (default)"
+    echo "  $0 main-poster          Build the A0 landscape poster"
+    echo "  $0 main-thesis main-poster   Build both"
 }
 
 # --- Argument Parsing ---

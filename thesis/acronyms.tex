@@ -1,9 +1,14 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% 
-%% List of acronyms (based on the acronyms package)
-%% 
+%%
+%% Acronym definitions (based on the acronyms package).
+%%
+%% This file holds ONLY the acronym definitions so that it can be shared
+%% verbatim between main-thesis.tex (which prints the List of Acronyms) and
+%% main-poster.tex (which loads the package with the [nolist] option to define
+%% the acronyms without typesetting a list). The caller is responsible for the
+%% surrounding chapter heading (\addchap{\acronymname}) where one is wanted.
+%%
 
-\addchap{\acronymname}
 \begin{acronym}[ROC-AUC]
 	\acro{A3C}{Asynchronous Advantage Actor-Critic}
 	\acro{AI}{Artificial Intelligence}

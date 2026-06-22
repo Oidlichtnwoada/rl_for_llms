@@ -1,0 +1,320 @@
+% !TeX program = pdflatex
+% !TeX encoding = UTF-8
+% !TeX spellcheck = en_US
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% A0 landscape poster for the Master's Thesis Seminar poster session.
+%%
+%% Title:      Dense Confidence and Inference-Time Scaling
+%% Author:     Hannes Brantner
+%% Institute:  Institute for Machine Learning, JKU Linz
+%% Supervisor: Sepp Hochreiter (Co-Supervisors: Johannes Schimunek, Christoph Bartmann)
+%%
+%% The poster deliberately shares its substantive content with main-thesis.tex
+%% rather than duplicating it:
+%%   * csvmetrics.tex       -- every result number is the same live CSV lookup
+%%                             used by the thesis result tables (single source).
+%%   * acronyms.tex         -- the acronym definitions (loaded with [nolist] so
+%%                             no List of Acronyms is typeset on the poster).
+%%   * architecture_tikz.tex -- the training-time data-flow diagram, identical
+%%                             to fig:architecture in the thesis.
+%%
+%% Build with the repository build script (pdflatex engine, the default):
+%%   ./build.sh main-poster
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\documentclass[17pt, a0paper, landscape, margin=14mm, innermargin=13mm,
+	blockverticalspace=8mm, colspace=15mm, subcolspace=8mm]{tikzposter}
+
+%% --- Fonts: clean sans-serif body to match a modern AI-lab poster ----------
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\renewcommand{\familydefault}{\sfdefault}
+
+%% --- Math and tables --------------------------------------------------------
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+
+%% --- TikZ libraries required by the shared architecture diagram -------------
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,calc,fit,backgrounds}
+
+%% --- Acronyms: define them (shared file) but do not typeset a list ----------
+\usepackage[nolist]{acronym}
+%% On a poster, which is read non-linearly, the package's first-use expansion is
+%% meaningless, so every \ac* variant simply prints the short (italic) form.
+\DeclareRobustCommand{\acit}[1]{\textit{\acs{#1}}}
+\DeclareRobustCommand{\acpit}[1]{\textit{\acsp{#1}}}
+\DeclareRobustCommand{\acfit}[1]{\textit{\acs{#1}}}
+\DeclareRobustCommand{\acfpit}[1]{\textit{\acsp{#1}}}
+\DeclareRobustCommand{\aclf}[1]{\acl{#1}~(\acs{#1})}
+\DeclareRobustCommand{\aclfp}[1]{\aclp{#1}~(\acsp{#1})}
+
+%% --- Live result numbers, shared verbatim with the thesis result tables -----
+\input{csvmetrics.tex}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Theme and JKU-inspired colour palette
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usetheme{Default}
+
+\definecolor{jkublue}{HTML}{0A2D5E}   % deep navy for title and block headers
+\definecolor{jkuaccent}{HTML}{E1006E} % JKU magenta accent for highlights
+\definecolor{cardframe}{HTML}{C7CFDC} % soft grey card border
+
+\colorlet{backgroundcolor}{white}
+\colorlet{framecolor}{jkublue}
+\colorlet{titlefgcolor}{white}
+\colorlet{titlebgcolor}{jkublue}
+\colorlet{blocktitlebgcolor}{jkublue}
+\colorlet{blocktitlefgcolor}{white}
+\colorlet{blockbodybgcolor}{white}
+\colorlet{blockbodyfgcolor}{black}
+\colorlet{innerblocktitlebgcolor}{white}
+\colorlet{innerblocktitlefgcolor}{jkublue}
+\colorlet{notefgcolor}{white}
+\colorlet{notebgcolor}{jkuaccent}
+\colorlet{noteframecolor}{jkuaccent}
+
+\useblockstyle{Default}
+\usetitlestyle{Filled}
+
+%% Plain white background (no gradient / decorations).
+\definebackgroundstyle{jkubackground}{
+	\draw[line width=0pt, color=white, fill=white]
+	(bottomleft) rectangle (topright);
+}
+\usebackgroundstyle{jkubackground}
+
+%% Remove the "created with tikzposter" footer.
+\tikzposterlatexaffectionproofoff
+
+%% Compact helper for the highlighted headline statistics.
+\newcommand{\statbox}[2]{%
+	\begin{minipage}[t]{0.185\linewidth}
+		\centering
+		{\color{jkuaccent}\bfseries\fontsize{40}{44}\selectfont #1}\\[3pt]
+		{\footnotesize #2}
+	\end{minipage}%
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Title
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\title{\parbox{\linewidth}{\raggedright Dense Confidence \& Inference-Time Scaling:\\[2pt]
+		Extending \textit{LaSeR} for Reliable \acit{LLM} Reasoning}}
+\author{Hannes Brantner}
+\institute{Institute for Machine Learning, Johannes Kepler University Linz}
+
+\makeatletter
+\settitle{
+	\begin{minipage}[c]{0.82\linewidth}
+		\raggedright
+		{\color{titlefgcolor}\bfseries\fontsize{48}{54}\selectfont \@title\par}
+		\vspace{8pt}
+		{\color{titlefgcolor}\large \textbf{\@author} \quad\textbar\quad
+			Supervisor: \textbf{Sepp Hochreiter} \quad\textbar\quad
+			Co-Supervisors: Johannes Schimunek, Christoph Bartmann \quad\textbar\quad
+			\@institute\par}
+	\end{minipage}\hfill
+	\begin{minipage}[c]{0.15\linewidth}
+		\raggedleft
+		\includegraphics[width=\linewidth]{logos/jku_en_white.pdf}
+	\end{minipage}
+}
+\makeatother
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+
+%% Declare the shared acronyms (typesets nothing thanks to the [nolist] option).
+\input{acronyms.tex}
+
+\maketitle[titletoblockverticalspace=8mm]
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Full-width headline / take-away banner
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\block{}{%
+	A $0.5\,$B-parameter \acit{LLM} is trained, in \emph{one} joint pass on commodity hardware, to be both an
+	effective reasoner \emph{and} a calibrated judge of its own correctness. \textbf{\textit{Dense Confidence}}
+	reads a repurposed control token's logit at \emph{every} step, maps it through a bounded scaled sigmoid, and
+	supervises it with a class-rebalanced \acit{BCE} auxiliary loss alongside \acit{GRPO} --- at \emph{no}
+	answer-quality cost --- then reuses the same per-token signal as an inference-time controller.
+	\vspace{8pt}
+
+	\centering
+	\statbox{$\AccBeforePct{\AnsBase}{pass@1}{0}\!\to\!\AccAfterPct{\AnsDenseSR}{pass@1}{0}$}{\textit{Pass}@1 (\textit{Base} $\to$ \textit{Dense})}\hfill
+	\statbox{$\ConfAfter{\ConfDenseAux}{mcc}$}{confidence \acit{MCC} (up to)}\hfill
+	\statbox{$\InclPctAfter{\AnsDenseSR}{0}$}{confidence-token leakage}\hfill
+	\statbox{$\AccAfterPct{\AnsDenseAux}{confidence_weighted_majority_voting}{0}$}{\acit{CW-MV} answer selection}\hfill
+	\statbox{$1.75\,\%$}{of parameters trained}
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{columns}
+
+	%% ===================== COLUMN 1 : PROBLEM AND IDEA =====================
+	\column{0.33}
+
+	\block{Motivation: dense in value, sparse in time}{%
+		\acit{RLVR} restores objectivity to the reward channel by replacing the learned \acit{RLHF} preference
+		model with a deterministic verifier --- but it does \emph{not} restore density. The reward stays a single
+		bit per trajectory:
+		\begin{itemize}
+			\item A binary terminal verdict must be back-propagated across \emph{hundreds} of tokens, leaving
+			      credit assignment to the policy gradient and inviting \textit{Goodharting} of the reward proxy.
+			\item Self-rewarding methods let the policy be its own critic, but the closest one, \textit{LaSeR},
+			      emits a \emph{single} self-assessment at the sequence terminus (sparse-in-time) and uses an
+			      \emph{unbounded} log-probability that can drive the confidence-token logit high enough to
+			      contaminate the sampling distribution.
+		\end{itemize}
+		\textbf{Goal.} Learn a \emph{bounded, per-token} confidence signal that is calibrated against correctness
+		and cheap enough to train jointly with the policy.
+	}
+
+	\block{Research Questions}{%
+		\begin{description}
+			\item[\textcolor{jkuaccent}{RQ1}] Can a \emph{trajectory-wide} (dense) confidence signal be learned
+			      jointly with \acit{GRPO} without degrading reasoning accuracy?
+			\item[\textcolor{jkuaccent}{RQ2}] Does a bounded, logit-based parameterization eliminate the
+			      confidence-token sampling interference reported for \textit{LaSeR}?
+			\item[\textcolor{jkuaccent}{RQ3}] Does blending the intrinsic reward into the advantage improve
+			      binary classification of correctness over pure answer accuracy?
+			\item[\textcolor{jkuaccent}{RQ4}] Can the signal be exploited at \emph{inference} time --- answer
+			      selection, temperature modulation, \acit{SMC} resampling --- to trade compute for accuracy or
+			      calibration?
+		\end{description}
+	}
+
+	\block{Method: \textit{Dense Confidence} (ours)}{%
+		The \textit{Qwen2.5} vocabulary contains an unused control token (\texttt{<|vision\_pad|>}). A forward hook
+		on the \acit{LM} head reads its logit $\ell_t^{\mathrm{conf}}$ at \emph{every} step and maps it to a
+		bounded confidence
+		\[
+			c_t = \sigma\!\left(\tfrac{\pi}{\sigma_{\mathrm{conf}}\sqrt{3}}\,(\ell_t^{\mathrm{conf}}-\mu_{\mathrm{conf}})\right) \in [0,1].
+		\]
+		A class-rebalanced \acit{BCE} loss broadcasts the binary outcome reward $r_i$ to every position and is
+		\emph{added} to the \acit{GRPO} objective (it is not optimized by the policy gradient itself):
+		\[
+			L_{\mathrm{total}} = -\mathcal{J}_{\mathrm{GRPO}}(\theta) + \beta_{\mathrm{conf}}\,L_{\mathrm{conf}},\qquad
+			L_{\mathrm{conf},i} = -\tfrac{1}{T_i}\!\sum_{t=1}^{T_i}\!\big[r_i\log c_{i,t} + (1{-}r_i)\log(1{-}c_{i,t})\big].
+		\]
+		Optionally (\emph{self-rewarding}) the trajectory-mean confidence $\bar c_i$ is blended into the advantage:
+		\[
+			A_i^{\mathrm{blended}} = (1-\alpha_{\mathrm{blend}})\,A_{r_i} + \alpha_{\mathrm{blend}}\,A_{\bar c_i}.
+		\]
+		The bounded sigmoid \emph{saturates}, so inflating the logit yields no free advantage: the token is never
+		sampled and \emph{no} post-\acit{EOS} forward pass is needed.
+	}
+
+	\block{Selected references}{%
+		\small
+		[1] Yang et al. \textit{LaSeR: RL with Last-Token Self-Rewarding}, 2025.\;
+		[2] Shao et al. \textit{DeepSeekMath} (\acit{GRPO}), 2024.\;
+		[3] Cobbe et al. \textit{Training Verifiers to Solve Math Word Problems} (\acit{GSM8K}), 2021.\;
+		[4] Hu et al. \textit{LoRA}, 2021.\;
+		[5] Qwen Team. \textit{Qwen2.5 Technical Report}, 2025.\;
+		[6] Lew et al. \textit{\acit{SMC} Steering of LLMs}, 2023.
+	}
+
+	%% ===================== COLUMN 2 : HOW IT WORKS =====================
+	\column{0.34}
+
+	\block{Training-time architecture}{%
+		\begin{center}
+			\resizebox{0.60\linewidth}{!}{\input{architecture_tikz.tex}}
+		\end{center}
+		\vspace{-4pt}
+		{\small The confidence-token logit is harvested \emph{twice} by the same \acit{LM}-head hook: gradient-free
+			during generation (intrinsic reward) and with gradients during re-evaluation (auxiliary \acit{BCE}
+			loss). The external verifier supplies the outcome bit $r$; the internal verifier supplies $c_{i,t}$.}
+	}
+
+	\block{Inference-time scaling (reuses the trained head)}{%
+		Three controllers reuse the \textit{Dense} head at evaluation only, with \emph{no} further training:
+		\begin{itemize}
+			\item \textbf{Answer selection.} Aggregate the $G$ generations by \acit{MV}, \acit{HC} (highest mean
+			      confidence) or \acit{CW-MV} (confidence-weighted \acit{MV}).
+			\item \textbf{Temperature modulation.} The decode temperature is a linear function of the running-mean
+			      confidence over the last $H$ steps (with an inversion ablation).
+			\item \textbf{\acit{SMC} particle filtering.} The $G$ rollouts form a particle set; low-confidence
+			      particles are resampled from high-confidence donors of the same group, with explicit
+			      \texttt{DynamicCache} surgery on the \acit{KV} cache.
+		\end{itemize}
+		The latter two are \emph{structurally exclusive} to \textit{Dense}: they consume a per-token signal that
+		the last-token \textit{LaSeR} parameterization cannot provide.
+	}
+
+	%% ===================== COLUMN 3 : EVIDENCE AND CONCLUSION =====================
+	\column{0.33}
+
+	\block{Experimental setup}{%
+		\small
+		Filtered \aclf{GSM8K} ($N_{\mathrm{eval}}=1{,}222$, $G=4$/prompt) with a \texttt{Qwen2.5-0.5B-Instruct}
+		policy. \acit{LoRA} plus the single confidence-token row train $\approx 1.75\,\%$ of the parameters;
+		\acit{GRPO} with $\beta_{\mathrm{KL}}=0$. One epoch on a single \textit{NVIDIA GV100} (\texttt{float32}).
+		Every row is the mean over \textbf{three} seeds ($\pm$ std). Six training variants: $\pm\ell$ (auxiliary
+		loss), $\pm r$ (intrinsic reward); \textit{Dense} vs.\ \textit{LaSeR}.
+	}
+
+	\block{Results: training-time}{%
+		\centering
+		\renewcommand{\arraystretch}{1.0}
+		\resizebox{0.86\linewidth}{!}{%
+			\begin{tabular}{lcccc}
+				\toprule
+				\textbf{Variant}           & \textit{Pass}@1                       & \acit{MV}                                      & \acit{CW-MV}                                                                & \acit{MCC}                              \\
+				\midrule
+				\textit{Base}              & \AccBeforePct{\AnsBase}{pass@1}{0}    & \AccBeforePct{\AnsBase}{majority_voting}{0}    & ---                                                                         & ---                                     \\
+				\acit{GRPO} ($-\ell-r$)    & \AccAfterPct{\AnsGRPO}{pass@1}{0}     & \AccAfterPct{\AnsGRPO}{majority_voting}{0}     & ---                                                                         & ---                                     \\
+				\midrule
+				\textit{Dense} ($+\ell-r$) & \AccAfterPct{\AnsDenseAux}{pass@1}{0} & \AccAfterPct{\AnsDenseAux}{majority_voting}{0} & \textbf{\AccAfterPct{\AnsDenseAux}{confidence_weighted_majority_voting}{0}} & \textbf{\ConfAfter{\ConfDenseAux}{mcc}} \\
+				\textit{Dense} ($+\ell+r$) & \AccAfterPct{\AnsDenseSR}{pass@1}{0}  & \AccAfterPct{\AnsDenseSR}{majority_voting}{0}  & \AccAfterPct{\AnsDenseSR}{confidence_weighted_majority_voting}{0}           & \ConfAfter{\ConfDenseSR}{mcc}           \\
+				\acit{LaSeR} ($+\ell-r$)   & \AccAfterPct{\AnsLaserAux}{pass@1}{0} & \AccAfterPct{\AnsLaserAux}{majority_voting}{0} & \AccAfterPct{\AnsLaserAux}{confidence_weighted_majority_voting}{0}          & \ConfAfter{\ConfLaserAux}{mcc}          \\
+				\acit{LaSeR} ($+\ell+r$)   & \AccAfterPct{\AnsLaserSR}{pass@1}{0}  & \AccAfterPct{\AnsLaserSR}{majority_voting}{0}  & \AccAfterPct{\AnsLaserSR}{confidence_weighted_majority_voting}{0}           & \ConfAfter{\ConfLaserSR}{mcc}           \\
+				\bottomrule
+			\end{tabular}}
+
+		\raggedright\vspace{4pt}
+		\textbf{Interpretation.}
+		\begin{itemize}
+			\item \textbf{No accuracy tax (RQ1).} \textit{Dense} matches \acit{GRPO} on \textit{Pass}@1, exceeds it on
+			      \textit{Pass}@4; the head reaches \acit{MCC} up to $\ConfAfter{\ConfDenseAux}{mcc}$, \acit{ROC-AUC}
+			      $>0.84$, while the untrained \acit{GRPO} control is random.
+			\item \textbf{No leakage (RQ2).} The confidence token is sampled $\InclPctAfter{\AnsDenseSR}{0}$ of the
+			      time --- the bounded sigmoid keeps its logit far below the vocabulary, removing both \textit{LaSeR}
+			      symptoms (in-trace leakage and the extra forward pass).
+			\item \textbf{Dense $>$ \textit{LaSeR} (RQ3).} \textit{Dense} sits $2$--$3$ pp above \textit{LaSeR} on every
+			      answer metric; the unbounded \textit{LaSeR} reward collapses calibration once blended into the
+			      advantage (\acit{MCC} $\ConfAfter{\ConfLaserAux}{mcc}\!\to\!\ConfAfter{\ConfLaserSR}{mcc}$), the exact
+			      failure the bounded design prevents.
+		\end{itemize}
+	}
+
+	\block{The per-step signal is an early-warning indicator}{%
+		\begin{center}
+			\includegraphics[width=0.48\linewidth]{charts/confidence_evolution_chart.pdf}
+		\end{center}
+		\vspace{-6pt}
+		{\small Per-token confidence on a \emph{correct} (higher mean) vs.\ \emph{incorrect} (lower mean)
+			\acit{GSM8K} rollout: the trajectories diverge \emph{hundreds of tokens early}, an internally decodable
+			signal of eventual success or failure (RQ4).}
+	}
+
+	\block{Conclusion \& outlook}{%
+		One repurposed token, an \acit{LM}-head hook, and a class-rebalanced \acit{BCE} auxiliary yield a calibrated,
+		per-token confidence head at $0.5\,$B parameters with \emph{no} answer-quality cost and \emph{no} extra
+		forward pass. The same head decouples two inference-time objectives on one checkpoint: tempmod $+$ \acit{SMC}
+		filtering for calibration (\acit{MCC} up to $\ConfAfter{\ConfTempFil}{mcc}$), inverse tempmod for answer
+		aggregation. Gains should grow with scale, data, and particle budget $G$; the head is a natural \acit{PRM}
+		distillation target. \textbf{Code:} \texttt{github.com/Oidlichtnwoada/rl\_for\_llms}
+	}
+
+\end{columns}
+
+\end{document}
