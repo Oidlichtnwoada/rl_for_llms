@@ -48,7 +48,7 @@ class EvalKey(BaseModel):
             return f"{self.tempmod.get_shorthand()}{self.filtering.get_shorthand()}"
         shorthand = self.variant.get_shorthand()
         if self.method is not None:
-            return f"{shorthand} ({self.method.value.lower()})"
+            return f"{shorthand} ({self.method.get_display_name()})"
         return shorthand
 
     def has_confidence_metrics(self) -> bool:

@@ -191,9 +191,45 @@ def configure_matplotlib_fonts() -> None:
     )
 
 
+def get_metric_display_overrides() -> dict[str, str]:
+    """Return explicit display labels matching the thesis casing and hyphens.
+
+    The keys are metric base names (the final path segment), and the values are
+    the exact strings used in the thesis (acronym short forms from
+    ``thesis/acronyms.tex`` and the figure/table captions). An embedded newline
+    controls the line wrapping of the x-axis tick label.
+    """
+    return {
+        "majority_voting": "MV",
+        "highest_confidence": "HC",
+        "confidence_weighted_majority_voting": "CW-MV",
+        "truncation_percentage": "Truncation\nPercentage",
+        "confidence_token_inclusion_percentage": "Confidence-Token\nInclusion Percentage",
+        "accuracy": "Accuracy",
+        "fpr": "FPR",
+        "fnr": "FNR",
+        "tpr": "TPR",
+        "tnr": "TNR",
+        "ppv": "PPV",
+        "npv": "NPV",
+        "roc_auc": "ROC-AUC",
+        "pr_auc": "PR-AUC",
+        "f1_score": "F1",
+        "balanced_accuracy": "BA",
+        "harmonic_balanced_accuracy": "HBA",
+        "mcc": "MCC",
+    }
+
+
 def format_metric_label(metric_name: str) -> str:
-    """Convert metric name to display label (two lines, capitalized)."""
-    name = metric_name.rsplit("/", maxsplit=1)[-1].replace("_", " ").title()
+    """Convert metric name to its thesis display label (two lines when wrapped)."""
+    base_name = metric_name.rsplit("/", maxsplit=1)[-1]
+    override = get_metric_display_overrides().get(base_name)
+    if override is not None:
+        return override
+    if base_name.startswith("pass@"):
+        return "Pass@" + base_name[len("pass@") :]
+    name = base_name.replace("_", " ").title()
     words = name.split()
     mid = (len(words) + 1) // 2
     return " ".join(words[:mid]) + "\n" + " ".join(words[mid:])
@@ -756,7 +792,7 @@ def create_confidence_evolution_chart(
         wrapped_question = textwrap.fill(sample.question, width=300)
         title_text = (
             f"Sample {idx + 1} [{correctness_label}]\n"
-            f"Aggregated Confidence: {sample.aggregated_confidence_sigmoid:.3f}\n"
+            f"Mean Confidence: {sample.aggregated_confidence_sigmoid:.3f}\n"
             f"Question: {wrapped_question}"
         )
         title_h = title_height / fig_height

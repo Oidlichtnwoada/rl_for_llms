@@ -78,6 +78,49 @@
 \DeclareRobustCommand{\acfit}[1]{\textit{\ac{#1}}}
 \DeclareRobustCommand{\acfpit}[1]{\textit{\acp{#1}}}
 
+%% \aclf{<acro>} : always print the long form immediately followed by the short
+%% form in parentheses, i.e. "Long Form (SHORT)", independently of the package's
+%% document-wide first-use state. It is the caption/table-note workhorse that
+%% lets every float define its own abbreviations on its own without consuming
+%% the running-text first use tracked by \acfit.
+\DeclareRobustCommand{\aclf}[1]{\acl{#1}~(\acs{#1})}
+
+%% \aclfp{<acro>} : plural counterpart of \aclf, i.e. "Long Forms (SHORTs)",
+%% using the package's plural long/short forms.
+\DeclareRobustCommand{\aclfp}[1]{\aclp{#1}~(\acsp{#1})}
+
+%% ---------------------------------------------------------------------------
+%% Self-contained glossaries for the result floats. The matplotlib charts and
+%% the LaTeX result tables share the same metric families and the same +/-
+%% flag-code notation (see rl_for_llms/models/variant.py and
+%% inference_time_variant_enums.py). The macros below render each family once,
+%% in long-form-with-short-form-in-brackets style, so that the figure and table
+%% captions stay identical in wording without duplicating prose.
+%% ---------------------------------------------------------------------------
+
+%% Answer-accuracy metric families.
+\newcommand{\glossanswerfig}{%
+	\textit{Pass}@$1$ and \textit{Pass}@$4$ (the fraction of prompts solved by the single first sample, respectively by at least one of the $G$ samples), \aclf{MV}, the confidence-token truncation percentage (the fraction of generations that reach the length cap $T_{\mathrm{gen}}$ without emitting an \acs{EOS} token), the confidence-token inclusion percentage (the fraction of generations into which the repurposed confidence token leaks), \aclf{HC} (the single highest-mean-confidence trajectory), and \aclf{CW-MV}%
+}
+\newcommand{\glossanswertab}{%
+	\aclf{MV} (the unweighted plurality answer), \aclf{HC} (the answer of the single highest-mean-confidence trajectory), and \aclf{CW-MV} (the plurality answer after weighting each trajectory by its mean confidence)%
+}
+
+%% Binary-classification (confidence-head) metric family.
+\newcommand{\glossconffig}{%
+	accuracy, \aclf{FPR}, \aclf{FNR}, \aclf{TPR}, \aclf{TNR}, \aclf{PPV}, \aclf{NPV}, \aclf{ROC-AUC}, \aclf{PR-AUC}, \aclf{F1}, \aclf{BA}, and \aclf{HBA}, with each legend entry additionally annotated by the variant's \aclf{MCC}%
+}
+
+%% Flag-code legends shared by the matplotlib charts. The charts write the
+%% auxiliary-loss flag as the plain letter \texttt{l}; it denotes the same
+%% $\ell$ used in the running text and tables.
+\newcommand{\legendtrain}{%
+	the legend encodes each configuration with the compact flag code used throughout the codebase: \texttt{+l}/\texttt{-l} marks the auxiliary confidence loss ($\ell$) as enabled/disabled, \texttt{+r}/\texttt{-r} the intrinsic confidence reward blended into the \acs{GRPO} advantage as enabled/disabled, and the parenthesised method tag (\textit{Dense} or \acs{LaSeR}) names the confidence method (per-token \acs{BCE} versus last-token \acs{MSE} supervision). Thus \texttt{base} is the untrained reference policy, \texttt{-l-r} the \acs{GRPO} baseline, \texttt{+l-r} the auxiliary-only (\acl{Aux}, \acs{Aux}) variant, and \texttt{+l+r} the \acl{SR} (\acs{SR}) variant of \autoref{tab:variants:train}%
+}
+\newcommand{\legendinfer}{%
+	the legend encodes each overlay with the compact flag code used throughout the codebase: \texttt{+t}/\texttt{-t} marks confidence-driven temperature modulation as enabled/disabled, \texttt{+it} the inverted-mapping temperature modulation, and \texttt{+f}/\texttt{-f} the confidence-conditioned \acs{SMC} particle filtering as enabled/disabled. Thus \texttt{base} is the no-overlay reference (\texttt{-t-f}), and the chart title \texttt{[Weights: +l+r (Dense)]} records that every overlay is applied on top of the \textit{Dense} \acl{SR} (\acs{SR}) $+\ell+r$ checkpoint of \autoref{tab:variants:train}%
+}
+
 %% Allow line breaks inside \texttt{...} so that long identifiers
 %% (e.g. INFERENCE_TIME_EVALUATION_USE_TEMPMOD or Qwen/Qwen2.5-0.5B-Instruct)
 %% wrap across lines instead of overflowing the text margin. The original
@@ -547,7 +590,7 @@ Our implementation leverages the \texttt{trl} library \citep{trl} for the \acfit
 			\draw[arr] (loss_conf.south) |- (update.east);
 		\end{tikzpicture}
 	}
-	\caption{Overview of the \textit{Dense Confidence} \acit{RL} Architecture. The confidence token logit is captured twice: first during the generation phase (non-differentiable) to compute intrinsic rewards, and second during the re-evaluation forward pass to compute gradients for the auxiliary \acit{BCE} objective.}
+	\caption[Overview of the \textit{Dense Confidence} reinforcement-learning architecture]{Overview of the \textit{Dense Confidence} \aclf{RL} architecture (training-time data flow). \textbf{Solid arrows} carry tensors/data; \textbf{dashed arrows} denote the \aclf{LM}-head forward hook that reads the confidence-token logit $l_{i,t}^{\mathrm{conf}}$. The same confidence logit is captured \emph{twice}: once in the non-differentiable \emph{generation phase} (top, gradient-free sampling of the $G$ rollouts $\{o_1,\dots,o_G\}$ for prompt $q$ with answer $a$) to form the intrinsic reward, and once in the \emph{re-evaluation phase} (bottom, with gradients) to build the auxiliary objective. The \emph{external verifier} returns a format reward and a correctness reward whose sum is the binary outcome reward $r$. The \emph{internal verifier} maps each logit to a confidence score $c_{i,t}=\sigma\!\big(\tfrac{\pi}{\sigma_{\mathrm{conf}}\sqrt{3}}(l_{i,t}^{\mathrm{conf}}-\mu_{\mathrm{conf}})\big)\in[0,1]$ via the scaled sigmoid of \autoref{eq:sigmoid_transform} ($\mu_{\mathrm{conf}},\sigma_{\mathrm{conf}}$: empirical logit mean/standard deviation) and averages it to the per-trajectory mean $\bar c_i=\tfrac{1}{T_i}\sum_t c_{i,t}$. The \aclf{RL} advantage standardises both the outcome reward $r$ and the mean confidence $\bar c$ to $A_x=(x_i-\mu_x)/(\sigma_x+\epsilon)$ and blends them with weight $\alpha_{\mathrm{blend}}$ into $A_i=(1-\alpha_{\mathrm{blend}})A_{r_i}+\alpha_{\mathrm{blend}}A_{\bar c_i}$ (the \emph{self-rewarding} path; $\alpha_{\mathrm{blend}}=0$ recovers the auxiliary-only variant). The final descent direction sums the \aclf{GRPO} surrogate loss $-\mathcal{J}(\theta)$ and the class-rebalanced \aclf{BCE} confidence loss $L_{\mathrm{conf}}(\theta)$, weighted by $\beta_{\mathrm{conf}}$.}
 	\label{fig:architecture}
 \end{figure}
 
@@ -765,7 +808,7 @@ The full ablation grid evaluated in this thesis is split into two orthogonal blo
 
 \begin{table}[ht]
 	\centering
-	\caption{Training-time experimental variants. Rows are mutually exclusive training configurations. $\ell$ denotes the auxiliary confidence loss, $r$ the intrinsic-reward blend into the advantage.}
+	\caption[Training-time experimental variants]{Training-time experimental variants; rows are mutually exclusive training configurations. The \textbf{Method} column selects the confidence formulation: \textit{Dense} (this work, per-token \aclf{BCE} supervision) or \aclf{LaSeR} (last-token \aclf{MSE} supervision). The boolean flags are $\ell$, the auxiliary confidence loss ($+\ell$ on, $-\ell$ off), and $r$, the intrinsic confidence reward blended into the \acs{GRPO} advantage ($+r$ on, $-r$ off). The two confidence-trained nicknames follow from these flags: \aclf{Aux} $=+\ell-r$ and \aclf{SR} $=+\ell+r$. \textit{Base} is the untrained reference policy and \acs{GRPO} ($-\ell-r$) is the \aclf{GRPO} baseline with no confidence head.}
 	\label{tab:variants:train}
 	\begin{tabular}{lllll}
 		\toprule
@@ -783,7 +826,7 @@ The full ablation grid evaluated in this thesis is split into two orthogonal blo
 
 \begin{table}[ht]
 	\centering
-	\caption{Inference-time experimental variants, all evaluated on top of the \textit{Dense} \acit{SR} ($+\ell+r$) checkpoint of \autoref{tab:variants:train}. The full $3 \times 2$ cross of the three temperature-modulation settings (off, canonical, inverted) with the two \acit{SMC}-filtering states (off, on) is reported. The (\texttt{notempmod}, \texttt{nofilter}) row is the implicit reference, the unmodified \textit{Dense} $+\ell+r$ evaluation, and has no separate \texttt{CSV}.}
+	\caption[Inference-time experimental variants]{Inference-time experimental variants, all evaluated on top of the \textit{Dense} \aclf{SR} ($+\ell+r$) checkpoint of \autoref{tab:variants:train}. The full $3 \times 2$ cross of the three temperature-modulation settings (\texttt{notempmod} off, \texttt{tempmod} canonical, \texttt{invtempmod} inverted mapping) with the two \aclf{SMC} particle-filtering states (\texttt{nofilter} off, \texttt{filter} on) is reported. The \textbf{tempmod} column marks whether confidence-driven temperature modulation is active, \textbf{invert} whether it uses the inverted mapping, and \textbf{filter} whether \acs{SMC} filtering is active. The (\texttt{notempmod}, \texttt{nofilter}) row is the implicit reference, the unmodified \textit{Dense} $+\ell+r$ evaluation, and has no separate \texttt{CSV}.}
 	\label{tab:variants:infer}
 	\begin{tabular}{lllll}
 		\toprule
@@ -833,7 +876,7 @@ Every hyperparameter lives in the central Pydantic \texttt{Config} (\texttt{rl\_
 
 \begin{table}[ht]
 	\centering
-	\caption{Training-time environment-variable overrides consumed by \texttt{rl\_for\_llms.main} (\texttt{./run\_repo.sh}). The shared variables \texttt{CUDA\_VISIBLE\_DEVICES}, \texttt{WANDB\_API\_KEY} and \texttt{NUM\_EVAL\_REPETITIONS=3} are omitted from the table because they are constant across runs. The default values are \texttt{METHOD=DENSE}, \texttt{USE\_CONFIDENCE\_LOSS=1}, \texttt{USE\_CONFIDENCE\_REWARD=1} and \texttt{SKIP\_EVAL\_BEFORE\_TRAIN=0}. Only deviations from these defaults need to be exported. Column headers \texttt{USE\_CONF\_LOSS} and \texttt{USE\_CONF\_REWARD} abbreviate \texttt{USE\_CONFIDENCE\_LOSS} and \texttt{USE\_CONFIDENCE\_REWARD} for typography.}
+	\caption[Training-time environment-variable overrides]{Training-time environment-variable overrides consumed by \texttt{rl\_for\_llms.main} (\texttt{./run\_repo.sh}). Variant nicknames follow \autoref{tab:variants:train}: $+\ell/-\ell$ is the auxiliary confidence-loss flag, $+r/-r$ the intrinsic confidence-reward flag, \aclf{Aux} $=+\ell-r$, and \aclf{SR} $=+\ell+r$. The shared variables \texttt{CUDA\_VISIBLE\_DEVICES}, \texttt{WANDB\_API\_KEY} and \texttt{NUM\_EVAL\_REPETITIONS=3} are omitted from the table because they are constant across runs. The default values are \texttt{METHOD=DENSE}, \texttt{USE\_CONFIDENCE\_LOSS=1}, \texttt{USE\_CONFIDENCE\_REWARD=1} and \texttt{SKIP\_EVAL\_BEFORE\_TRAIN=0}. Only deviations from these defaults need to be exported. Column headers \texttt{USE\_CONF\_LOSS} and \texttt{USE\_CONF\_REWARD} abbreviate \texttt{USE\_CONFIDENCE\_LOSS} and \texttt{USE\_CONFIDENCE\_REWARD} for typography.}
 	\label{tab:envvars:train}
 	\begin{tabular}{l C{1.5cm} C{1.9cm} C{1.9cm} C{2.2cm}}
 		\toprule
@@ -851,7 +894,7 @@ Every hyperparameter lives in the central Pydantic \texttt{Config} (\texttt{rl\_
 
 \begin{table}[ht]
 	\centering
-	\caption{Inference-time environment-variable overrides consumed by \texttt{rl\_for\_llms.evaluate} (\texttt{./run\_eval.sh}). All overlays reuse the trained \textit{Dense} \acit{SR} checkpoint and require \texttt{METHOD=DENSE} (the \acit{LaSeR} formulation does not expose a per-token confidence signal to drive these overlays). Defaults of the three boolean flags are all \texttt{0}. The no-adaptation reference therefore needs no overrides at all. Column headers \texttt{ITE\_USE\_TEMPMOD}, \texttt{ITE\_USE\_FILTERING} and \texttt{TM\_INVERT\_MAPPING} abbreviate \texttt{INFERENCE\_TIME\_EVALUATION\_USE\_TEMPMOD}, \texttt{INFERENCE\_TIME\_EVALUATION\_USE\_FILTERING} and \texttt{TEMPERATURE\_MODULATION\_INVERT\_MAPPING} for typography.}
+	\caption[Inference-time environment-variable overrides]{Inference-time environment-variable overrides consumed by \texttt{rl\_for\_llms.evaluate} (\texttt{./run\_eval.sh}). All overlays reuse the trained \textit{Dense} \aclf{SR} checkpoint and require \texttt{METHOD=DENSE} (the \aclf{LaSeR} formulation does not expose a per-token confidence signal to drive these overlays). Defaults of the three boolean flags are all \texttt{0}. The no-adaptation reference therefore needs no overrides at all. Column headers \texttt{ITE\_USE\_TEMPMOD}, \texttt{ITE\_USE\_FILTERING} and \texttt{TM\_INVERT\_MAPPING} abbreviate \texttt{INFERENCE\_TIME\_EVALUATION\_USE\_TEMPMOD}, \texttt{INFERENCE\_TIME\_EVALUATION\_USE\_FILTERING} and \texttt{TEMPERATURE\_MODULATION\_INVERT\_MAPPING} for typography.}
 	\label{tab:envvars:eval}
 	\begin{tabular}{l C{2.2cm} C{2.3cm} C{2.3cm}}
 		\toprule
@@ -882,7 +925,7 @@ This chapter is split along the axis that defines the contribution: \autoref{sec
 
 \begin{table}[ht]
 	\centering
-	\caption{Answer-accuracy metrics on \acit{GSM8K} (\(N_{\mathrm{eval}}=1{,}222\), \(G=4\) generations per prompt). Each cell is the mean over the per-prompt groups $\pm$ the standard deviation taken across the three independent seed runs. \emph{MV}: unweighted majority vote, \emph{HC}: highest mean confidence, \emph{CW-MV}: confidence-weighted majority vote. \emph{HC} and \emph{CW-MV} are undefined for the \textit{Base} and \acit{GRPO} variants, which have no trained confidence head, and are therefore left blank.}
+	\caption[Answer-accuracy metrics for the training-time variants]{Answer-accuracy metrics on \aclf{GSM8K} (\(N_{\mathrm{eval}}=1{,}222\), \(G=4\) generations per prompt) for the six training-time variants of \autoref{tab:variants:train}. Each cell is the mean over the per-prompt groups $\pm$ the standard deviation taken across the three independent seed runs. \textit{Pass}@$1$ / \textit{Pass}@$4$ are the single-first-sample / best-of-$G$ accuracies; the three confidence-aggregation rules are \glossanswertab. \acs{HC} and \acs{CW-MV} are undefined for the \textit{Base} and \aclf{GRPO} variants, which have no trained confidence head, and are therefore left blank. The variant nicknames $\pm\ell$ (auxiliary confidence loss) and $\pm r$ (intrinsic confidence reward) follow \autoref{tab:variants:train}.}
 	\label{tab:res:answer}
 	\resizebox{\linewidth}{!}{%
 		\begin{tabular}{lccccc}
@@ -901,7 +944,7 @@ This chapter is split along the axis that defines the contribution: \autoref{sec
 
 \begin{table}[ht]
 	\centering
-	\caption{Binary-classification of correctness using the trained confidence head. Each cell is the mean of the three per-seed concatenated full-evaluation scores $\pm$ the standard deviation taken across those same three independent seed runs. The \textit{Base} and \acit{GRPO} variants are omitted: neither has a trained confidence head (the \texttt{<|vision\_pad|>} logit receives no learning signal), so any classification metric they would report is pure noise and not meaningfully comparable. \emph{BA}: balanced accuracy, \emph{HBA}: harmonic balanced accuracy, \emph{MCC}: Matthews correlation coefficient.}
+	\caption[Confidence-head binary-classification metrics for the training-time variants]{Binary classification of correctness using the trained confidence head, for the four confidence-trained variants of \autoref{tab:variants:train}. Each cell is the mean of the three per-seed concatenated full-evaluation scores $\pm$ the standard deviation taken across those same three independent seed runs. Reported metrics are accuracy, \aclf{BA}, \aclf{HBA}, \aclf{F1}, \aclf{MCC}, and \aclf{ROC-AUC}. The \textit{Base} and \aclf{GRPO} variants are omitted: neither has a trained confidence head (the \texttt{<|vision\_pad|>} logit receives no learning signal), so any classification metric they would report is pure noise and not meaningfully comparable. The variant nicknames $\pm\ell$ (auxiliary confidence loss) and $\pm r$ (intrinsic confidence reward) follow \autoref{tab:variants:train}.}
 	\label{tab:res:conf}
 	\resizebox{\linewidth}{!}{%
 		\begin{tabular}{lcccccc}
@@ -922,14 +965,14 @@ This chapter is split along the axis that defines the contribution: \autoref{sec
 	\noindent\begin{minipage}{\linewidth}
 		\centering
 		\includegraphics[width=\linewidth,height=0.62\textheight,keepaspectratio]{charts/answer_accuracy_chart.pdf}
-		\captionof{figure}{Answer-accuracy metrics ($\textit{Pass}@1$, $\textit{Pass}@4$, \acit{MV}, \acit{HC}, \acit{CW-MV}) for the six training-time variants of \autoref{tab:variants:train}. Bars are means over the per-prompt groups with error bars giving the standard deviation across the three independent seed runs. Visualisation of \autoref{tab:res:answer}.}
+		\captionof{figure}[Answer-accuracy charts for the training-time variants]{Answer-accuracy metrics for the six training-time variants of \autoref{tab:variants:train}. The grouped bars report \glossanswerfig. Bars are means over the per-prompt groups with error bars giving the standard deviation across the three independent seed runs; \acs{HC} and \acs{CW-MV} are shown only for the four confidence-trained variants. In the legend, \legendtrain. Visualises \autoref{tab:res:answer} together with the extra truncation- and inclusion-percentage bars that the table omits.}
 		\label{fig:res:train:answer}
 	\end{minipage}
 	\newpage
 	\noindent\begin{minipage}{\linewidth}
 		\centering
 		\includegraphics[width=\linewidth,height=0.62\textheight,keepaspectratio]{charts/confidence_chart.pdf}
-		\captionof{figure}{Binary-classification metrics of the confidence head (accuracy, \acit{BA}, \acit{HBA}, \acit{F1}, \acit{MCC}, \acit{ROC-AUC}) for the four confidence-trained training-time variants. Bars are means with error bars giving the standard deviation across the three independent seed runs. Visualisation of \autoref{tab:res:conf}.}
+		\captionof{figure}[Confidence-head classification charts for the training-time variants]{Binary-classification metrics of the confidence head for the four confidence-trained training-time variants of \autoref{tab:variants:train}. The grouped bars report \glossconffig. Bars are means with error bars giving the standard deviation across the three independent seed runs. In the legend, \legendtrain. Visualises \autoref{tab:res:conf} together with the additional rate-based metrics that the table omits.}
 		\label{fig:res:train:conf}
 	\end{minipage}
 \end{landscape}
@@ -952,7 +995,7 @@ This chapter is split along the axis that defines the contribution: \autoref{sec
 	\noindent\begin{minipage}{\linewidth}
 		\centering
 		\includegraphics[width=0.82\linewidth,height=0.82\textheight,keepaspectratio]{charts/confidence_evolution_chart.pdf}
-		\captionof{figure}{Per-token confidence evolution of the \textit{Dense} \acit{SR} ($+\ell+r$) checkpoint on two complete \acit{GSM8K} rollouts: an \emph{incorrect} final answer (top, lower aggregate confidence) and a \emph{correct} final answer (bottom, higher aggregate confidence). Each row plots the scaled-sigmoid confidence $c_t\in[0,1]$ at every response token of the trajectory, wrapped across rows. The printed \emph{Aggregated Confidence} is the uniform per-trajectory mean used by the \acit{HC} and \acit{CW-MV} selection rules. The raw per-token signal is spiky, motivating the running-mean window $L_{\mathrm{hist}}$ that temperature modulation and \acit{SMC} filtering use as a stable control signal. The two prompts also serve as concrete \acit{GSM8K} examples referenced in \autoref{sec:setup:dataset}.}
+		\captionof{figure}[Per-token confidence evolution on two \textit{Dense} self-rewarding rollouts]{Per-token confidence evolution of the \textit{Dense} \aclf{SR} ($+\ell+r$) checkpoint on two complete \aclf{GSM8K} rollouts: an \emph{incorrect} final answer (top, lower mean confidence) and a \emph{correct} final answer (bottom, higher mean confidence). Each row plots the scaled-sigmoid confidence $c_t\in[0,1]$ at every response token of the trajectory, wrapped across rows. The printed \emph{Mean Confidence} is the uniform per-trajectory mean used by the \aclf{HC} and \aclf{CW-MV} selection rules of \autoref{sec:res:selection}. The raw per-token signal is spiky, motivating the running-mean window $L_{\mathrm{hist}}$ (the confidence-history length of \autoref{sec:methods:itts:tempmod}) that temperature modulation and \aclf{SMC} filtering use as a stable control signal. The two prompts also serve as concrete \acs{GSM8K} examples referenced in \autoref{sec:setup:dataset}.}
 		\label{fig:res:train:evolution}
 	\end{minipage}
 \end{landscape}
@@ -980,7 +1023,7 @@ The two generative inference-time overlays of \autoref{tab:variants:infer}, temp
 
 \begin{table}[ht]
 	\centering
-	\caption{Inference-time overlays evaluated on top of the \textit{Dense} \acit{SR} checkpoint. Same metric families as \autoref{tab:res:answer} and \autoref{tab:res:conf}. The default \texttt{notempmod\_nofilter} row is reproduced from the ordinary \textit{Dense} \acit{SR} evaluation because no separate \texttt{CSV} is emitted when both overlay flags are disabled. Each cell is the mean over the per-prompt groups $\pm$ the standard deviation taken across the three independent seed runs. The upper block lists the three standalone overlays, the lower block lists the two combined (tempmod-or-inverse-tempmod plus \acit{SMC} filtering) overlays.}
+	\caption[Inference-time overlays on the \textit{Dense} self-rewarding checkpoint]{Inference-time overlays evaluated on top of the \textit{Dense} \aclf{SR} ($+\ell+r$) checkpoint of \autoref{tab:variants:train}. Columns reuse the answer-accuracy family of \autoref{tab:res:answer} (\textit{Pass}@$1$, \textit{Pass}@$4$, \aclf{MV}, \aclf{HC}, \aclf{CW-MV}) plus the confidence-head \aclf{MCC} of \autoref{tab:res:conf}. The default \texttt{notempmod\_nofilter} row is reproduced from the ordinary \textit{Dense} \acs{SR} evaluation because no separate \texttt{CSV} is emitted when both overlay flags are disabled. Each cell is the mean over the per-prompt groups $\pm$ the standard deviation taken across the three independent seed runs. The upper block lists the three standalone overlays (\texttt{tempmod} = confidence-driven temperature modulation, \texttt{inverse tempmod} = its inverted mapping, \acs{SMC} filtering = confidence-conditioned particle filtering); the lower block lists the two combined overlays that pair \acs{SMC} filtering with either temperature controller.}
 	\label{tab:res:itts}
 	\resizebox{\linewidth}{!}{%
 		\begin{tabular}{lcccccc}
@@ -1004,14 +1047,14 @@ The two generative inference-time overlays of \autoref{tab:variants:infer}, temp
 	\noindent\begin{minipage}{\linewidth}
 		\centering
 		\includegraphics[width=\linewidth,height=0.45\textheight,keepaspectratio]{charts/answer_accuracy_chart_inference_time.pdf}
-		\captionof{figure}{Answer-accuracy metrics ($\textit{Pass}@1$, $\textit{Pass}@4$, \acit{MV}, \acit{HC}, \acit{CW-MV}) for the six inference-time overlays of \autoref{tab:res:itts}, evaluated on top of the \textit{Dense} \acit{SR} checkpoint. Bars are means over the per-prompt groups with error bars giving the standard deviation across the three independent seed runs. Visualisation of the data in the upper half of \autoref{tab:res:itts}.}
+		\captionof{figure}[Answer-accuracy charts for the inference-time overlays]{Answer-accuracy metrics for the six inference-time overlays of \autoref{tab:res:itts}, evaluated on top of the \textit{Dense} \aclf{SR} checkpoint of \autoref{tab:variants:train}. The grouped bars report \glossanswerfig. Bars are means over the per-prompt groups with error bars giving the standard deviation across the three independent seed runs. In the legend, \legendinfer. Visualises the answer-accuracy columns of \autoref{tab:res:itts} together with the extra truncation- and inclusion-percentage bars that the table omits.}
 		\label{fig:res:itts:answer}
 	\end{minipage}
 	\newpage
 	\noindent\begin{minipage}{\linewidth}
 		\centering
 		\includegraphics[width=\linewidth,height=0.45\textheight,keepaspectratio]{charts/confidence_chart_inference_time.pdf}
-		\captionof{figure}{Binary-classification metrics of the confidence head (accuracy, \acit{BA}, \acit{HBA}, \acit{F1}, \acit{MCC}, \acit{ROC-AUC}) for the six inference-time overlays of \autoref{tab:res:itts}, evaluated on top of the \textit{Dense} \acit{SR} checkpoint. Bars are means with error bars giving the standard deviation across the three independent seed runs. Visualisation of the \acit{MCC} column of \autoref{tab:res:itts} together with the remaining binary-classification metrics that the table omits.}
+		\captionof{figure}[Confidence-head classification charts for the inference-time overlays]{Binary-classification metrics of the confidence head for the six inference-time overlays of \autoref{tab:res:itts}, evaluated on top of the \textit{Dense} \aclf{SR} checkpoint of \autoref{tab:variants:train}. The grouped bars report \glossconffig. Bars are means with error bars giving the standard deviation across the three independent seed runs. In the legend, \legendinfer. Visualises the \acs{MCC} column of \autoref{tab:res:itts} together with the remaining binary-classification metrics that the table omits.}
 		\label{fig:res:itts:conf}
 	\end{minipage}
 \end{landscape}
