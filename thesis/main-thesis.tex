@@ -148,6 +148,7 @@
 \usepackage{array}
 \usepackage{longtable}
 \usepackage{pdflscape}
+\usepackage{rotating}
 \usepackage{booktabs}
 \usepackage{listings}
 \usepackage{tikz}
@@ -544,7 +545,7 @@ Our implementation leverages the \texttt{trl} library \citep{trl} for the \acfit
 \FloatBarrier
 \begin{figure}[H]
 	\centering
-	\resizebox{0.95\linewidth}{!}{
+	\resizebox{!}{0.66\textheight}{
 		\begin{tikzpicture}[
 				>=Latex,
 				font=\small,
@@ -959,23 +960,22 @@ This chapter is split along the axis that defines the contribution: \autoref{sec
 		\end{tabular}}
 \end{table}
 
+\FloatBarrier
+
 \autoref{fig:res:train:answer} and \autoref{fig:res:train:conf} visualize the two metric families of \autoref{tab:res:answer} and \autoref{tab:res:conf} for the six training-time variants. The horizontal axis groups variants, the bars give the means and the error bars the standard deviation across the three independent seed runs. As in the tables, the \acfit{HC} and \acfit{CW-MV} aggregations are shown only for the four confidence-trained variants, and the binary-classification figure omits the \textit{Base} and \acfit{GRPO} variants, which have no trained confidence head.
 
-\begin{landscape}
-	\noindent\begin{minipage}{\linewidth}
-		\centering
-		\includegraphics[width=\linewidth,height=0.62\textheight,keepaspectratio]{charts/answer_accuracy_chart.pdf}
-		\captionof{figure}[Answer-accuracy charts for the training-time variants]{Answer-accuracy metrics for the six training-time variants of \autoref{tab:variants:train}. The grouped bars report \glossanswerfig. Bars are means over the per-prompt groups with error bars giving the standard deviation across the three independent seed runs; \acs{HC} and \acs{CW-MV} are shown only for the four confidence-trained variants. In the legend, \legendtrain. Visualises \autoref{tab:res:answer} together with the extra truncation- and inclusion-percentage bars that the table omits.}
-		\label{fig:res:train:answer}
-	\end{minipage}
-	\newpage
-	\noindent\begin{minipage}{\linewidth}
-		\centering
-		\includegraphics[width=\linewidth,height=0.62\textheight,keepaspectratio]{charts/confidence_chart.pdf}
-		\captionof{figure}[Confidence-head classification charts for the training-time variants]{Binary-classification metrics of the confidence head for the four confidence-trained training-time variants of \autoref{tab:variants:train}. The grouped bars report \glossconffig. Bars are means with error bars giving the standard deviation across the three independent seed runs. In the legend, \legendtrain. Visualises \autoref{tab:res:conf} together with the additional rate-based metrics that the table omits.}
-		\label{fig:res:train:conf}
-	\end{minipage}
-\end{landscape}
+\begin{sidewaysfigure}
+	\centering
+	\includegraphics[width=0.82\textheight,keepaspectratio]{charts/answer_accuracy_chart.pdf}
+	\caption[Answer-accuracy charts for the training-time variants]{Answer-accuracy metrics for the six training-time variants of \autoref{tab:variants:train}. The grouped bars report \glossanswerfig. Bars are means over the per-prompt groups with error bars giving the standard deviation across the three independent seed runs; \acs{HC} and \acs{CW-MV} are shown only for the four confidence-trained variants. In the legend, \legendtrain. Visualises \autoref{tab:res:answer} together with the extra truncation- and inclusion-percentage bars that the table omits.}
+	\label{fig:res:train:answer}
+\end{sidewaysfigure}
+\begin{sidewaysfigure}
+	\centering
+	\includegraphics[width=0.82\textheight,keepaspectratio]{charts/confidence_chart.pdf}
+	\caption[Confidence-head classification charts for the training-time variants]{Binary-classification metrics of the confidence head for the four confidence-trained training-time variants of \autoref{tab:variants:train}. The grouped bars report \glossconffig. Bars are means with error bars giving the standard deviation across the three independent seed runs. In the legend, \legendtrain. Visualises \autoref{tab:res:conf} together with the additional rate-based metrics that the table omits.}
+	\label{fig:res:train:conf}
+\end{sidewaysfigure}
 
 \subsection{\textit{Dense Confidence} vs.\ \acit{GRPO} Baseline}
 \label{sec:res:dense}
@@ -1041,23 +1041,22 @@ The two generative inference-time overlays of \autoref{tab:variants:infer}, temp
 		\end{tabular}}
 \end{table}
 
+\FloatBarrier
+
 \autoref{fig:res:itts:answer} and \autoref{fig:res:itts:conf} visualize the same six rows of \autoref{tab:res:itts} on the two metric families used throughout this chapter. The horizontal axis groups variants by the temperature-modulation setting (\texttt{notempmod}, \texttt{tempmod}, \texttt{invtempmod}), the color distinguishes the \acfit{SMC}-filtering flag (\texttt{nofilter} vs.\ \texttt{filter}), and the error bars are the standard deviations across the three independent seed runs. The reference \texttt{notempmod\_nofilter} bar in each figure is the same \textit{Dense} \acfit{SR} checkpoint already reported in \autoref{tab:res:answer} and \autoref{tab:res:conf}, so the figures display the inference-time overlay deltas directly against that reference.
 
-\begin{landscape}
-	\noindent\begin{minipage}{\linewidth}
-		\centering
-		\includegraphics[width=\linewidth,height=0.45\textheight,keepaspectratio]{charts/answer_accuracy_chart_inference_time.pdf}
-		\captionof{figure}[Answer-accuracy charts for the inference-time overlays]{Answer-accuracy metrics for the six inference-time overlays of \autoref{tab:res:itts}, evaluated on top of the \textit{Dense} \aclf{SR} checkpoint of \autoref{tab:variants:train}. The grouped bars report \glossanswerfig. Bars are means over the per-prompt groups with error bars giving the standard deviation across the three independent seed runs. In the legend, \legendinfer. Visualises the answer-accuracy columns of \autoref{tab:res:itts} together with the extra truncation- and inclusion-percentage bars that the table omits.}
-		\label{fig:res:itts:answer}
-	\end{minipage}
-	\newpage
-	\noindent\begin{minipage}{\linewidth}
-		\centering
-		\includegraphics[width=\linewidth,height=0.45\textheight,keepaspectratio]{charts/confidence_chart_inference_time.pdf}
-		\captionof{figure}[Confidence-head classification charts for the inference-time overlays]{Binary-classification metrics of the confidence head for the six inference-time overlays of \autoref{tab:res:itts}, evaluated on top of the \textit{Dense} \aclf{SR} checkpoint of \autoref{tab:variants:train}. The grouped bars report \glossconffig. Bars are means with error bars giving the standard deviation across the three independent seed runs. In the legend, \legendinfer. Visualises the \acs{MCC} column of \autoref{tab:res:itts} together with the remaining binary-classification metrics that the table omits.}
-		\label{fig:res:itts:conf}
-	\end{minipage}
-\end{landscape}
+\begin{sidewaysfigure}
+	\centering
+	\includegraphics[width=0.82\textheight,keepaspectratio]{charts/answer_accuracy_chart_inference_time.pdf}
+	\caption[Answer-accuracy charts for the inference-time overlays]{Answer-accuracy metrics for the six inference-time overlays of \autoref{tab:res:itts}, evaluated on top of the \textit{Dense} \aclf{SR} checkpoint of \autoref{tab:variants:train}. The grouped bars report \glossanswerfig. Bars are means over the per-prompt groups with error bars giving the standard deviation across the three independent seed runs. In the legend, \legendinfer. Visualises the answer-accuracy columns of \autoref{tab:res:itts} together with the extra truncation- and inclusion-percentage bars that the table omits.}
+	\label{fig:res:itts:answer}
+\end{sidewaysfigure}
+\begin{sidewaysfigure}
+	\centering
+	\includegraphics[width=0.82\textheight,keepaspectratio]{charts/confidence_chart_inference_time.pdf}
+	\caption[Confidence-head classification charts for the inference-time overlays]{Binary-classification metrics of the confidence head for the six inference-time overlays of \autoref{tab:res:itts}, evaluated on top of the \textit{Dense} \aclf{SR} checkpoint of \autoref{tab:variants:train}. The grouped bars report \glossconffig. Bars are means with error bars giving the standard deviation across the three independent seed runs. In the legend, \legendinfer. Visualises the \acs{MCC} column of \autoref{tab:res:itts} together with the remaining binary-classification metrics that the table omits.}
+	\label{fig:res:itts:conf}
+\end{sidewaysfigure}
 
 \subsection{Temperature Modulation}
 \label{sec:res:tempmod}
