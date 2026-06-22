@@ -77,6 +77,23 @@
 \DeclareRobustCommand{\acpit}[1]{\textit{\acsp{#1}}}
 \DeclareRobustCommand{\acfit}[1]{\textit{\ac{#1}}}
 \DeclareRobustCommand{\acfpit}[1]{\textit{\acp{#1}}}
+
+%% Allow line breaks inside \texttt{...} so that long identifiers
+%% (e.g. INFERENCE_TIME_EVALUATION_USE_TEMPMOD or Qwen/Qwen2.5-0.5B-Instruct)
+%% wrap across lines instead of overflowing the text margin. The original
+%% typewriter command never breaks such tokens, so we route every \texttt
+%% argument through \seqsplit, which inserts a permissible breakpoint between
+%% consecutive characters. This fixes the overflow in running text, captions
+%% and the List of Tables alike, with no visible change when no break is
+%% needed. The global \_ is left untouched so that it keeps working in math
+%% mode for subscripts such as $N_{\mathrm{train\_max}}$.
+\usepackage{seqsplit}
+\NewCommandCopy{\jkuoldtexttt}{\texttt}
+\DeclareRobustCommand{\texttt}[1]{\jkuoldtexttt{\seqsplit{#1}}}
+%% Centered fixed-width paragraph column. Combined with the seqsplit-based
+%% \texttt above, this lets long \texttt headers in narrow table columns wrap
+%% instead of overflowing the table (plain c/l columns never break lines).
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
 \usepackage{placeins}
 \usepackage{float}
 \usepackage{array}
@@ -812,7 +829,7 @@ Every hyperparameter lives in the central Pydantic \texttt{Config} (\texttt{rl\_
 	\centering
 	\caption{Training-time environment-variable overrides consumed by \texttt{rl\_for\_llms.main} (\texttt{./run\_repo.sh}). The shared variables \texttt{CUDA\_VISIBLE\_DEVICES}, \texttt{WANDB\_API\_KEY} and \texttt{NUM\_EVAL\_REPETITIONS=3} are omitted from the table because they are constant across runs. The default values are \texttt{METHOD=DENSE}, \texttt{USE\_CONFIDENCE\_LOSS=1}, \texttt{USE\_CONFIDENCE\_REWARD=1} and \texttt{SKIP\_EVAL\_BEFORE\_TRAIN=0}. Only deviations from these defaults need to be exported. Column headers \texttt{USE\_CONF\_LOSS} and \texttt{USE\_CONF\_REWARD} abbreviate \texttt{USE\_CONFIDENCE\_LOSS} and \texttt{USE\_CONFIDENCE\_REWARD} for typography.}
 	\label{tab:envvars:train}
-	\begin{tabular}{lcccc}
+	\begin{tabular}{l C{1.5cm} C{1.9cm} C{1.9cm} C{2.2cm}}
 		\toprule
 		\textbf{Variant}                       & \texttt{METHOD} & \texttt{USE\_CONF\_LOSS} & \texttt{USE\_CONF\_REWARD} & \texttt{SKIP\_EVAL\_BEFORE\_TRAIN} \\
 		\midrule
@@ -830,7 +847,7 @@ Every hyperparameter lives in the central Pydantic \texttt{Config} (\texttt{rl\_
 	\centering
 	\caption{Inference-time environment-variable overrides consumed by \texttt{rl\_for\_llms.evaluate} (\texttt{./run\_eval.sh}). All overlays reuse the trained \textit{Dense} \acit{SR} checkpoint and require \texttt{METHOD=DENSE} (the \acit{LaSeR} formulation does not expose a per-token confidence signal to drive these overlays). Defaults of the three boolean flags are all \texttt{0}. The no-adaptation reference therefore needs no overrides at all. Column headers \texttt{ITE\_USE\_TEMPMOD}, \texttt{ITE\_USE\_FILTERING} and \texttt{TM\_INVERT\_MAPPING} abbreviate \texttt{INFERENCE\_TIME\_EVALUATION\_USE\_TEMPMOD}, \texttt{INFERENCE\_TIME\_EVALUATION\_USE\_FILTERING} and \texttt{TEMPERATURE\_MODULATION\_INVERT\_MAPPING} for typography.}
 	\label{tab:envvars:eval}
-	\begin{tabular}{lccc}
+	\begin{tabular}{l C{2.2cm} C{2.3cm} C{2.3cm}}
 		\toprule
 		\textbf{Overlay}            & \texttt{ITE\_USE\_TEMPMOD} & \texttt{ITE\_USE\_FILTERING} & \texttt{TM\_INVERT\_MAPPING} \\
 		\midrule
