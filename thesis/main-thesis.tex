@@ -83,13 +83,19 @@
 %% wrap across lines instead of overflowing the text margin. The original
 %% typewriter command never breaks such tokens, so we route every \texttt
 %% argument through \seqsplit, which inserts a permissible breakpoint between
-%% consecutive characters. This fixes the overflow in running text, captions
-%% and the List of Tables alike, with no visible change when no break is
-%% needed. The global \_ is left untouched so that it keeps working in math
-%% mode for subscripts such as $N_{\mathrm{train\_max}}$.
+%% consecutive characters. To keep the result readable we additionally bias
+%% the line breaker toward underscores: inside \texttt the escaped underscore
+%% emits its glyph followed by a slightly negative (i.e. preferred) penalty,
+%% so a break at an underscore is chosen over \seqsplit's neutral
+%% inter-character breakpoints whenever it yields an acceptable line, while
+%% mid-token breaks remain available as a last resort. This fixes the overflow
+%% in running text, captions and the List of Tables alike, with no visible
+%% change when no break is needed. The global \_ is left untouched so that it
+%% keeps working in math mode for subscripts such as $N_{\mathrm{train\_max}}$.
 \usepackage{seqsplit}
 \NewCommandCopy{\jkuoldtexttt}{\texttt}
-\DeclareRobustCommand{\texttt}[1]{\jkuoldtexttt{\seqsplit{#1}}}
+\DeclareRobustCommand{\texttt}[1]{%
+	\jkuoldtexttt{\def\_{\textunderscore\penalty-500\relax}\seqsplit{#1}}}
 %% Centered fixed-width paragraph column. Combined with the seqsplit-based
 %% \texttt above, this lets long \texttt headers in narrow table columns wrap
 %% instead of overflowing the table (plain c/l columns never break lines).
