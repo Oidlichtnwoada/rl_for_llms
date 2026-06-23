@@ -25,8 +25,8 @@
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\documentclass[17pt, a0paper, landscape, margin=14mm, innermargin=13mm,
-	blockverticalspace=8mm, colspace=15mm, subcolspace=8mm]{tikzposter}
+\documentclass[17pt, a0paper, landscape, margin=12mm, innermargin=14mm,
+	blockverticalspace=11mm, colspace=14mm, subcolspace=8mm]{tikzposter}
 
 %% --- Fonts: clean sans-serif body to match a modern AI-lab poster ----------
 \usepackage[T1]{fontenc}
@@ -64,7 +64,6 @@
 
 \definecolor{jkublue}{HTML}{0A2D5E}   % deep navy for title and block headers
 \definecolor{jkuaccent}{HTML}{E1006E} % JKU magenta accent for highlights
-\definecolor{cardframe}{HTML}{C7CFDC} % soft grey card border
 
 \colorlet{backgroundcolor}{white}
 \colorlet{framecolor}{jkublue}
@@ -80,8 +79,21 @@
 \colorlet{notebgcolor}{jkuaccent}
 \colorlet{noteframecolor}{jkuaccent}
 
-\useblockstyle{Default}
-\usetitlestyle{Filled}
+%% Rounded, generously padded cards for both blocks and the title bar.
+\useblockstyle[titleinnersep=14pt, bodyinnersep=20pt, roundedcorners=20,
+	linewidth=1pt, titleoffsety=2pt]{Default}
+
+\definetitlestyle{jkutitle}{
+	width=\textwidth, roundedcorners=24, linewidth=0pt, innersep=24pt,
+	titletotopverticalspace=3mm, titletoblockverticalspace=11mm,
+	titlegraphictotitledistance=10pt, titletextscale=1
+}{
+	\begin{scope}[line width=\titlelinewidth, rounded corners=\titleroundedcorners]
+		\draw[color=titlebgcolor, fill=titlebgcolor]
+		(\titleposleft,\titleposbottom) rectangle (\titleposright,\titlepostop);
+	\end{scope}
+}
+\usetitlestyle{jkutitle}
 
 %% Plain white background (no gradient / decorations).
 \definebackgroundstyle{jkubackground}{
@@ -93,12 +105,12 @@
 %% Remove the "created with tikzposter" footer.
 \tikzposterlatexaffectionproofoff
 
-%% Compact helper for the highlighted headline statistics.
+%% Highlighted headline statistic (intentionally large; the only oversized text).
 \newcommand{\statbox}[2]{%
-	\begin{minipage}[t]{0.185\linewidth}
+	\begin{minipage}[t]{0.18\linewidth}
 		\centering
-		{\color{jkuaccent}\bfseries\fontsize{40}{44}\selectfont #1}\\[3pt]
-		{\footnotesize #2}
+		{\color{jkuaccent}\bfseries\fontsize{42}{46}\selectfont #1}\\[4pt]
+		{\normalsize #2}
 	\end{minipage}%
 }
 
@@ -114,16 +126,16 @@
 \settitle{
 	\begin{minipage}[c]{0.82\linewidth}
 		\raggedright
-		{\color{titlefgcolor}\bfseries\fontsize{48}{54}\selectfont \@title\par}
-		\vspace{8pt}
+		{\color{titlefgcolor}\bfseries\fontsize{46}{52}\selectfont \@title\par}
+		\vspace{10pt}
 		{\color{titlefgcolor}\large \textbf{\@author} \quad\textbar\quad
 			Supervisor: \textbf{Sepp Hochreiter} \quad\textbar\quad
 			Co-Supervisors: Johannes Schimunek, Christoph Bartmann \quad\textbar\quad
 			\@institute\par}
 	\end{minipage}\hfill
-	\begin{minipage}[c]{0.15\linewidth}
-		\raggedleft
-		\includegraphics[width=\linewidth]{logos/jku_en_white.pdf}
+	\begin{minipage}[c]{0.16\linewidth}
+		\centering
+		\includegraphics[width=0.66\linewidth]{logos/jku_en_white.pdf}
 	\end{minipage}
 }
 \makeatother
@@ -134,18 +146,19 @@
 %% Declare the shared acronyms (typesets nothing thanks to the [nolist] option).
 \input{acronyms.tex}
 
-\maketitle[titletoblockverticalspace=8mm]
+\maketitle
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Full-width headline / take-away banner
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \block{}{%
+	\vspace{2pt}
 	A $0.5\,$B-parameter \acit{LLM} is trained, in \emph{one} joint pass on commodity hardware, to be both an
 	effective reasoner \emph{and} a calibrated judge of its own correctness. \textbf{\textit{Dense Confidence}}
 	reads a repurposed control token's logit at \emph{every} step, maps it through a bounded scaled sigmoid, and
 	supervises it with a class-rebalanced \acit{BCE} auxiliary loss alongside \acit{GRPO} --- at \emph{no}
 	answer-quality cost --- then reuses the same per-token signal as an inference-time controller.
-	\vspace{8pt}
+	\vspace{14pt}
 
 	\centering
 	\statbox{$\AccBeforePct{\AnsBase}{pass@1}{0}\!\to\!\AccAfterPct{\AnsDenseSR}{pass@1}{0}$}{\textit{Pass}@1 (\textit{Base} $\to$ \textit{Dense})}\hfill
@@ -153,13 +166,14 @@
 	\statbox{$\InclPctAfter{\AnsDenseSR}{0}$}{confidence-token leakage}\hfill
 	\statbox{$\AccAfterPct{\AnsDenseAux}{confidence_weighted_majority_voting}{0}$}{\acit{CW-MV} answer selection}\hfill
 	\statbox{$1.75\,\%$}{of parameters trained}
+	\vspace{4pt}
 }
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{columns}
 
 	%% ===================== COLUMN 1 : PROBLEM AND IDEA =====================
-	\column{0.33}
+	\column{0.30}
 
 	\block{Motivation: dense in value, sparse in time}{%
 		\acit{RLVR} restores objectivity to the reward channel by replacing the learned \acit{RLHF} preference
@@ -201,7 +215,7 @@
 		A class-rebalanced \acit{BCE} loss broadcasts the binary outcome reward $r_i$ to every position and is
 		\emph{added} to the \acit{GRPO} objective (it is not optimized by the policy gradient itself):
 		\[
-			L_{\mathrm{total}} = -\mathcal{J}_{\mathrm{GRPO}}(\theta) + \beta_{\mathrm{conf}}\,L_{\mathrm{conf}},\qquad
+			L_{\mathrm{total}} = -\mathcal{J}_{\mathrm{GRPO}}(\theta) + \beta_{\mathrm{conf}}\,L_{\mathrm{conf}},\quad
 			L_{\mathrm{conf},i} = -\tfrac{1}{T_i}\!\sum_{t=1}^{T_i}\!\big[r_i\log c_{i,t} + (1{-}r_i)\log(1{-}c_{i,t})\big].
 		\]
 		Optionally (\emph{self-rewarding}) the trajectory-mean confidence $\bar c_i$ is blended into the advantage:
@@ -210,33 +224,14 @@
 		\]
 		The bounded sigmoid \emph{saturates}, so inflating the logit yields no free advantage: the token is never
 		sampled and \emph{no} post-\acit{EOS} forward pass is needed.
+
+		\textbf{Token hijacking.} Recycling an untrained slot is convenient --- it has no established meaning to
+		disturb, so its logit can be freely re-aligned to the confidence task; were no empty slot available,
+		appending a single new vocabulary row would deliver the same dedicated channel at negligible cost.
 	}
 
-	\block{Selected references}{%
-		\small
-		[1] Yang et al. \textit{LaSeR: RL with Last-Token Self-Rewarding}, 2025.\;
-		[2] Shao et al. \textit{DeepSeekMath} (\acit{GRPO}), 2024.\;
-		[3] Cobbe et al. \textit{Training Verifiers to Solve Math Word Problems} (\acit{GSM8K}), 2021.\;
-		[4] Hu et al. \textit{LoRA}, 2021.\;
-		[5] Qwen Team. \textit{Qwen2.5 Technical Report}, 2025.\;
-		[6] Lew et al. \textit{\acit{SMC} Steering of LLMs}, 2023.
-	}
-
-	%% ===================== COLUMN 2 : HOW IT WORKS =====================
-	\column{0.34}
-
-	\block{Training-time architecture}{%
-		\begin{center}
-			\resizebox{0.60\linewidth}{!}{\input{architecture_tikz.tex}}
-		\end{center}
-		\vspace{-4pt}
-		{\small The confidence-token logit is harvested \emph{twice} by the same \acit{LM}-head hook: gradient-free
-			during generation (intrinsic reward) and with gradients during re-evaluation (auxiliary \acit{BCE}
-			loss). The external verifier supplies the outcome bit $r$; the internal verifier supplies $c_{i,t}$.}
-	}
-
-	\block{Inference-time scaling (reuses the trained head)}{%
-		Three controllers reuse the \textit{Dense} head at evaluation only, with \emph{no} further training:
+	\block{Inference-time scaling (reuses the trained head, no retraining)}{%
+		Three controllers reuse the \textit{Dense} head at evaluation only:
 		\begin{itemize}
 			\item \textbf{Answer selection.} Aggregate the $G$ generations by \acit{MV}, \acit{HC} (highest mean
 			      confidence) or \acit{CW-MV} (confidence-weighted \acit{MV}).
@@ -246,15 +241,38 @@
 			      particles are resampled from high-confidence donors of the same group, with explicit
 			      \texttt{DynamicCache} surgery on the \acit{KV} cache.
 		\end{itemize}
-		The latter two are \emph{structurally exclusive} to \textit{Dense}: they consume a per-token signal that
-		the last-token \textit{LaSeR} parameterization cannot provide.
+		The latter two are \emph{structurally exclusive} to \textit{Dense}: they consume a per-token signal that the
+		last-token \textit{LaSeR} parameterization cannot provide.
+		\par\vspace{135pt}
+	}
+
+	%% ===================== COLUMN 2 : ARCHITECTURE =====================
+	\column{0.40}
+
+	\block{Training-time architecture}{%
+		\begin{center}
+			\resizebox{0.72\linewidth}{!}{\input{architecture_tikz.tex}}
+		\end{center}
+		\vspace{4pt}
+		The confidence-token logit is harvested \emph{twice} by the same \acit{LM}-head hook: gradient-free during
+		generation (intrinsic reward) and with gradients during re-evaluation (auxiliary \acit{BCE} loss). The
+		external verifier supplies the outcome bit $r$; the internal verifier maps each logit to $c_{i,t}\in[0,1]$.
+	}
+
+	\block{Selected references}{%
+		[1] Yang et al. \textit{LaSeR: RL with Last-Token Self-Rewarding}, 2025.\quad
+		[2] Shao et al. \textit{DeepSeekMath} (\acit{GRPO}), 2024.\quad
+		[3] Cobbe et al. \textit{Training Verifiers to Solve Math Word Problems} (\acit{GSM8K}), 2021.\quad
+		[4] Hu et al. \textit{LoRA}, 2021.\quad
+		[5] Qwen Team. \textit{Qwen2.5 Technical Report}, 2025.\quad
+		[6] Lew et al. \textit{\acit{SMC} Steering of LLMs}, 2023.
+		\par\vspace{20pt}
 	}
 
 	%% ===================== COLUMN 3 : EVIDENCE AND CONCLUSION =====================
-	\column{0.33}
+	\column{0.30}
 
 	\block{Experimental setup}{%
-		\small
 		Filtered \aclf{GSM8K} ($N_{\mathrm{eval}}=1{,}222$, $G=4$/prompt) with a \texttt{Qwen2.5-0.5B-Instruct}
 		policy. \acit{LoRA} plus the single confidence-token row train $\approx 1.75\,\%$ of the parameters;
 		\acit{GRPO} with $\beta_{\mathrm{KL}}=0$. One epoch on a single \textit{NVIDIA GV100} (\texttt{float32}).
@@ -264,23 +282,22 @@
 
 	\block{Results: training-time}{%
 		\centering
-		\renewcommand{\arraystretch}{1.0}
-		\resizebox{0.86\linewidth}{!}{%
-			\begin{tabular}{lcccc}
-				\toprule
-				\textbf{Variant}           & \textit{Pass}@1                       & \acit{MV}                                      & \acit{CW-MV}                                                                & \acit{MCC}                              \\
-				\midrule
-				\textit{Base}              & \AccBeforePct{\AnsBase}{pass@1}{0}    & \AccBeforePct{\AnsBase}{majority_voting}{0}    & ---                                                                         & ---                                     \\
-				\acit{GRPO} ($-\ell-r$)    & \AccAfterPct{\AnsGRPO}{pass@1}{0}     & \AccAfterPct{\AnsGRPO}{majority_voting}{0}     & ---                                                                         & ---                                     \\
-				\midrule
-				\textit{Dense} ($+\ell-r$) & \AccAfterPct{\AnsDenseAux}{pass@1}{0} & \AccAfterPct{\AnsDenseAux}{majority_voting}{0} & \textbf{\AccAfterPct{\AnsDenseAux}{confidence_weighted_majority_voting}{0}} & \textbf{\ConfAfter{\ConfDenseAux}{mcc}} \\
-				\textit{Dense} ($+\ell+r$) & \AccAfterPct{\AnsDenseSR}{pass@1}{0}  & \AccAfterPct{\AnsDenseSR}{majority_voting}{0}  & \AccAfterPct{\AnsDenseSR}{confidence_weighted_majority_voting}{0}           & \ConfAfter{\ConfDenseSR}{mcc}           \\
-				\acit{LaSeR} ($+\ell-r$)   & \AccAfterPct{\AnsLaserAux}{pass@1}{0} & \AccAfterPct{\AnsLaserAux}{majority_voting}{0} & \AccAfterPct{\AnsLaserAux}{confidence_weighted_majority_voting}{0}          & \ConfAfter{\ConfLaserAux}{mcc}          \\
-				\acit{LaSeR} ($+\ell+r$)   & \AccAfterPct{\AnsLaserSR}{pass@1}{0}  & \AccAfterPct{\AnsLaserSR}{majority_voting}{0}  & \AccAfterPct{\AnsLaserSR}{confidence_weighted_majority_voting}{0}           & \ConfAfter{\ConfLaserSR}{mcc}           \\
-				\bottomrule
-			\end{tabular}}
+		\setlength{\tabcolsep}{10pt}\renewcommand{\arraystretch}{1.15}
+		\begin{tabular}{lcccc}
+			\toprule
+			\textbf{Variant}           & \textit{Pass}@1                       & \acit{MV}                                      & \acit{CW-MV}                                                                & \acit{MCC}                              \\
+			\midrule
+			\textit{Base}              & \AccBeforePct{\AnsBase}{pass@1}{0}    & \AccBeforePct{\AnsBase}{majority_voting}{0}    & ---                                                                         & ---                                     \\
+			\acit{GRPO} ($-\ell-r$)    & \AccAfterPct{\AnsGRPO}{pass@1}{0}     & \AccAfterPct{\AnsGRPO}{majority_voting}{0}     & ---                                                                         & ---                                     \\
+			\midrule
+			\textit{Dense} ($+\ell-r$) & \AccAfterPct{\AnsDenseAux}{pass@1}{0} & \AccAfterPct{\AnsDenseAux}{majority_voting}{0} & \textbf{\AccAfterPct{\AnsDenseAux}{confidence_weighted_majority_voting}{0}} & \textbf{\ConfAfter{\ConfDenseAux}{mcc}} \\
+			\textit{Dense} ($+\ell+r$) & \AccAfterPct{\AnsDenseSR}{pass@1}{0}  & \AccAfterPct{\AnsDenseSR}{majority_voting}{0}  & \AccAfterPct{\AnsDenseSR}{confidence_weighted_majority_voting}{0}           & \ConfAfter{\ConfDenseSR}{mcc}           \\
+			\acit{LaSeR} ($+\ell-r$)   & \AccAfterPct{\AnsLaserAux}{pass@1}{0} & \AccAfterPct{\AnsLaserAux}{majority_voting}{0} & \AccAfterPct{\AnsLaserAux}{confidence_weighted_majority_voting}{0}          & \ConfAfter{\ConfLaserAux}{mcc}          \\
+			\acit{LaSeR} ($+\ell+r$)   & \AccAfterPct{\AnsLaserSR}{pass@1}{0}  & \AccAfterPct{\AnsLaserSR}{majority_voting}{0}  & \AccAfterPct{\AnsLaserSR}{confidence_weighted_majority_voting}{0}           & \ConfAfter{\ConfLaserSR}{mcc}           \\
+			\bottomrule
+		\end{tabular}
 
-		\raggedright\vspace{4pt}
+		\raggedright\vspace{10pt}
 		\textbf{Interpretation.}
 		\begin{itemize}
 			\item \textbf{No accuracy tax (RQ1).} \textit{Dense} matches \acit{GRPO} on \textit{Pass}@1, exceeds it on
@@ -291,28 +308,31 @@
 			      symptoms (in-trace leakage and the extra forward pass).
 			\item \textbf{Dense $>$ \textit{LaSeR} (RQ3).} \textit{Dense} sits $2$--$3$ pp above \textit{LaSeR} on every
 			      answer metric; the unbounded \textit{LaSeR} reward collapses calibration once blended into the
-			      advantage (\acit{MCC} $\ConfAfter{\ConfLaserAux}{mcc}\!\to\!\ConfAfter{\ConfLaserSR}{mcc}$), the exact
-			      failure the bounded design prevents.
+			      advantage (\acit{MCC} $\ConfAfter{\ConfLaserAux}{mcc}\!\to\!\ConfAfter{\ConfLaserSR}{mcc}$).
+			\item \textbf{Inference-time trade-off (RQ4).} On the \emph{same} checkpoint, tempmod $+$ \acit{SMC}
+			      filtering lifts \acit{MCC} to the table's best $\ConfAfter{\ConfTempFil}{mcc}$ (small \textit{Pass}@1
+			      cost) for calibration, while \acit{CW-MV} and inverse tempmod maximize answer accuracy --- compute is
+			      traded for accuracy \emph{or} calibration, no retraining.
 		\end{itemize}
 	}
 
 	\block{The per-step signal is an early-warning indicator}{%
 		\begin{center}
-			\includegraphics[width=0.48\linewidth]{charts/confidence_evolution_chart.pdf}
+			\includegraphics[width=0.82\linewidth]{charts/confidence_evolution_chart.pdf}
 		\end{center}
-		\vspace{-6pt}
-		{\small Per-token confidence on a \emph{correct} (higher mean) vs.\ \emph{incorrect} (lower mean)
-			\acit{GSM8K} rollout: the trajectories diverge \emph{hundreds of tokens early}, an internally decodable
-			signal of eventual success or failure (RQ4).}
+		\vspace{2pt}
+		Per-token confidence on a \emph{correct} (higher mean) vs.\ \emph{incorrect} (lower mean) \acit{GSM8K}
+		rollout: the trajectories diverge \emph{hundreds of tokens early}, an internally decodable signal of
+		eventual success or failure.
 	}
 
 	\block{Conclusion \& outlook}{%
 		One repurposed token, an \acit{LM}-head hook, and a class-rebalanced \acit{BCE} auxiliary yield a calibrated,
 		per-token confidence head at $0.5\,$B parameters with \emph{no} answer-quality cost and \emph{no} extra
-		forward pass. The same head decouples two inference-time objectives on one checkpoint: tempmod $+$ \acit{SMC}
-		filtering for calibration (\acit{MCC} up to $\ConfAfter{\ConfTempFil}{mcc}$), inverse tempmod for answer
-		aggregation. Gains should grow with scale, data, and particle budget $G$; the head is a natural \acit{PRM}
-		distillation target. \textbf{Code:} \texttt{github.com/Oidlichtnwoada/rl\_for\_llms}
+		forward pass. The same head decouples calibration from answer accuracy at inference time on one checkpoint.
+		Gains should grow with scale, data, and particle budget $G$; the head is a natural \acit{PRM} distillation
+		target. \textbf{Code:} \texttt{github.com/Oidlichtnwoada/rl\_for\_llms}
+		\par\vspace{40pt}
 	}
 
 \end{columns}
