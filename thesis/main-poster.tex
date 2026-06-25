@@ -170,7 +170,7 @@
 \newcommand{\posterConfChart}{%
 	\begin{tikzpicture}
 		\begin{axis}[posterbar, enlarge x limits=0.16, ymax=104,
-			ylabel={Calibration ($\times 100$)},
+			ylabel={Calibration},
 			symbolic x coords={DA,DS,LA,LS},
 			xticklabels={{Dense\,$+\ell{-}r$},{Dense\,$+\ell{+}r$},{LaSeR\,$+\ell{-}r$},{LaSeR\,$+\ell{+}r$}},
 			x tick label style={font=\small,rotate=18,anchor=east}]
@@ -180,7 +180,7 @@
 			\addplot+[fill=jkuaccent] coordinates {
 				(DA,\rcDA) +- (0,\rsDA) (DS,\rcDS) +- (0,\rsDS)
 				(LA,\rcLA) +- (0,\rsLA) (LS,\rcLS) +- (0,\rsLS)};
-			\legend{\acit{MCC} [\,], \acit{ROC-AUC} [\%]}
+			\legend{\acit{MCC}$\,\times100$ [\,], \acit{ROC-AUC} [\%]}
 		\end{axis}
 	\end{tikzpicture}}
 
