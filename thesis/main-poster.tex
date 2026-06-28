@@ -321,7 +321,7 @@
 				      trajectory} (correct / incorrect).
 			\item That single verdict must be spread across \emph{hundreds} of tokens $\Rightarrow$ hard credit
 			      assignment.
-			\item \textit{LaSeR} adds self-confidence, but only at the token \emph{after \acit{EOS}} (sparse) and as
+			\item \textit{LaSeR} adds self-confidence, but only at the token \emph{after the \acit{EOS} token} (sparse) and as
 			      an \emph{unbounded} log-probability that can leak into the generated text.
 		\end{itemize}
 		\textbf{Goal:} a \emph{bounded, per-token} confidence signal, calibrated to correctness and cheap enough
@@ -468,8 +468,8 @@
 			      at $0.5\,$B parameters, \emph{for free}.
 			\item Same head, two inference modes (no retraining): \acit{CW-MV} answer selection buys
 			      \emph{accuracy}; temperature $+$ \acit{SMC} filtering buys \emph{calibration} (higher \acit{MCC}).
-			\item Should scale with model size, data, and sample budget $G$; a natural \acit{PRM} distillation
-			      target.
+			\item The approach should scale with model size, data, and sample budget $G$, and is a natural
+			      \acit{PRM} distillation target.
 		\end{itemize}
 		\textbf{Code:} \texttt{github.com/Oidlichtnwoada/rl\_for\_llms}
 	}
