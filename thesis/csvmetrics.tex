@@ -47,40 +47,55 @@
 %% \csvpct{<table>}{<column>}{<precision>} -- value as percentage (x100) followed by "\,\%".
 \newcommand{\csvpct}[3]{%
 	\pgfplotstablegetelem{0}{\detokenize{#2}}\of{#1}%
+	\begingroup
+	\pgfkeys{/pgf/fpu=true}%
 	\pgfmathparse{\pgfplotsretval*100}%
 	\pgfmathprintnumber[fixed,fixed zerofill,precision=#3]{\pgfmathresult}\,\%%
+	\endgroup
 }
 
 %% \csvdelta{<tableA>}{<tableB>}{<column>}{<precision>} -- signed (A-B) value.
 \newcommand{\csvdelta}[4]{%
 	\pgfplotstablegetelem{0}{\detokenize{#3}}\of{#1}\edef\csvAval{\pgfplotsretval}%
 	\pgfplotstablegetelem{0}{\detokenize{#3}}\of{#2}\edef\csvBval{\pgfplotsretval}%
+	\begingroup
+	\pgfkeys{/pgf/fpu=true}%
 	\pgfmathparse{\csvAval-\csvBval}%
 	\pgfmathprintnumber[fixed,fixed zerofill,precision=#4,print sign]{\pgfmathresult}%
+	\endgroup
 }
 
 %% \csvdeltapp{<tableA>}{<tableB>}{<column>}{<precision>} -- signed (A-B)*100 (pp).
 \newcommand{\csvdeltapp}[4]{%
 	\pgfplotstablegetelem{0}{\detokenize{#3}}\of{#1}\edef\csvAval{\pgfplotsretval}%
 	\pgfplotstablegetelem{0}{\detokenize{#3}}\of{#2}\edef\csvBval{\pgfplotsretval}%
+	\begingroup
+	\pgfkeys{/pgf/fpu=true}%
 	\pgfmathparse{(\csvAval-\csvBval)*100}%
 	\pgfmathprintnumber[fixed,fixed zerofill,precision=#4,print sign]{\pgfmathresult}%
+	\endgroup
 }
 
 %% \csvxdelta{<tableA>}{<colA>}{<tableB>}{<colB>}{<precision>} -- signed (A-B), columns may differ.
 \newcommand{\csvxdelta}[5]{%
 	\pgfplotstablegetelem{0}{\detokenize{#2}}\of{#1}\edef\csvAval{\pgfplotsretval}%
 	\pgfplotstablegetelem{0}{\detokenize{#4}}\of{#3}\edef\csvBval{\pgfplotsretval}%
+	\begingroup
+	\pgfkeys{/pgf/fpu=true}%
 	\pgfmathparse{\csvAval-\csvBval}%
 	\pgfmathprintnumber[fixed,fixed zerofill,precision=#5,print sign]{\pgfmathresult}%
+	\endgroup
 }
 
 %% \csvxdeltapp{<tableA>}{<colA>}{<tableB>}{<colB>}{<precision>} -- signed (A-B)*100 (pp).
 \newcommand{\csvxdeltapp}[5]{%
 	\pgfplotstablegetelem{0}{\detokenize{#2}}\of{#1}\edef\csvAval{\pgfplotsretval}%
 	\pgfplotstablegetelem{0}{\detokenize{#4}}\of{#3}\edef\csvBval{\pgfplotsretval}%
+	\begingroup
+	\pgfkeys{/pgf/fpu=true}%
 	\pgfmathparse{(\csvAval-\csvBval)*100}%
 	\pgfmathprintnumber[fixed,fixed zerofill,precision=#5,print sign]{\pgfmathresult}%
+	\endgroup
 }
 
 %% \csvrelpct{<tableA>}{<tableB>}{<column>}{<precision>} -- (A-B)/B*100, the relative
@@ -88,16 +103,158 @@
 \newcommand{\csvrelpct}[4]{%
 	\pgfplotstablegetelem{0}{\detokenize{#3}}\of{#1}\edef\csvAval{\pgfplotsretval}%
 	\pgfplotstablegetelem{0}{\detokenize{#3}}\of{#2}\edef\csvBval{\pgfplotsretval}%
+	\begingroup
+	\pgfkeys{/pgf/fpu=true}%
 	\pgfmathparse{(\csvAval-\csvBval)/\csvBval*100}%
 	\pgfmathprintnumber[fixed,fixed zerofill,precision=#4]{\pgfmathresult}%
+	\endgroup
 }
 
 %% \csvxrelpct{<tableA>}{<colA>}{<tableB>}{<colB>}{<precision>} -- (A-B)/B*100 across columns.
 \newcommand{\csvxrelpct}[5]{%
 	\pgfplotstablegetelem{0}{\detokenize{#2}}\of{#1}\edef\csvAval{\pgfplotsretval}%
 	\pgfplotstablegetelem{0}{\detokenize{#4}}\of{#3}\edef\csvBval{\pgfplotsretval}%
+	\begingroup
+	\pgfkeys{/pgf/fpu=true}%
 	\pgfmathparse{(\csvAval-\csvBval)/\csvBval*100}%
 	\pgfmathprintnumber[fixed,fixed zerofill,precision=#5]{\pgfmathresult}%
+	\endgroup
+}
+
+%% \csvxabsdelta{<tableA>}{<colA>}{<tableB>}{<colB>}{<precision>} -- |A-B| across columns.
+\newcommand{\csvxabsdelta}[5]{%
+	\pgfplotstablegetelem{0}{\detokenize{#2}}\of{#1}\edef\csvAval{\pgfplotsretval}%
+	\pgfplotstablegetelem{0}{\detokenize{#4}}\of{#3}\edef\csvBval{\pgfplotsretval}%
+	\begingroup
+	\pgfkeys{/pgf/fpu=true}%
+	\pgfmathparse{abs(\csvAval-\csvBval)}%
+	\pgfmathprintnumber[fixed,fixed zerofill,precision=#5]{\pgfmathresult}%
+	\endgroup
+}
+
+%% \csvabsdelta{<tableA>}{<tableB>}{<column>}{<precision>} -- |A-B| on a shared column.
+\newcommand{\csvabsdelta}[4]{\csvxabsdelta{#1}{#3}{#2}{#3}{#4}}
+
+%% \csvxabsdeltapp{<tableA>}{<colA>}{<tableB>}{<colB>}{<precision>} -- |A-B|*100 (pp).
+\newcommand{\csvxabsdeltapp}[5]{%
+	\pgfplotstablegetelem{0}{\detokenize{#2}}\of{#1}\edef\csvAval{\pgfplotsretval}%
+	\pgfplotstablegetelem{0}{\detokenize{#4}}\of{#3}\edef\csvBval{\pgfplotsretval}%
+	\begingroup
+	\pgfkeys{/pgf/fpu=true}%
+	\pgfmathparse{abs(\csvAval-\csvBval)*100}%
+	\pgfmathprintnumber[fixed,fixed zerofill,precision=#5]{\pgfmathresult}%
+	\endgroup
+}
+
+%% \csvabsdeltapp{<tableA>}{<tableB>}{<column>}{<precision>} -- |A-B|*100 on a shared column.
+\newcommand{\csvabsdeltapp}[4]{\csvxabsdeltapp{#1}{#3}{#2}{#3}{#4}}
+
+%% Pooled-standard-deviation helpers. Metric arguments omit the trailing /mean or /std.
+%% The descriptive statistic is s_pool=sqrt((s_A^2+s_B^2)/2), and
+%% d_pool=|mean_A-mean_B|/s_pool. These are not inferential pooled-variance estimates.
+%% \csvxpoolstd{<tableA>}{<metricA>}{<tableB>}{<metricB>}{<precision>}
+\newcommand{\csvxpoolstd}[5]{%
+	\pgfplotstablegetelem{0}{\detokenize{#2/std}}\of{#1}\edef\csvAstd{\pgfplotsretval}%
+	\pgfplotstablegetelem{0}{\detokenize{#4/std}}\of{#3}\edef\csvBstd{\pgfplotsretval}%
+	\begingroup
+	\pgfkeys{/pgf/fpu=true}%
+	\pgfmathparse{sqrt((\csvAstd*\csvAstd+\csvBstd*\csvBstd)/2)}%
+	\pgfmathprintnumber[fixed,fixed zerofill,precision=#5]{\pgfmathresult}%
+	\endgroup
+}
+
+%% \csvpoolstd{<tableA>}{<tableB>}{<metric>}{<precision>} -- shared-metric pooled std.
+\newcommand{\csvpoolstd}[4]{\csvxpoolstd{#1}{#3}{#2}{#3}{#4}}
+
+%% \csvxpoolstdpp / \csvpoolstdpp -- pooled std multiplied by 100 (percentage points).
+\newcommand{\csvxpoolstdpp}[5]{%
+	\pgfplotstablegetelem{0}{\detokenize{#2/std}}\of{#1}\edef\csvAstd{\pgfplotsretval}%
+	\pgfplotstablegetelem{0}{\detokenize{#4/std}}\of{#3}\edef\csvBstd{\pgfplotsretval}%
+	\begingroup
+	\pgfkeys{/pgf/fpu=true}%
+	\pgfmathparse{sqrt((\csvAstd*\csvAstd+\csvBstd*\csvBstd)/2)*100}%
+	\pgfmathprintnumber[fixed,fixed zerofill,precision=#5]{\pgfmathresult}%
+	\endgroup
+}
+\newcommand{\csvpoolstdpp}[4]{\csvxpoolstdpp{#1}{#3}{#2}{#3}{#4}}
+
+%% \csvxpoold{<tableA>}{<metricA>}{<tableB>}{<metricB>}{<precision>}
+\newcommand{\csvxpoold}[5]{%
+	\pgfplotstablegetelem{0}{\detokenize{#2/mean}}\of{#1}\edef\csvAmean{\pgfplotsretval}%
+	\pgfplotstablegetelem{0}{\detokenize{#2/std}}\of{#1}\edef\csvAstd{\pgfplotsretval}%
+	\pgfplotstablegetelem{0}{\detokenize{#4/mean}}\of{#3}\edef\csvBmean{\pgfplotsretval}%
+	\pgfplotstablegetelem{0}{\detokenize{#4/std}}\of{#3}\edef\csvBstd{\pgfplotsretval}%
+	\begingroup
+	\pgfkeys{/pgf/fpu=true}%
+	\pgfmathparse{abs(\csvAmean-\csvBmean)/sqrt((\csvAstd*\csvAstd+\csvBstd*\csvBstd)/2)}%
+	\pgfmathprintnumber[fixed,fixed zerofill,precision=#5]{\pgfmathresult}%
+	\endgroup
+}
+
+%% \csvpoold{<tableA>}{<tableB>}{<metric>}{<precision>} -- shared-metric d_pool.
+\newcommand{\csvpoold}[4]{\csvxpoold{#1}{#3}{#2}{#3}{#4}}
+
+%% Compact renderers that print both statistics. Use these inside math mode.
+%% Native-scale form: s_pool=<...>, d_pool=<...>.
+\newcommand{\csvxpoolstats}[6]{%
+	s_{\mathrm{pool}}=\csvxpoolstd{#1}{#2}{#3}{#4}{#5},\,
+	d_{\mathrm{pool}}=\csvxpoold{#1}{#2}{#3}{#4}{#6}%
+}
+\newcommand{\csvpoolstats}[5]{\csvxpoolstats{#1}{#3}{#2}{#3}{#4}{#5}}
+
+%% Percentage-point form for answer accuracies: s_pool=<...> pp, d_pool=<...>.
+\newcommand{\csvxpoolstatspp}[6]{%
+	s_{\mathrm{pool}}=\csvxpoolstdpp{#1}{#2}{#3}{#4}{#5}\,\mathrm{pp},\,
+	d_{\mathrm{pool}}=\csvxpoold{#1}{#2}{#3}{#4}{#6}%
+}
+\newcommand{\csvpoolstatspp}[5]{\csvxpoolstatspp{#1}{#3}{#2}{#3}{#4}{#5}}
+
+%% \csvxratio{<tableA>}{<colA>}{<tableB>}{<colB>}{<precision>} -- A/B.
+\newcommand{\csvxratio}[5]{%
+	\pgfplotstablegetelem{0}{\detokenize{#2}}\of{#1}\edef\csvAval{\pgfplotsretval}%
+	\pgfplotstablegetelem{0}{\detokenize{#4}}\of{#3}\edef\csvBval{\pgfplotsretval}%
+	\begingroup
+	\pgfkeys{/pgf/fpu=true}%
+	\pgfmathparse{\csvAval/\csvBval}%
+	\pgfmathprintnumber[fixed,fixed zerofill,precision=#5]{\pgfmathresult}%
+	\endgroup
+}
+\newcommand{\csvratio}[4]{\csvxratio{#1}{#3}{#2}{#3}{#4}}
+
+%% \csvsumabsdeltas{<tableA>}{<tableB>}{<reference>}{<column>}{<precision>}
+%% prints |A-ref|+|B-ref|.
+\newcommand{\csvsumabsdeltas}[5]{%
+	\pgfplotstablegetelem{0}{\detokenize{#4}}\of{#1}\edef\csvAval{\pgfplotsretval}%
+	\pgfplotstablegetelem{0}{\detokenize{#4}}\of{#2}\edef\csvBval{\pgfplotsretval}%
+	\pgfplotstablegetelem{0}{\detokenize{#4}}\of{#3}\edef\csvRefval{\pgfplotsretval}%
+	\begingroup
+	\pgfkeys{/pgf/fpu=true}%
+	\pgfmathparse{abs(\csvAval-\csvRefval)+abs(\csvBval-\csvRefval)}%
+	\pgfmathprintnumber[fixed,fixed zerofill,precision=#5]{\pgfmathresult}%
+	\endgroup
+}
+
+%% \csvcombinedeffectratio{<joint>}{<standaloneA>}{<standaloneB>}{<reference>}{<column>}{<precision>}
+%% prints |joint-ref|/(|standaloneA-ref|+|standaloneB-ref|).
+\newcommand{\csvcombinedeffectratio}[6]{%
+	\pgfplotstablegetelem{0}{\detokenize{#5}}\of{#1}\edef\csvJointval{\pgfplotsretval}%
+	\pgfplotstablegetelem{0}{\detokenize{#5}}\of{#2}\edef\csvAval{\pgfplotsretval}%
+	\pgfplotstablegetelem{0}{\detokenize{#5}}\of{#3}\edef\csvBval{\pgfplotsretval}%
+	\pgfplotstablegetelem{0}{\detokenize{#5}}\of{#4}\edef\csvRefval{\pgfplotsretval}%
+	\begingroup
+	\pgfkeys{/pgf/fpu=true}%
+	\pgfmathparse{abs(\csvJointval-\csvRefval)/(abs(\csvAval-\csvRefval)+abs(\csvBval-\csvRefval))}%
+	\pgfmathprintnumber[fixed,fixed zerofill,precision=#6]{\pgfmathresult}%
+	\endgroup
+}
+
+%% \calcpct{<numerator>}{<denominator>}{<precision>} -- numerator/denominator*100 followed by %.
+\newcommand{\calcpct}[3]{%
+	\begingroup
+	\pgfkeys{/pgf/fpu=true}%
+	\pgfmathparse{#1/#2*100}%
+	\pgfmathprintnumber[fixed,fixed zerofill,precision=#3]{\pgfmathresult}\,\%%
+	\endgroup
 }
 
 %% Convenience wrappers for the recurring "eval_{after,before}_train/answer/accuracy/<rule>_t=1.0"
@@ -118,6 +275,52 @@
 \newcommand{\AccBeforeV}[3]{\csvval{#1}{eval_before_train/answer/accuracy/#2_t=1.0/mean}{#3}}
 \newcommand{\ConfAfterV}[3]{\csvval{#1}{eval_after_train/confidence/#2/mean}{#3}}
 \newcommand{\ConfBeforeV}[3]{\csvval{#1}{eval_before_train/confidence/#2/mean}{#3}}
+
+%% Recurring derived-statistic wrappers for answer and confidence metric families.
+%% Pool-stat arguments are: table A, table B, metric name, s_pool precision, d_pool precision.
+\newcommand{\AccAfterPoolStats}[5]{%
+	\csvpoolstatspp{#1}{#2}{eval_after_train/answer/accuracy/#3_t=1.0}{#4}{#5}%
+}
+\newcommand{\AccAfterXPoolStats}[6]{%
+	\csvxpoolstatspp{#1}{eval_after_train/answer/accuracy/#2_t=1.0}{#3}{eval_after_train/answer/accuracy/#4_t=1.0}{#5}{#6}%
+}
+\newcommand{\ConfAfterPoolStats}[5]{%
+	\csvpoolstats{#1}{#2}{eval_after_train/confidence/#3}{#4}{#5}%
+}
+
+%% Absolute post-training gaps on recurring metric families.
+\newcommand{\AccAfterAbsDelta}[4]{%
+	\csvabsdelta{#1}{#2}{eval_after_train/answer/accuracy/#3_t=1.0/mean}{#4}%
+}
+\newcommand{\AccAfterAbsDeltaPP}[4]{%
+	\csvabsdeltapp{#1}{#2}{eval_after_train/answer/accuracy/#3_t=1.0/mean}{#4}%
+}
+\newcommand{\ConfAfterAbsDelta}[4]{%
+	\csvabsdelta{#1}{#2}{eval_after_train/confidence/#3/mean}{#4}%
+}
+
+%% \AccAfterGapRange{<tableA>}{<tableB>}{<precision>} -- min--max absolute
+%% percentage-point gap across Pass@1, Pass@4, MV, HC, and CW-MV.
+\newcommand{\AccAfterGapRange}[3]{%
+	\pgfplotstablegetelem{0}{\detokenize{eval_after_train/answer/accuracy/pass@1_t=1.0/mean}}\of{#1}\edef\csvApone{\pgfplotsretval}%
+	\pgfplotstablegetelem{0}{\detokenize{eval_after_train/answer/accuracy/pass@1_t=1.0/mean}}\of{#2}\edef\csvBpone{\pgfplotsretval}%
+	\pgfplotstablegetelem{0}{\detokenize{eval_after_train/answer/accuracy/pass@4_t=1.0/mean}}\of{#1}\edef\csvApfour{\pgfplotsretval}%
+	\pgfplotstablegetelem{0}{\detokenize{eval_after_train/answer/accuracy/pass@4_t=1.0/mean}}\of{#2}\edef\csvBpfour{\pgfplotsretval}%
+	\pgfplotstablegetelem{0}{\detokenize{eval_after_train/answer/accuracy/majority_voting_t=1.0/mean}}\of{#1}\edef\csvAmv{\pgfplotsretval}%
+	\pgfplotstablegetelem{0}{\detokenize{eval_after_train/answer/accuracy/majority_voting_t=1.0/mean}}\of{#2}\edef\csvBmv{\pgfplotsretval}%
+	\pgfplotstablegetelem{0}{\detokenize{eval_after_train/answer/accuracy/highest_confidence_t=1.0/mean}}\of{#1}\edef\csvAhc{\pgfplotsretval}%
+	\pgfplotstablegetelem{0}{\detokenize{eval_after_train/answer/accuracy/highest_confidence_t=1.0/mean}}\of{#2}\edef\csvBhc{\pgfplotsretval}%
+	\pgfplotstablegetelem{0}{\detokenize{eval_after_train/answer/accuracy/confidence_weighted_majority_voting_t=1.0/mean}}\of{#1}\edef\csvAcwmv{\pgfplotsretval}%
+	\pgfplotstablegetelem{0}{\detokenize{eval_after_train/answer/accuracy/confidence_weighted_majority_voting_t=1.0/mean}}\of{#2}\edef\csvBcwmv{\pgfplotsretval}%
+	\begingroup
+	\pgfkeys{/pgf/fpu=true}%
+	\pgfmathparse{min(abs(\csvApone-\csvBpone),abs(\csvApfour-\csvBpfour),abs(\csvAmv-\csvBmv),abs(\csvAhc-\csvBhc),abs(\csvAcwmv-\csvBcwmv))*100}%
+	\pgfmathprintnumber[fixed,fixed zerofill,precision=#3]{\pgfmathresult}%
+	\text{--}%
+	\pgfmathparse{max(abs(\csvApone-\csvBpone),abs(\csvApfour-\csvBpfour),abs(\csvAmv-\csvBmv),abs(\csvAhc-\csvBhc),abs(\csvAcwmv-\csvBcwmv))*100}%
+	\pgfmathprintnumber[fixed,fixed zerofill,precision=#3]{\pgfmathresult}%
+	\endgroup
+}
 
 %% Confidence-token inclusion / truncation percentages (already-fractional CSV cells).
 \newcommand{\InclPctAfter}[2]{\csvpct{#1}{eval_after_train/answer/confidence_token_inclusion_percentage_t=1.0/mean}{#2}}
