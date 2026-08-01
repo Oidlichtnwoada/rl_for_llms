@@ -1,0 +1,479 @@
+% !TeX program = pdflatex
+% !TeX encoding = UTF-8
+% !TeX spellcheck = en_US
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% A0 landscape poster for the Master's Thesis Seminar poster session.
+%%
+%% Title:      Dense Confidence and Inference-Time Scaling
+%% Author:     Hannes Brantner
+%% Institute:  Institute for Machine Learning, JKU Linz
+%% Supervisor: Sepp Hochreiter (Co-Supervisors: Johannes Schimunek, Christoph Bartmann)
+%%
+%% The poster deliberately shares its substantive content with main-thesis.tex
+%% rather than duplicating it:
+%%   * csvmetrics.tex       -- every result number is the same live CSV lookup
+%%                             used by the thesis result tables (single source).
+%%   * acronyms.tex         -- the acronym definitions (loaded with [nolist] so
+%%                             no List of Acronyms is typeset on the poster).
+%%   * architecture_tikz.tex -- the training-time data-flow diagram, identical
+%%                             to fig:architecture in the thesis.
+%%
+%% Build with the repository build script (pdflatex engine, the default):
+%%   ./build.sh main-poster
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\documentclass[17pt, a0paper, landscape, margin=12mm, innermargin=14mm,
+	blockverticalspace=11mm, colspace=14mm, subcolspace=8mm]{tikzposter}
+
+%% --- Fonts: clean sans-serif body to match a modern AI-lab poster ----------
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\renewcommand{\familydefault}{\sfdefault}
+
+%% --- Math and tables --------------------------------------------------------
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+
+%% --- TikZ libraries required by the shared architecture diagram -------------
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,calc,fit,backgrounds}
+
+%% --- Acronyms: define them (shared file) but do not typeset a list ----------
+\usepackage[nolist]{acronym}
+%% On a poster, which is read non-linearly, the package's first-use expansion is
+%% meaningless, so every \ac* variant simply prints the short (italic) form.
+\DeclareRobustCommand{\acit}[1]{\textit{\acs{#1}}}
+\DeclareRobustCommand{\acpit}[1]{\textit{\acsp{#1}}}
+\DeclareRobustCommand{\acfit}[1]{\textit{\acs{#1}}}
+\DeclareRobustCommand{\acfpit}[1]{\textit{\acsp{#1}}}
+\DeclareRobustCommand{\aclf}[1]{\acl{#1}~(\acs{#1})}
+\DeclareRobustCommand{\aclfp}[1]{\aclp{#1}~(\acsp{#1})}
+
+%% --- Live result numbers, shared verbatim with the thesis result tables -----
+\input{csvmetrics.tex}
+
+%% --- Native bar charts (with error bars) drawn from the SAME shared CSVs -----
+%% Replacing the dense result table with grouped bar charts addresses the
+%% poster feedback (fewer numbers to read, proper standard-deviation error
+%% bars, a graphic to walk an audience through). Vector output, matches the
+%% poster fonts, and stays a single source of truth with the thesis.
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+
+%% Extract one CSV cell into a purely numeric macro (value scaled by 100), so it
+%% can be dropped straight into pgfplots coordinates. Std columns reuse the same
+%% helper. metric paths are identical to the csvmetrics.tex column families.
+\newcommand{\Xpct}[3]{%
+	\pgfplotstablegetelem{0}{\detokenize{#3}}\of{#2}%
+	\pgfmathparse{\pgfplotsretval*100}%
+	\expandafter\edef\csname #1\endcsname{\pgfmathresult}}
+
+%% Answer accuracy (Pass@1 + Majority Voting), one bar pair per training variant.
+\Xpct{pmBase}{\AnsBase}{eval_before_train/answer/accuracy/pass@1_t=1.0/mean}
+\Xpct{psBase}{\AnsBase}{eval_before_train/answer/accuracy/pass@1_t=1.0/std}
+\Xpct{mmBase}{\AnsBase}{eval_before_train/answer/accuracy/majority_voting_t=1.0/mean}
+\Xpct{msBase}{\AnsBase}{eval_before_train/answer/accuracy/majority_voting_t=1.0/std}
+\Xpct{pmGRPO}{\AnsGRPO}{eval_after_train/answer/accuracy/pass@1_t=1.0/mean}
+\Xpct{psGRPO}{\AnsGRPO}{eval_after_train/answer/accuracy/pass@1_t=1.0/std}
+\Xpct{mmGRPO}{\AnsGRPO}{eval_after_train/answer/accuracy/majority_voting_t=1.0/mean}
+\Xpct{msGRPO}{\AnsGRPO}{eval_after_train/answer/accuracy/majority_voting_t=1.0/std}
+\Xpct{pmDA}{\AnsDenseAux}{eval_after_train/answer/accuracy/pass@1_t=1.0/mean}
+\Xpct{psDA}{\AnsDenseAux}{eval_after_train/answer/accuracy/pass@1_t=1.0/std}
+\Xpct{mmDA}{\AnsDenseAux}{eval_after_train/answer/accuracy/majority_voting_t=1.0/mean}
+\Xpct{msDA}{\AnsDenseAux}{eval_after_train/answer/accuracy/majority_voting_t=1.0/std}
+\Xpct{pmDS}{\AnsDenseSR}{eval_after_train/answer/accuracy/pass@1_t=1.0/mean}
+\Xpct{psDS}{\AnsDenseSR}{eval_after_train/answer/accuracy/pass@1_t=1.0/std}
+\Xpct{mmDS}{\AnsDenseSR}{eval_after_train/answer/accuracy/majority_voting_t=1.0/mean}
+\Xpct{msDS}{\AnsDenseSR}{eval_after_train/answer/accuracy/majority_voting_t=1.0/std}
+\Xpct{pmLA}{\AnsLaserAux}{eval_after_train/answer/accuracy/pass@1_t=1.0/mean}
+\Xpct{psLA}{\AnsLaserAux}{eval_after_train/answer/accuracy/pass@1_t=1.0/std}
+\Xpct{mmLA}{\AnsLaserAux}{eval_after_train/answer/accuracy/majority_voting_t=1.0/mean}
+\Xpct{msLA}{\AnsLaserAux}{eval_after_train/answer/accuracy/majority_voting_t=1.0/std}
+\Xpct{pmLS}{\AnsLaserSR}{eval_after_train/answer/accuracy/pass@1_t=1.0/mean}
+\Xpct{psLS}{\AnsLaserSR}{eval_after_train/answer/accuracy/pass@1_t=1.0/std}
+\Xpct{mmLS}{\AnsLaserSR}{eval_after_train/answer/accuracy/majority_voting_t=1.0/mean}
+\Xpct{msLS}{\AnsLaserSR}{eval_after_train/answer/accuracy/majority_voting_t=1.0/std}
+
+%% Confidence calibration (MCC x100 + ROC-AUC), confidence-trained variants only.
+\Xpct{ccDA}{\ConfDenseAux}{eval_after_train/confidence/mcc/mean}
+\Xpct{csDA}{\ConfDenseAux}{eval_after_train/confidence/mcc/std}
+\Xpct{rcDA}{\ConfDenseAux}{eval_after_train/confidence/roc_auc/mean}
+\Xpct{rsDA}{\ConfDenseAux}{eval_after_train/confidence/roc_auc/std}
+\Xpct{ccDS}{\ConfDenseSR}{eval_after_train/confidence/mcc/mean}
+\Xpct{csDS}{\ConfDenseSR}{eval_after_train/confidence/mcc/std}
+\Xpct{rcDS}{\ConfDenseSR}{eval_after_train/confidence/roc_auc/mean}
+\Xpct{rsDS}{\ConfDenseSR}{eval_after_train/confidence/roc_auc/std}
+\Xpct{ccLA}{\ConfLaserAux}{eval_after_train/confidence/mcc/mean}
+\Xpct{csLA}{\ConfLaserAux}{eval_after_train/confidence/mcc/std}
+\Xpct{rcLA}{\ConfLaserAux}{eval_after_train/confidence/roc_auc/mean}
+\Xpct{rsLA}{\ConfLaserAux}{eval_after_train/confidence/roc_auc/std}
+\Xpct{ccLS}{\ConfLaserSR}{eval_after_train/confidence/mcc/mean}
+\Xpct{csLS}{\ConfLaserSR}{eval_after_train/confidence/mcc/std}
+\Xpct{rcLS}{\ConfLaserSR}{eval_after_train/confidence/roc_auc/mean}
+\Xpct{rsLS}{\ConfLaserSR}{eval_after_train/confidence/roc_auc/std}
+
+%% Shared style for both poster bar charts.
+\pgfplotsset{
+	posterbar/.style={
+		ybar, bar width=22pt,
+		width=\linewidth, height=6.7cm,
+		ymin=0,
+		every axis plot/.append style={fill opacity=0.9, draw=black, line width=0.4pt},
+		xtick=data,
+		x tick label style={font=\normalsize},
+		ylabel style={font=\normalsize},
+		tick label style={font=\small},
+		legend style={at={(0.5,1.02)}, anchor=south, legend columns=-1,
+			draw=none, /tikz/every even column/.append style={column sep=10pt},
+			font=\normalsize},
+		error bars/y dir=both, error bars/y explicit,
+		error bars/error bar style={line width=1.4pt, ebar},
+		error bars/error mark=|,
+		error bars/error mark options={line width=1.4pt, mark size=5pt, ebar},
+		grid=major, ymajorgrids, grid style={black!12},
+		%% print the exact value on top of every bar (above the error cap)
+		nodes near coords,
+		point meta=rawy,
+		every node near coord/.append style={font=\scriptsize, rotate=90,
+			anchor=west, inner sep=1.5pt, yshift=7pt, /pgf/number format/fixed,
+			/pgf/number format/fixed zerofill, /pgf/number format/precision=1},
+		nodes near coords align={vertical},
+	}
+}
+
+%% Answer-accuracy chart: Base + 5 trained variants, Pass@1 vs. Majority Voting.
+\newcommand{\posterAnswerChart}{%
+	\begin{tikzpicture}
+		\begin{axis}[posterbar, enlarge x limits=0.09, ymax=88,
+			ylabel={Answer accuracy [\%]},
+			symbolic x coords={Base,GRPO,DA,DS,LA,LS},
+			xticklabels={Base,GRPO,{Dense\,$+\ell{-}r$},{Dense\,$+\ell{+}r$},{LaSeR\,$+\ell{-}r$},{LaSeR\,$+\ell{+}r$}},
+			x tick label style={font=\small,rotate=18,anchor=east}]
+			\addplot+[fill=jkublue] coordinates {
+				(Base,\pmBase) +- (0,\psBase) (GRPO,\pmGRPO) +- (0,\psGRPO)
+				(DA,\pmDA) +- (0,\psDA) (DS,\pmDS) +- (0,\psDS)
+				(LA,\pmLA) +- (0,\psLA) (LS,\pmLS) +- (0,\psLS)};
+			\addplot+[fill=jkuaccent] coordinates {
+				(Base,\mmBase) +- (0,\msBase) (GRPO,\mmGRPO) +- (0,\msGRPO)
+				(DA,\mmDA) +- (0,\msDA) (DS,\mmDS) +- (0,\msDS)
+				(LA,\mmLA) +- (0,\msLA) (LS,\mmLS) +- (0,\msLS)};
+			\legend{\textit{Pass}@1, Majority Voting}
+		\end{axis}
+	\end{tikzpicture}}
+
+%% Confidence-calibration chart: the four confidence-trained variants only.
+\newcommand{\posterConfChart}{%
+	\begin{tikzpicture}
+		\begin{axis}[posterbar, enlarge x limits=0.16, ymax=104,
+			ylabel={Calibration},
+			symbolic x coords={DA,DS,LA,LS},
+			xticklabels={{Dense\,$+\ell{-}r$},{Dense\,$+\ell{+}r$},{LaSeR\,$+\ell{-}r$},{LaSeR\,$+\ell{+}r$}},
+			x tick label style={font=\small,rotate=18,anchor=east}]
+			\addplot+[fill=jkublue] coordinates {
+				(DA,\ccDA) +- (0,\csDA) (DS,\ccDS) +- (0,\csDS)
+				(LA,\ccLA) +- (0,\csLA) (LS,\ccLS) +- (0,\csLS)};
+			\addplot+[fill=jkuaccent] coordinates {
+				(DA,\rcDA) +- (0,\rsDA) (DS,\rcDS) +- (0,\rsDS)
+				(LA,\rcLA) +- (0,\rsLA) (LS,\rcLS) +- (0,\rsLS)};
+			\legend{\acit{MCC}$\,\times100$ [\,], \acit{ROC-AUC} [\%]}
+		\end{axis}
+	\end{tikzpicture}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Theme and JKU-inspired colour palette
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usetheme{Default}
+
+\definecolor{jkublue}{HTML}{0A2D5E}   % deep navy for title and block headers
+\definecolor{jkuaccent}{HTML}{E1006E} % JKU magenta accent for highlights
+\definecolor{ebar}{HTML}{F59A00}      % high-contrast amber for error bars (reads on
+                                      % the dark navy bars, the magenta bars, and white)
+
+\colorlet{backgroundcolor}{white}
+\colorlet{framecolor}{jkublue}
+\colorlet{titlefgcolor}{white}
+\colorlet{titlebgcolor}{jkublue}
+\colorlet{blocktitlebgcolor}{jkublue}
+\colorlet{blocktitlefgcolor}{white}
+\colorlet{blockbodybgcolor}{white}
+\colorlet{blockbodyfgcolor}{black}
+\colorlet{innerblocktitlebgcolor}{white}
+\colorlet{innerblocktitlefgcolor}{jkublue}
+\colorlet{notefgcolor}{white}
+\colorlet{notebgcolor}{jkuaccent}
+\colorlet{noteframecolor}{jkuaccent}
+
+%% Rounded, generously padded cards for both blocks and the title bar.
+\useblockstyle[titleinnersep=14pt, bodyinnersep=20pt, roundedcorners=20,
+	linewidth=1pt, titleoffsety=2pt]{Default}
+
+\definetitlestyle{jkutitle}{
+	width=\textwidth, roundedcorners=24, linewidth=0pt, innersep=24pt,
+	titletotopverticalspace=3mm, titletoblockverticalspace=11mm,
+	titlegraphictotitledistance=10pt, titletextscale=1
+}{
+	\begin{scope}[line width=\titlelinewidth, rounded corners=\titleroundedcorners]
+		\draw[color=titlebgcolor, fill=titlebgcolor]
+		(\titleposleft,\titleposbottom) rectangle (\titleposright,\titlepostop);
+	\end{scope}
+}
+\usetitlestyle{jkutitle}
+
+%% Plain white background (no gradient / decorations).
+\definebackgroundstyle{jkubackground}{
+	\draw[line width=0pt, color=white, fill=white]
+	(bottomleft) rectangle (topright);
+}
+\usebackgroundstyle{jkubackground}
+
+%% Remove the "created with tikzposter" footer.
+\tikzposterlatexaffectionproofoff
+
+%% Highlighted headline statistic (intentionally large; the only oversized text).
+\newcommand{\statbox}[2]{%
+	\begin{minipage}[t]{0.18\linewidth}
+		\centering
+		{\color{jkuaccent}\bfseries\fontsize{42}{46}\selectfont #1}\\[4pt]
+		{\normalsize #2}
+	\end{minipage}%
+}
+
+%% Variant carrying a (smaller) second line under the headline number, kept at a
+%% fixed height so every caption in the banner row stays vertically aligned.
+%% #1 = big mean, #2 = second line (e.g. a $\pm$std string; empty for none), #3 = caption.
+\newcommand{\statboxms}[3]{%
+	\begin{minipage}[t]{0.18\linewidth}
+		\centering
+		{\color{jkuaccent}\bfseries\fontsize{42}{46}\selectfont #1}\\[2pt]
+		{\color{jkuaccent}\normalsize\strut #2}\\[3pt]
+		{\normalsize #3}
+	\end{minipage}%
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Title
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\title{\parbox{\linewidth}{\raggedright Dense Confidence \& Inference-Time Scaling:\\[2pt]
+		Extending \textit{LaSeR} for Reliable \acit{LLM} Reasoning}}
+\author{Hannes Brantner}
+\institute{Institute for Machine Learning, Johannes Kepler University Linz}
+
+\makeatletter
+\settitle{
+	\begin{minipage}[c]{0.82\linewidth}
+		\raggedright
+		{\color{titlefgcolor}\bfseries\fontsize{46}{52}\selectfont \@title\par}
+		\vspace{10pt}
+		{\color{titlefgcolor}\large \textbf{\@author} (K1614466) \quad\textbar\quad
+			Supervisor: \textbf{Sepp Hochreiter} \quad\textbar\quad
+			Assistant Supervisors: Johannes Schimunek, Christoph Bartmann \quad\textbar\quad
+			\@institute\par}
+	\end{minipage}\hfill
+	\begin{minipage}[c]{0.16\linewidth}
+		\centering
+		\includegraphics[width=0.46\linewidth]{logos/jku_en_white.pdf}
+	\end{minipage}
+}
+\makeatother
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+
+%% Declare the shared acronyms (typesets nothing thanks to the [nolist] option).
+\input{acronyms.tex}
+
+\maketitle
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Full-width headline / take-away banner
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\block{}{%
+	\vspace{2pt}
+	\centering
+	One $0.5\,$B-parameter \acit{LLM}, trained in \emph{a single joint pass}, becomes both a strong
+	\textbf{reasoner} \emph{and} a calibrated \textbf{judge of its own correctness} --- a per-token
+	\textbf{\textit{Dense Confidence}} signal read from one repurposed token at \emph{every} step, at \emph{no} answer-quality cost.
+	\vspace{16pt}
+
+	\centering
+	\statboxms{$\AccBeforePct{\AnsBase}{pass@1}{0} \mathrel{\raisebox{0.15em}{$\rightarrow$}} \AccAfterPct{\AnsDenseSR}{pass@1}{0}$}{$\pm\,\csvpct{\AnsBase}{eval_before_train/answer/accuracy/pass@1_t=1.0/std}{1} \quad \pm\,\csvpct{\AnsDenseSR}{eval_after_train/answer/accuracy/pass@1_t=1.0/std}{1}$}{\textit{Pass}@1 (\textit{Base} $\to$ up to \textit{Dense} $+\ell{+}r$)}\hfill
+	\statboxms{$\ConfAfter{\ConfDenseAux}{mcc}$}{$\pm\,\csvval{\ConfDenseAux}{eval_after_train/confidence/mcc/std}{3}$}{confidence \acit{MCC} (up to; \textit{Dense} $+\ell{-}r$)}\hfill
+	\statboxms{$\AccAfterPct{\AnsDenseAux}{confidence_weighted_majority_voting}{0}$}{$\pm\,\csvpct{\AnsDenseAux}{eval_after_train/answer/accuracy/confidence_weighted_majority_voting_t=1.0/std}{1}$}{\acit{CW-MV} selection (up to; \textit{Dense} $+\ell{-}r$)}\hfill
+	\statboxms{$\InclPctAfter{\AnsDenseSR}{0}$}{}{confidence token never sampled}\hfill
+	\statboxms{$1.75\,\%$}{}{params trained --- $8.8$M of $503$M (\acit{LoRA})}
+	\vspace{4pt}
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{columns}
+
+	%% ===================== COLUMN 1 : PROBLEM AND IDEA =====================
+	\column{0.30}
+
+	\block{Motivation: reward is rich in value, poor in time}{%
+		\begin{itemize}
+			\item \acit{RLVR} gives an \emph{objective} reward from a verifier --- but only \textbf{one bit per
+				      trajectory} (correct / incorrect).
+			\item That single verdict must be spread across \emph{hundreds} of tokens $\Rightarrow$ hard credit
+			      assignment.
+			\item \textit{LaSeR} adds self-confidence, but only at the token \emph{after the \acit{EOS} token} (sparse) and as
+			      an \emph{unbounded} log-probability that can leak into the generated text.
+		\end{itemize}
+		\textbf{Goal:} a \emph{bounded, per-token} confidence signal, calibrated to correctness and cheap enough
+		to train \emph{jointly} with the policy.
+	}
+
+	\block{Research Questions}{%
+		\begin{description}
+			\item[\textcolor{jkuaccent}{RQ1}] Can a \emph{per-token} confidence signal be learned jointly with
+			      \acit{GRPO} \emph{without} hurting reasoning accuracy?
+			\item[\textcolor{jkuaccent}{RQ2}] Does \emph{bounding} the confidence logit stop it from leaking into
+			      the text (the \textit{LaSeR} problem)?
+			\item[\textcolor{jkuaccent}{RQ3}] Does feeding confidence back into training improve calibration of
+			      correctness?
+			\item[\textcolor{jkuaccent}{RQ4}] Can the signal be reused at \emph{inference} time to trade compute
+			      for accuracy \emph{or} calibration?
+		\end{description}
+	}
+
+	\block{Key terms}{%
+		\begin{description}
+			\item[\textcolor{jkuaccent}{\textit{Dense} vs.\ \textit{LaSeR}}] confidence read at \emph{every} token
+			      (ours) vs.\ only from the token \emph{after the \acit{EOS} token} (baseline).
+			\item[\textcolor{jkuaccent}{$+\ell{-}r$ / $+\ell{+}r$}] both train the auxiliary confidence loss
+			      ($\ell$); the $+\ell{+}r$ variant \emph{additionally} feeds confidence into the \acit{GRPO}
+			      advantage (\emph{self-rewarding}).
+			\item[\textcolor{jkuaccent}{\acit{MV} / \acit{CW-MV}}] pick the final answer by a plain vs.\ a
+			      \emph{confidence-weighted} majority vote of the $G$ samples.
+			\item[\textcolor{jkuaccent}{\acit{MCC}}] \emph{Matthews Correlation Coefficient} --- how well
+			      confidence predicts correctness: $0$ = random, $1$ = perfect.
+		\end{description}
+	}
+
+	\block{Method: \textit{Dense Confidence} (ours)}{%
+		\begin{itemize}
+			\item Repurpose an \emph{unused} control token (\texttt{<|vision\_pad|>}); a hook reads its
+			      logit $\ell_t^{\mathrm{conf}}$ at \emph{every} step and squashes it to a \emph{bounded}
+			      confidence
+			      $c_t = \sigma\!\big(\tfrac{\pi}{\sigma_{\mathrm{conf}}\sqrt{3}}(\ell_t^{\mathrm{conf}}-\mu_{\mathrm{conf}})\big)\in[0,1]$.
+			\item Supervise it \emph{at every step} with a class-rebalanced \acit{BCE} loss \emph{added} to
+			      \acit{GRPO} (it does \emph{not} flow through the policy gradient; tuning $\beta_{\mathrm{conf}}$ is
+			      key for stability):
+		\end{itemize}
+		\vspace{-6pt}
+		\[
+			L_{\mathrm{total}} = -\mathcal{J}_{\mathrm{GRPO}}(\theta) + \beta_{\mathrm{conf}}\,L_{\mathrm{conf}},\quad
+			L_{\mathrm{conf},i} = -\tfrac{1}{T_i}\!\sum_{t=1}^{T_i}\!\big[r_i\log c_{i,t} + (1{-}r_i)\log(1{-}c_{i,t})\big].
+		\]
+		\vspace{-10pt}
+		\begin{itemize}
+			\item \emph{Self-rewarding} ($+r$): blend the trajectory-mean confidence into the advantage.
+			\item Shifting the sigmoid mean $\mu_{\mathrm{conf}}$ makes sampling the token \emph{arbitrarily
+				      unlikely} $\Rightarrow$ \emph{no} leakage and \emph{no} extra forward pass.
+		\end{itemize}
+	}
+
+	\block{Inference-time scaling --- reuse the head, no retraining}{%
+		Three controllers reuse the trained \textit{Dense} head at evaluation only:
+		\begin{itemize}
+			\item \textbf{Answer selection:} vote over the $G$ samples by \acit{MV}, \acit{HC} (highest mean
+			      confidence) or \acit{CW-MV}.
+			\item \textbf{Temperature control:} raise/lower the decode temperature with a \emph{windowed}
+			      running-mean confidence.
+			\item \textbf{\acit{SMC} filtering:} kill low-confidence rollouts, clone high-confidence ones.
+		\end{itemize}
+		The last two \emph{need} a per-token signal --- only possible with our \textit{Dense} methodology,
+		impossible for after-\acit{EOS} \textit{LaSeR}.
+	}
+
+	\block{Selected references}{%
+		[1] Yang et al. \textit{LaSeR}, 2025.\quad
+		[2] Shao et al. \textit{DeepSeekMath} (\acit{GRPO}), 2024.\quad
+		[3] Cobbe et al. \textit{\acit{GSM8K}}, 2021.\quad
+		[4] Hu et al. \textit{LoRA}, 2021.\quad
+		[5] Qwen Team. \textit{Qwen2.5}, 2025.\quad
+		[6] Lew et al. \textit{\acit{SMC} Steering of LLMs}, 2023.
+	}
+
+	%% ===================== COLUMN 2 : ARCHITECTURE =====================
+	\column{0.40}
+
+	\block{Training-time architecture}{%
+		\begin{center}
+			\resizebox{0.52\linewidth}{!}{\input{architecture_tikz.tex}}
+		\end{center}
+		\vspace{4pt}
+		\begin{itemize}
+			\item The \emph{same} \acit{LM}-head hook harvests the confidence logit \textbf{twice}: gradient-free
+			      while \emph{generating}, and with gradients while \emph{re-evaluating}.
+			\item \textbf{External verifier} $\to$ outcome bit $r$;\; \textbf{internal verifier} (the confidence
+			      head) $\to$ per-token confidence $c_{i,t}\in[0,1]$.
+		\end{itemize}
+	}
+
+	\block{The signal warns early}{%
+		\begin{center}
+			\includegraphics[width=0.54\linewidth]{charts/confidence_evolution_chart.pdf}
+		\end{center}
+		\vspace{2pt}
+		Per-token confidence on a \emph{correct} (top, higher mean) vs.\ \emph{incorrect} (bottom, lower mean)
+		rollout of the trained \textit{Dense} head: the two curves separate \emph{hundreds of tokens before} the
+		final answer.
+	}
+
+	%% ===================== COLUMN 3 : EVIDENCE AND CONCLUSION =====================
+	\column{0.30}
+
+	\block{Experimental setup}{%
+		\begin{itemize}
+			\item \texttt{Qwen2.5-0.5B-Instruct} on filtered \aclf{GSM8K} ($1{,}222$ eval problems, $G=4$
+			      samples/prompt).
+			\item Only $\approx\!1.75\,\%$ of parameters trained (\acit{LoRA} $+$ one confidence-token row); one
+			      epoch on a single \acit{GPU}.
+			\item Every bar is the \textbf{mean of 3 seeds}; error bars are $\pm1$ std.
+		\end{itemize}
+	}
+
+	\block{Results: accuracy is untouched (RQ1)}{%
+		\begin{center}\posterAnswerChart\end{center}
+		\vspace{-2pt}
+		All trained variants jump far above \textit{Base} and sit \emph{on top of each other}: adding the
+		confidence head costs \textbf{no} answer quality.
+	}
+
+	\block{Results: \textit{Dense} stays calibrated (RQ3)}{%
+		\begin{center}\posterConfChart\end{center}
+		\vspace{-2pt}
+		\begin{itemize}
+			\item \textit{Dense} keeps a high \acit{MCC} ($>0.50$) and \acit{ROC-AUC}
+			      $>0.84$ either way.
+			\item The \emph{unbounded} \textit{LaSeR} reward \textbf{collapses} calibration once fed back into
+			      training ($\ConfAfter{\ConfLaserAux}{mcc}\!\to\!\ConfAfter{\ConfLaserSR}{mcc}$).
+			\item \textbf{No leakage (RQ2):} the confidence token is sampled
+			      $\InclPctAfter{\AnsDenseSR}{0}$ of the time --- no extra forward pass.
+			\item \textbf{Inference trade-off (RQ4):} on \emph{one} checkpoint, temperature $+$ \acit{SMC}
+			      filtering pushes \acit{MCC} to $\ConfAfter{\ConfTempFil}{mcc}$ (calibration), while \acit{CW-MV}
+			      maximizes answer accuracy.
+		\end{itemize}
+	}
+
+	\block{Conclusion \& outlook}{%
+		\begin{itemize}
+			\item One repurposed token $+$ a hook $+$ a \acit{BCE} loss $=$ a calibrated, per-token confidence head
+			      at $0.5\,$B parameters, \emph{for free}.
+			\item Same head, two inference modes (no retraining): \acit{CW-MV} answer selection buys
+			      \emph{accuracy}; temperature $+$ \acit{SMC} filtering buys \emph{calibration} (higher \acit{MCC}).
+			\item The approach should scale with model size, data, and sample budget $G$, and is a natural
+			      \acit{PRM} distillation target.
+		\end{itemize}
+		\textbf{Code:} \texttt{github.com/Oidlichtnwoada/rl\_for\_llms}
+	}
+
+\end{columns}
+
+\end{document}

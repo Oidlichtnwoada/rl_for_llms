@@ -1,0 +1,66 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% Acronym definitions (based on the acronyms package).
+%%
+%% This file holds ONLY the acronym definitions so that it can be shared
+%% verbatim between main-thesis.tex (which prints the List of Acronyms) and
+%% main-poster.tex (which loads the package with the [nolist] option to define
+%% the acronyms without typesetting a list). The caller is responsible for the
+%% surrounding chapter heading (\addchap{\acronymname}) where one is wanted.
+%%
+
+\begin{acronym}[ROC-AUC]
+	\acro{A3C}{Asynchronous Advantage Actor-Critic}
+	\acro{AI}{Artificial Intelligence}
+	\acro{Aux}[Aux.]{Auxiliary}
+	\acro{BA}{Balanced Accuracy}
+	\acro{BCE}{Binary Cross-Entropy}
+	\acro{CoT}{Chain-of-Thought}
+	\acro{CoVo}{Consistency and Volatility}
+	\acro{CW-MV}{Confidence-Weighted Majority Voting}
+	\acro{DAPO}{Decoupled Clip and Dynamic Sampling Policy Optimization}
+	\acro{DPO}{Direct Preference Optimization}
+	\acro{ECE}{Expected Calibration Error}
+	\acro{EOS}{End-of-Sequence}
+	\acro{F1}{F1 Score}
+	\acro{FNR}{False Negative Rate}
+	\acro{FPR}{False Positive Rate}
+	\acro{GPU}{Graphics Processing Unit}
+	\acro{GRPO}{Group Relative Policy Optimization}
+	\acro{GSM8K}{Grade School Math 8K}
+	\acro{GSPO}{Group Sequence Policy Optimization}
+	\acro{HBA}{Harmonic Balanced Accuracy}
+	\acro{HC}{Highest Confidence}
+	\acro{JKU}{Johannes Kepler University Linz}
+	\acro{KL}{Kullback-Leibler}
+	\acro{KV}{Key-Value}
+	\acro{LaSeR}{Last-Token Self-Rewarding}
+	\acro{LLM}{Large Language Model}
+	\acro{LM}{Language Model}
+	\acro{LoRA}{Low-Rank Adaptation}
+	\acro{MCC}{Matthews Correlation Coefficient}
+	\acro{MSE}{Mean Squared Error}
+	\acro{MV}{Majority Voting}
+	\acro{NPV}{Negative Predictive Value}
+	\acro{PACR}{Progressively Ascending Confidence Reward}
+	\acro{PAD}{Padding}
+	\acro{PEFT}{Parameter-Efficient Fine-Tuning}
+	\acro{PPO}{Proximal Policy Optimization}
+	\acro{PPV}{Positive Predictive Value}
+	\acro{PR-AUC}{Area Under the Precision-Recall Curve}
+	\acro{PRM}{Process Reward Model}
+	\acro{RL}{Reinforcement Learning}
+	\acro{RLAIF}{Reinforcement Learning from AI Feedback}
+	\acro{RLHF}{Reinforcement Learning from Human Feedback}
+	\acro{RLVR}{Reinforcement Learning with Verifiable Rewards}
+	\acro{ROC-AUC}{Area Under the Receiver Operating Characteristic Curve}
+	\acro{SMC}{Sequential Monte Carlo}
+	\acro{SR}{Self-Rewarding}
+	\acro{TNR}{True Negative Rate}
+	\acro{TPR}{True Positive Rate}
+	\acro{TTRL}{Test-Time Reinforcement Learning}
+	\acro{XAI}{Explainable Artificial Intelligence}
+\end{acronym}
+
+%% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
