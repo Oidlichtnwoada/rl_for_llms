@@ -231,10 +231,10 @@
 \author{\prefix{Dipl.-Ing.}~Hannes~Brantner\matno{K1614466}}
 
 %% Command \supervisor[number,gender]{name}: sets the name of the supervisor
-\supervisor{\prefix{Univ.-Prof. Dr.} Sepp~Hochreiter}
+\supervisor{\prefix{Univ.-Prof. Dr.}\\ Sepp~Hochreiter}
 
 %% Command \assistantsupervisor{name}: sets the name of the assistant supervisor(s)
-\assistantsupervisor{\prefix{Dr.} Johannes~Schimunek \and \prefix{Dipl.-Ing.} Christoph~Bartmann}
+\assistantsupervisor{\prefix{Dr.}\\ Johannes~Schimunek \and \prefix{Dipl.-Ing.}\\ Christoph~Bartmann}
 
 %% Command \degree{degree}{degree program}: sets the degree and degree program name
 \degree{Master of Science}{Artificial Intelligence}
@@ -247,6 +247,11 @@
 
 %% Command \keywords{text}: set the document keywords
 \keywords{Reinforcement Learning, Large Language Models, Self-Rewarding, Confidence Calibration, GRPO, Test-Time Scaling, Sequential Monte Carlo}
+
+%% Keep the keywords in the PDF metadata, but do not print them on the title page
+\makeatletter
+\renewcommand{\jkureport@insertkeywords}{}
+\makeatother
 
 
 %% Finally, print the title page using the above information:
