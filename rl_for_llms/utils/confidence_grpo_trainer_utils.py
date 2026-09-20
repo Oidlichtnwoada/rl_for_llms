@@ -560,6 +560,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         prompt_ids: list[list[int]],
         images: list[typing.Any] | None,
         multimodal_fields: dict[str, typing.Any],
+        has_tool_images: bool = False,  # noqa: FBT001, FBT002
     ) -> tuple[list[list[int]], list[list[float]] | None]:
         """Override to dynamically inject SMC LogitsProcessor during generation."""
         unwrapped_model = self.accelerator.unwrap_model(
@@ -584,7 +585,7 @@ class ConfidenceGRPOTrainer(GRPOTrainer):
         try:
             unwrapped_model.generate = patched_generate
             result = super()._generate_single_turn(
-                prompt_ids, images, multimodal_fields
+                prompt_ids, images, multimodal_fields, has_tool_images
             )  # type: ignore[no-untyped-call]
             return typing.cast(
                 "tuple[list[list[int]], list[list[float]] | None]", result
