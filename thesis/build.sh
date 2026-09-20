@@ -12,6 +12,7 @@ DEFAULT_SOURCE="main-thesis"
 ENGINES_TO_RUN=("pdf") # Default engine
 SOURCES=()
 FORCE_CLEAN=false
+SKIP_IMAGE_CHECK=false
 
 # ANSI Colors
 GREEN='\033[0;32m'
@@ -30,6 +31,8 @@ print_usage() {
     echo "  --engine=TYPE     Select engine(s) to run (comma separated)."
     echo "                    Available: pdf (default), xe"
     echo "                    Example: --engine=pdf,xe"
+    echo "  --skip-image-check Do not verify that $IMAGE is the newest"
+    echo "                    published revision (useful when offline)"
     echo "  --help            Show this help message"
     echo ""
     echo "If no source files are provided, defaults to: $DEFAULT_SOURCE"
@@ -37,7 +40,109 @@ print_usage() {
     echo "Sources are LaTeX root files without the .tex suffix, e.g.:"
     echo "  $0 main-thesis          Build the thesis (default)"
     echo "  $0 main-poster          Build the A0 landscape poster"
+    echo "  $0 main-presentation    Build the 16:9 defense presentation"
     echo "  $0 main-thesis main-poster   Build both"
+}
+
+# Resolve the digest that the registry currently serves for $IMAGE. Prints the
+# digest on success and nothing on failure (offline, rate-limited, ...), so the
+# caller decides how to treat an unknown remote state.
+remote_image_digest() {
+    local image="$1"
+
+    # Preferred path: buildx ships with every modern Docker and prints the
+    # manifest digest directly, without pulling any layer.
+    if docker buildx version >/dev/null 2>&1; then
+        docker buildx imagetools inspect "$image" \
+            --format '{{.Manifest.Digest}}' 2>/dev/null && return 0
+    fi
+
+    # Fallback for installations without buildx: the verbose manifest carries
+    # the same digest under .Descriptor.digest.
+    docker manifest inspect --verbose "$image" 2>/dev/null \
+        | sed -n 's/.*"digest"[[:space:]]*:[[:space:]]*"\(sha256:[0-9a-f]*\)".*/\1/p' \
+        | head -n 1
+}
+
+# Pull $1, and if that fails try to make room and pull once more. A multi-GB
+# TeX Live image regularly fails on "no space left on device", and the space is
+# almost always sitting in Docker's regenerable caches, so reclaim those rather
+# than making the user diagnose it. Only caches are touched: named volumes and
+# tagged images belonging to other projects are never removed.
+pull_with_remediation() {
+    local image="$1"
+
+    if docker pull "$image"; then
+        return 0
+    fi
+
+    echo -e "${YELLOW}⚠ Pull failed. Reclaiming Docker cache space and retrying...${NC}"
+
+    # Dangling build cache first: it is pure scratch space and usually the
+    # single largest consumer.
+    docker builder prune --force >/dev/null 2>&1 \
+        && echo -e "${YELLOW}  Reclaimed the build cache.${NC}"
+    # Then untagged (dangling) image layers, e.g. the superseded revisions of
+    # this very tag. Tagged images are left alone.
+    docker image prune --force >/dev/null 2>&1 \
+        && echo -e "${YELLOW}  Reclaimed dangling image layers.${NC}"
+
+    docker pull "$image"
+}
+
+# Make sure the locally cached $IMAGE really is the revision the registry
+# publishes right now. A "latest" tag pinned weeks ago silently keeps building
+# against an outdated TeX Live, so compare digests and re-pull on a mismatch.
+ensure_latest_image() {
+    local image="$1"
+
+    echo -e "${BLUE}=== Checking ${image} is up to date ===${NC}"
+
+    if ! command -v docker >/dev/null 2>&1; then
+        echo -e "${RED}Error: docker is not installed or not on PATH.${NC}"
+        exit 1
+    fi
+
+    if ! docker image inspect "$image" >/dev/null 2>&1; then
+        echo -e "${YELLOW}Image not present locally. Pulling...${NC}"
+        pull_with_remediation "$image" \
+            || { echo -e "${RED}✗ Cannot obtain ${image}. Aborting.${NC}"; exit 1; }
+        return
+    fi
+
+    local remote_digest
+    remote_digest="$(remote_image_digest "$image")"
+
+    if [[ -z "$remote_digest" ]]; then
+        echo -e "${YELLOW}⚠ Could not reach the registry. Building against the cached image.${NC}"
+        return
+    fi
+
+    # A single local tag can carry several RepoDigests (one per registry it was
+    # pushed to/pulled from), so test for membership rather than equality.
+    local local_digests
+    local_digests="$(docker image inspect \
+        --format '{{range .RepoDigests}}{{println .}}{{end}}' "$image" 2>/dev/null)"
+
+    if grep -qF "$remote_digest" <<< "$local_digests"; then
+        echo -e "${GREEN}✓ Up to date (${remote_digest}).${NC}"
+        return
+    fi
+
+    local local_created
+    local_created="$(docker image inspect --format '{{.Created}}' "$image" 2>/dev/null)"
+    echo -e "${YELLOW}⚠ Local image is outdated (built ${local_created%%T*}).${NC}"
+    echo -e "${YELLOW}  Registry now serves ${remote_digest}. Pulling the new revision...${NC}"
+
+    if pull_with_remediation "$image"; then
+        echo -e "${GREEN}✓ Replaced the local image with the current ${image}.${NC}"
+    else
+        # The cached image still builds every document, so a failed refresh must
+        # not block the build: warn clearly and carry on with what we have.
+        echo -e "${YELLOW}⚠ Could not refresh ${image}; building against the outdated${NC}"
+        echo -e "${YELLOW}  local copy from ${local_created%%T*}. Free some disk space and${NC}"
+        echo -e "${YELLOW}  re-run to pick up the new TeX Live.${NC}"
+    fi
 }
 
 # --- Argument Parsing ---
@@ -54,6 +159,10 @@ while [[ "$#" -gt 0 ]]; do
             for eng in "${INPUT_ENGINES[@]}"; do
                 ENGINES_TO_RUN+=("$eng")
             done
+            shift
+            ;;
+        --skip-image-check)
+            SKIP_IMAGE_CHECK=true
             shift
             ;;
         --help)
@@ -79,6 +188,14 @@ fi
 
 # Create build directory
 mkdir -p "$OUTPUT_DIR"
+
+# --- Step 0: Toolchain image freshness ---
+
+if $SKIP_IMAGE_CHECK; then
+    echo -e "${YELLOW}Skipping the ${IMAGE} freshness check (--skip-image-check).${NC}"
+else
+    ensure_latest_image "$IMAGE"
+fi
 
 # --- Step 1: Formatting ---
 

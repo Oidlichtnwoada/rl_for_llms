@@ -1,0 +1,1202 @@
+% !TeX program = pdflatex
+% !TeX encoding = UTF-8
+% !TeX spellcheck = en_US
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% 16:9 landscape defense presentation for the Master's Thesis Examination.
+%%
+%% Title:      Dense Confidence and Inference-Time Scaling
+%% Author:     Hannes Brantner
+%% Institute:  Institute for Machine Learning, JKU Linz
+%% Supervisor: Sepp Hochreiter (Co-Supervisors: Johannes Schimunek, Christoph Bartmann)
+%%
+%% Like main-poster.tex, this deck deliberately shares its substantive content
+%% with main-thesis.tex rather than duplicating it:
+%%   * csvmetrics.tex  -- every result number is the same live CSV lookup used
+%%                        by the thesis result tables (single source of truth).
+%%   * acronyms.tex    -- the acronym definitions (loaded with [nolist] so that
+%%                        no List of Acronyms is typeset here).
+%%   * references.bib  -- the same bibliography as the thesis.
+%% The training-time architecture figure is NOT shared: architecture_tikz.tex is
+%% a tall portrait flow chart that would be unreadable on a 16:9 slide, so this
+%% file redraws the same data flow as a left-to-right landscape pipeline.
+%%
+%% Build with the repository build script (pdflatex engine, the default):
+%%   ./build.sh main-presentation
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% 10pt keeps a comfortable line budget on the short 16:9 body area (about 9cm
+%% tall minus the frame title and the reserved footer strip). Beamer scales the
+%% whole canvas to the projector, so this is not "small print".
+\documentclass[aspectratio=169,10pt,t]{beamer}
+
+%% --- Fonts ------------------------------------------------------------------
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[sfdefault,scaled=1.0]{FiraSans}
+\usepackage[scaled=0.92]{FiraMono}
+\usepackage{newtxsf} % sans-serif math that matches the Fira text
+\renewcommand{\familydefault}{\sfdefault}
+
+%% --- Math, tables, graphics -------------------------------------------------
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,calc,fit,backgrounds}
+\usepackage{adjustbox} % scales the architecture diagram to the free slide area
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+
+%% --- Bibliography -----------------------------------------------------------
+%% Same references.bib as the thesis, but biblatex rather than the thesis's
+%% natbib+plainnat: plainnat prints every author, and entries such as the
+%% DeepSeek-R1 report have hundreds, which cannot fit on a slide. maxbibnames
+%% truncates them to "et al.". backend=bibtex keeps the toolchain unchanged, so
+%% build.sh's existing -bibtex flag still resolves the citations, and
+%% natbib=true keeps the familiar \citep / \citet commands available.
+\usepackage[backend=bibtex, style=numeric-comp, natbib=true, sorting=none,
+	maxnames=2, minnames=1, maxbibnames=3, minbibnames=1,
+	giveninits=true, doi=false, isbn=false, url=false, eprint=false]{biblatex}
+\addbibresource{references.bib}
+%% Slide-sized bibliography entries: tight leading, no link coloring (nobody
+%% clicks a projected slide, and the default blue fights the deck's palette),
+%% and no trailing repository URLs, which would wrap over several lines.
+\setlength{\bibitemsep}{2.5pt}
+\setlength{\bibhang}{1.1em}
+\renewcommand*{\bibfont}{\scriptsize}
+\AtEveryBibitem{\clearfield{howpublished}\clearfield{note}\clearfield{month}}
+\hypersetup{hidelinks}
+
+%% --- Acronyms ---------------------------------------------------------------
+\usepackage[nolist]{acronym}
+%% On slides, as on the poster, first-use expansion is meaningless because the
+%% audience does not read linearly, so every \ac* variant prints the short form.
+\DeclareRobustCommand{\acit}[1]{\textit{\acs{#1}}}
+\DeclareRobustCommand{\acpit}[1]{\textit{\acsp{#1}}}
+\DeclareRobustCommand{\acfit}[1]{\textit{\acs{#1}}}
+\DeclareRobustCommand{\acfpit}[1]{\textit{\acsp{#1}}}
+\DeclareRobustCommand{\aclf}[1]{\acl{#1}~(\acs{#1})}
+\DeclareRobustCommand{\aclfp}[1]{\aclp{#1}~(\acsp{#1})}
+
+%% --- Live result numbers, shared verbatim with the thesis result tables -----
+\input{csvmetrics.tex}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Colors: the JKU palette, matching main-poster.tex
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\definecolor{jkunavy}{HTML}{0A2D5E}   % deep navy: titles, section dividers
+\definecolor{jkublue}{HTML}{046E98}   % official JKU blue: structure, links
+\definecolor{jkumagenta}{HTML}{E1006E} % JKU magenta: highlights and accents
+\definecolor{jkuamber}{HTML}{F59A00}  % high-contrast amber for error bars
+\definecolor{jkugrey}{HTML}{5A5A5A}
+\definecolor{jkulight}{HTML}{EEF3F7}  % pale blue block background
+\definecolor{jkurule}{HTML}{C8D6E2}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Theme: hand-rolled on top of the default theme for full control over the
+%% margins, so nothing collides with the frame title or the footer.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usetheme{default}
+\usecolortheme{default}
+\setbeamertemplate{navigation symbols}{}
+\setbeamersize{text margin left=0.85cm, text margin right=0.85cm}
+
+\setbeamercolor{normal text}{fg=black!88, bg=white}
+\setbeamercolor{structure}{fg=jkublue}
+\setbeamercolor{frametitle}{fg=jkunavy, bg=}
+\setbeamercolor{framesubtitle}{fg=jkugrey, bg=}
+\setbeamercolor{itemize item}{fg=jkublue}
+\setbeamercolor{itemize subitem}{fg=jkublue!60}
+\setbeamercolor{enumerate item}{fg=jkublue}
+\setbeamercolor{alerted text}{fg=jkumagenta}
+
+\setbeamerfont{frametitle}{size=\Large, series=\bfseries}
+\setbeamerfont{framesubtitle}{size=\small, series=\mdseries}
+\setbeamerfont{title}{size=\LARGE, series=\bfseries}
+\setbeamerfont{itemize/enumerate body}{size=\normalsize}
+\setbeamerfont{itemize/enumerate subbody}{size=\small}
+\setbeamerfont{itemize/enumerate subsubbody}{size=\footnotesize}
+\setbeamerfont{footline}{size=\tiny}
+
+\setbeamertemplate{itemize item}{\raisebox{0.12ex}{\scriptsize$\blacktriangleright$}}
+\setbeamertemplate{itemize subitem}{\raisebox{0.12ex}{\tiny$\blacktriangleright$}}
+\setbeamertemplate{itemize subsubitem}{\textendash}
+\setbeamertemplate{caption}{\insertcaption}
+\setbeamertemplate{bibliography item}[text]
+%% Beamer colors bibliography entries with the structure color by default,
+%% which turns a whole reference slide blue. Keep them as ordinary body text.
+\setbeamercolor{bibliography item}{fg=black!80}
+\setbeamercolor{bibliography entry author}{fg=black!80}
+\setbeamercolor{bibliography entry title}{fg=black!80}
+\setbeamercolor{bibliography entry location}{fg=black!55}
+\setbeamercolor{bibliography entry note}{fg=black!55}
+
+%% Backup slides carry no frame number; the footer says "Backup" instead, and
+%% the progress bar stays full so it never looks like the talk restarted.
+\newif\ifjkubackup
+\jkubackupfalse
+
+%% Tighter list spacing: slides are wide but short.
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd{\@listI}{\itemsep3\p@}{\itemsep2.5\p@}{}{}
+\makeatother
+\setlength{\leftmargini}{1.35em}
+\setlength{\leftmarginii}{1.25em}
+
+%% --- Frame title: navy heading, optional grey subtitle, magenta accent rule --
+\makeatletter
+\setbeamertemplate{frametitle}{%
+	\nointerlineskip%
+	\vspace*{0.34cm}%
+	\begin{beamercolorbox}[wd=\paperwidth, leftskip=0.85cm, rightskip=0.85cm]{frametitle}%
+		%% Headings never hyphenate: a broken word in a title reads as a typo.
+		\hyphenpenalty=10000\exhyphenpenalty=10000\relax
+		\usebeamerfont{frametitle}\insertframetitle\par%
+		\ifx\insertframesubtitle\@empty\else%
+			\vspace*{1pt}%
+			{\usebeamerfont{framesubtitle}\usebeamercolor[fg]{framesubtitle}\insertframesubtitle\par}%
+		\fi%
+		\vspace*{2pt}%
+		{\color{jkumagenta}\rule{1.5cm}{1.2pt}}%
+	\end{beamercolorbox}%
+	\vspace*{0.10cm}%
+}
+\makeatother
+
+%% --- Footline: JKU logo, running section, frame number, progress bar ---------
+\newlength{\jkuprogress}
+\setbeamertemplate{footline}{%
+	\hbox{%
+		%% The generous height and depth are deliberate. Beamer subtracts the whole
+		%% footline box from \textheight, so "ht" reserves a blank strip between
+		%% the lowest slide content and the footer text, and "dp" reserves one
+		%% between the footer text and the bottom paper edge. Every content frame
+		%% is then trimmed until the build reports no overfull \vbox, which is
+		%% what actually guarantees the body never reaches into that strip.
+		\begin{beamercolorbox}[wd=\paperwidth, ht=4.0ex, dp=3.2ex, leftskip=0.85cm, rightskip=0.85cm]{footline}%
+			\usebeamerfont{footline}\color{jkugrey}%
+			\raisebox{-0.55ex}{\includegraphics[height=1.55ex]{logos/jku_en_black_wide.pdf}}%
+			\hspace{0.6em}\textbar\hspace{0.6em}%
+			\insertsection%
+			\hfill%
+			\ifjkubackup Backup\else\insertframenumber\fi%
+		\end{beamercolorbox}%
+	}%
+	%% Full-bleed talk-progress bar flush with the bottom paper edge. Dividing
+	%% before multiplying keeps the intermediate below TeX's 2^30 sp ceiling,
+	%% and the guard covers the first pass, when the total is still unknown.
+	\setlength{\jkuprogress}{\paperwidth}%
+	\ifjkubackup\else
+		\ifnum\inserttotalframenumber>0\relax
+			\divide\jkuprogress by \inserttotalframenumber%
+			\multiply\jkuprogress by \insertframenumber%
+		\else
+			\setlength{\jkuprogress}{0pt}%
+		\fi
+	\fi
+	\nointerlineskip%
+	\begin{beamercolorbox}[wd=\paperwidth, ht=0.9pt, dp=0pt]{}%
+		\color{jkurule}\rule{\paperwidth}{0.9pt}%
+		\hspace*{-\paperwidth}\color{jkumagenta}\rule{\jkuprogress}{0.9pt}%
+	\end{beamercolorbox}%
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Reusable slide furniture
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% \takeaway{...} -- the single sentence the audience should retain, pinned to
+%% the bottom of a content slide. Deliberately compact: on a 16:9 frame the body
+%% area is only about 190pt tall, so this box may cost at most two lines.
+\newcommand{\takeaway}[1]{%
+	\vfill
+	\setlength{\fboxsep}{4pt}%
+	\noindent\colorbox{jkulight}{%
+		\begin{minipage}{\dimexpr\textwidth-2\fboxsep\relax}%
+			\footnotesize\raggedright\color{jkunavy}%
+			\textcolor{jkumagenta}{\textbf{$\Rightarrow$}}~#1%
+		\end{minipage}}%
+	\vspace{1pt}%
+}
+
+%% \headline{...} -- a boxed statement used at the top of a slide. Ragged right
+%% because a narrow column box justifies into visible inter-word rivers.
+\newcommand{\headline}[1]{%
+	\setlength{\fboxsep}{4pt}%
+	\noindent\colorbox{jkulight}{%
+		\begin{minipage}{\dimexpr\textwidth-2\fboxsep\relax}%
+			\footnotesize\raggedright\color{jkunavy}#1%
+		\end{minipage}}%
+	\vspace{0.18cm}%
+}
+
+%% Lead-in label that opens a column.
+\newcommand{\lead}[1]{{\color{jkunavy}\textbf{#1}}\par\vspace{1pt}}
+
+\newcommand{\hl}[1]{\textcolor{jkumagenta}{\textbf{#1}}}
+\newcommand{\nv}[1]{\textcolor{jkunavy}{\textbf{#1}}}
+
+%% Numbers on slides are typeset a touch smaller than the surrounding prose so a
+%% dense result line still reads as one sentence.
+\newcommand{\num}[1]{\mbox{#1}}
+
+%% --- Section divider --------------------------------------------------------
+\setbeamertemplate{section page}{%
+	\begin{tikzpicture}[remember picture, overlay]
+		\fill[jkunavy] (current page.south west) rectangle (current page.north east);
+		\node[anchor=west, text width=0.78\paperwidth, inner sep=0pt]
+		at ($(current page.west) + (0.85cm, 0.35cm)$) {%
+			{\color{jkumagenta}\rule{1.5cm}{1.4pt}}\\[10pt]
+			{\color{white}\usebeamerfont{frametitle}\Large\bfseries\insertsectionhead\par}
+		};
+		\node[anchor=south west, inner sep=0pt]
+		at ($(current page.south west) + (0.85cm, 0.8cm)$) {%
+			\includegraphics[width=2.0cm]{logos/jku_en_white.pdf}};
+	\end{tikzpicture}%
+}
+\AtBeginSection[]{%
+	\begin{frame}[plain, noframenumbering]
+		\sectionpage
+	\end{frame}%
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Native bar charts, drawn from the SAME shared CSVs as the thesis tables.
+%% (Same single-source-of-truth device as main-poster.tex, restyled for 16:9.)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% Extract one CSV cell into a purely numeric macro (value scaled by 100), so it
+%% can be dropped straight into pgfplots coordinates.
+\newcommand{\Xpct}[3]{%
+	\pgfplotstablegetelem{0}{\detokenize{#3}}\of{#2}%
+	\pgfmathparse{\pgfplotsretval*100}%
+	\expandafter\edef\csname #1\endcsname{\pgfmathresult}}
+
+%% Answer accuracy (Pass@1, MV) for the six training-time variants.
+\Xpct{pmBase}{\AnsBase}{eval_before_train/answer/accuracy/pass@1_t=1.0/mean}
+\Xpct{psBase}{\AnsBase}{eval_before_train/answer/accuracy/pass@1_t=1.0/std}
+\Xpct{mmBase}{\AnsBase}{eval_before_train/answer/accuracy/majority_voting_t=1.0/mean}
+\Xpct{msBase}{\AnsBase}{eval_before_train/answer/accuracy/majority_voting_t=1.0/std}
+\Xpct{pmGRPO}{\AnsGRPO}{eval_after_train/answer/accuracy/pass@1_t=1.0/mean}
+\Xpct{psGRPO}{\AnsGRPO}{eval_after_train/answer/accuracy/pass@1_t=1.0/std}
+\Xpct{mmGRPO}{\AnsGRPO}{eval_after_train/answer/accuracy/majority_voting_t=1.0/mean}
+\Xpct{msGRPO}{\AnsGRPO}{eval_after_train/answer/accuracy/majority_voting_t=1.0/std}
+\Xpct{pmDA}{\AnsDenseAux}{eval_after_train/answer/accuracy/pass@1_t=1.0/mean}
+\Xpct{psDA}{\AnsDenseAux}{eval_after_train/answer/accuracy/pass@1_t=1.0/std}
+\Xpct{mmDA}{\AnsDenseAux}{eval_after_train/answer/accuracy/majority_voting_t=1.0/mean}
+\Xpct{msDA}{\AnsDenseAux}{eval_after_train/answer/accuracy/majority_voting_t=1.0/std}
+\Xpct{pmDS}{\AnsDenseSR}{eval_after_train/answer/accuracy/pass@1_t=1.0/mean}
+\Xpct{psDS}{\AnsDenseSR}{eval_after_train/answer/accuracy/pass@1_t=1.0/std}
+\Xpct{mmDS}{\AnsDenseSR}{eval_after_train/answer/accuracy/majority_voting_t=1.0/mean}
+\Xpct{msDS}{\AnsDenseSR}{eval_after_train/answer/accuracy/majority_voting_t=1.0/std}
+\Xpct{pmLA}{\AnsLaserAux}{eval_after_train/answer/accuracy/pass@1_t=1.0/mean}
+\Xpct{psLA}{\AnsLaserAux}{eval_after_train/answer/accuracy/pass@1_t=1.0/std}
+\Xpct{mmLA}{\AnsLaserAux}{eval_after_train/answer/accuracy/majority_voting_t=1.0/mean}
+\Xpct{msLA}{\AnsLaserAux}{eval_after_train/answer/accuracy/majority_voting_t=1.0/std}
+\Xpct{pmLS}{\AnsLaserSR}{eval_after_train/answer/accuracy/pass@1_t=1.0/mean}
+\Xpct{psLS}{\AnsLaserSR}{eval_after_train/answer/accuracy/pass@1_t=1.0/std}
+\Xpct{mmLS}{\AnsLaserSR}{eval_after_train/answer/accuracy/majority_voting_t=1.0/mean}
+\Xpct{msLS}{\AnsLaserSR}{eval_after_train/answer/accuracy/majority_voting_t=1.0/std}
+
+%% Correctness classification (MCC x100, ROC-AUC x100), confidence heads only.
+\Xpct{ccDA}{\ConfDenseAux}{eval_after_train/confidence/mcc/mean}
+\Xpct{csDA}{\ConfDenseAux}{eval_after_train/confidence/mcc/std}
+\Xpct{rcDA}{\ConfDenseAux}{eval_after_train/confidence/roc_auc/mean}
+\Xpct{rsDA}{\ConfDenseAux}{eval_after_train/confidence/roc_auc/std}
+\Xpct{ccDS}{\ConfDenseSR}{eval_after_train/confidence/mcc/mean}
+\Xpct{csDS}{\ConfDenseSR}{eval_after_train/confidence/mcc/std}
+\Xpct{rcDS}{\ConfDenseSR}{eval_after_train/confidence/roc_auc/mean}
+\Xpct{rsDS}{\ConfDenseSR}{eval_after_train/confidence/roc_auc/std}
+\Xpct{ccLA}{\ConfLaserAux}{eval_after_train/confidence/mcc/mean}
+\Xpct{csLA}{\ConfLaserAux}{eval_after_train/confidence/mcc/std}
+\Xpct{rcLA}{\ConfLaserAux}{eval_after_train/confidence/roc_auc/mean}
+\Xpct{rsLA}{\ConfLaserAux}{eval_after_train/confidence/roc_auc/std}
+\Xpct{ccLS}{\ConfLaserSR}{eval_after_train/confidence/mcc/mean}
+\Xpct{csLS}{\ConfLaserSR}{eval_after_train/confidence/mcc/std}
+\Xpct{rcLS}{\ConfLaserSR}{eval_after_train/confidence/roc_auc/mean}
+\Xpct{rsLS}{\ConfLaserSR}{eval_after_train/confidence/roc_auc/std}
+
+%% Answer-selection rules (MV / HC / CW-MV) for the four confidence variants.
+\Xpct{hmDA}{\AnsDenseAux}{eval_after_train/answer/accuracy/highest_confidence_t=1.0/mean}
+\Xpct{hsDA}{\AnsDenseAux}{eval_after_train/answer/accuracy/highest_confidence_t=1.0/std}
+\Xpct{wmDA}{\AnsDenseAux}{eval_after_train/answer/accuracy/confidence_weighted_majority_voting_t=1.0/mean}
+\Xpct{wsDA}{\AnsDenseAux}{eval_after_train/answer/accuracy/confidence_weighted_majority_voting_t=1.0/std}
+\Xpct{hmDS}{\AnsDenseSR}{eval_after_train/answer/accuracy/highest_confidence_t=1.0/mean}
+\Xpct{hsDS}{\AnsDenseSR}{eval_after_train/answer/accuracy/highest_confidence_t=1.0/std}
+\Xpct{wmDS}{\AnsDenseSR}{eval_after_train/answer/accuracy/confidence_weighted_majority_voting_t=1.0/mean}
+\Xpct{wsDS}{\AnsDenseSR}{eval_after_train/answer/accuracy/confidence_weighted_majority_voting_t=1.0/std}
+\Xpct{hmLA}{\AnsLaserAux}{eval_after_train/answer/accuracy/highest_confidence_t=1.0/mean}
+\Xpct{hsLA}{\AnsLaserAux}{eval_after_train/answer/accuracy/highest_confidence_t=1.0/std}
+\Xpct{wmLA}{\AnsLaserAux}{eval_after_train/answer/accuracy/confidence_weighted_majority_voting_t=1.0/mean}
+\Xpct{wsLA}{\AnsLaserAux}{eval_after_train/answer/accuracy/confidence_weighted_majority_voting_t=1.0/std}
+\Xpct{hmLS}{\AnsLaserSR}{eval_after_train/answer/accuracy/highest_confidence_t=1.0/mean}
+\Xpct{hsLS}{\AnsLaserSR}{eval_after_train/answer/accuracy/highest_confidence_t=1.0/std}
+\Xpct{wmLS}{\AnsLaserSR}{eval_after_train/answer/accuracy/confidence_weighted_majority_voting_t=1.0/mean}
+\Xpct{wsLS}{\AnsLaserSR}{eval_after_train/answer/accuracy/confidence_weighted_majority_voting_t=1.0/std}
+
+%% Inference-time overlays: Pass@1, CW-MV and MCC x100 for the six settings.
+\Xpct{ipRef}{\AnsDenseSR}{eval_after_train/answer/accuracy/pass@1_t=1.0/mean}
+\Xpct{ipRefs}{\AnsDenseSR}{eval_after_train/answer/accuracy/pass@1_t=1.0/std}
+\Xpct{iwRef}{\AnsDenseSR}{eval_after_train/answer/accuracy/confidence_weighted_majority_voting_t=1.0/mean}
+\Xpct{iwRefs}{\AnsDenseSR}{eval_after_train/answer/accuracy/confidence_weighted_majority_voting_t=1.0/std}
+\Xpct{icRef}{\ConfDenseSR}{eval_after_train/confidence/mcc/mean}
+\Xpct{icRefs}{\ConfDenseSR}{eval_after_train/confidence/mcc/std}
+\Xpct{ipTM}{\AnsTempNoFil}{eval_after_train/answer/accuracy/pass@1_t=1.0/mean}
+\Xpct{ipTMs}{\AnsTempNoFil}{eval_after_train/answer/accuracy/pass@1_t=1.0/std}
+\Xpct{iwTM}{\AnsTempNoFil}{eval_after_train/answer/accuracy/confidence_weighted_majority_voting_t=1.0/mean}
+\Xpct{iwTMs}{\AnsTempNoFil}{eval_after_train/answer/accuracy/confidence_weighted_majority_voting_t=1.0/std}
+\Xpct{icTM}{\ConfTempNoFil}{eval_after_train/confidence/mcc/mean}
+\Xpct{icTMs}{\ConfTempNoFil}{eval_after_train/confidence/mcc/std}
+\Xpct{ipIT}{\AnsInvNoFil}{eval_after_train/answer/accuracy/pass@1_t=1.0/mean}
+\Xpct{ipITs}{\AnsInvNoFil}{eval_after_train/answer/accuracy/pass@1_t=1.0/std}
+\Xpct{iwIT}{\AnsInvNoFil}{eval_after_train/answer/accuracy/confidence_weighted_majority_voting_t=1.0/mean}
+\Xpct{iwITs}{\AnsInvNoFil}{eval_after_train/answer/accuracy/confidence_weighted_majority_voting_t=1.0/std}
+\Xpct{icIT}{\ConfInvNoFil}{eval_after_train/confidence/mcc/mean}
+\Xpct{icITs}{\ConfInvNoFil}{eval_after_train/confidence/mcc/std}
+\Xpct{ipFI}{\AnsNoTempFil}{eval_after_train/answer/accuracy/pass@1_t=1.0/mean}
+\Xpct{ipFIs}{\AnsNoTempFil}{eval_after_train/answer/accuracy/pass@1_t=1.0/std}
+\Xpct{iwFI}{\AnsNoTempFil}{eval_after_train/answer/accuracy/confidence_weighted_majority_voting_t=1.0/mean}
+\Xpct{iwFIs}{\AnsNoTempFil}{eval_after_train/answer/accuracy/confidence_weighted_majority_voting_t=1.0/std}
+\Xpct{icFI}{\ConfNoTempFil}{eval_after_train/confidence/mcc/mean}
+\Xpct{icFIs}{\ConfNoTempFil}{eval_after_train/confidence/mcc/std}
+\Xpct{ipTF}{\AnsTempFil}{eval_after_train/answer/accuracy/pass@1_t=1.0/mean}
+\Xpct{ipTFs}{\AnsTempFil}{eval_after_train/answer/accuracy/pass@1_t=1.0/std}
+\Xpct{iwTF}{\AnsTempFil}{eval_after_train/answer/accuracy/confidence_weighted_majority_voting_t=1.0/mean}
+\Xpct{iwTFs}{\AnsTempFil}{eval_after_train/answer/accuracy/confidence_weighted_majority_voting_t=1.0/std}
+\Xpct{icTF}{\ConfTempFil}{eval_after_train/confidence/mcc/mean}
+\Xpct{icTFs}{\ConfTempFil}{eval_after_train/confidence/mcc/std}
+\Xpct{ipIF}{\AnsInvFil}{eval_after_train/answer/accuracy/pass@1_t=1.0/mean}
+\Xpct{ipIFs}{\AnsInvFil}{eval_after_train/answer/accuracy/pass@1_t=1.0/std}
+\Xpct{iwIF}{\AnsInvFil}{eval_after_train/answer/accuracy/confidence_weighted_majority_voting_t=1.0/mean}
+\Xpct{iwIFs}{\AnsInvFil}{eval_after_train/answer/accuracy/confidence_weighted_majority_voting_t=1.0/std}
+\Xpct{icIF}{\ConfInvFil}{eval_after_train/confidence/mcc/mean}
+\Xpct{icIFs}{\ConfInvFil}{eval_after_train/confidence/mcc/std}
+
+%% Shared style for every slide bar chart.
+\pgfplotsset{
+	slidebar/.style={
+			ybar,
+			width=\linewidth,
+			ymin=0,
+			every axis plot/.append style={fill opacity=0.92, draw=black!55, line width=0.35pt},
+			xtick=data,
+			tick label style={font=\scriptsize},
+			ylabel style={font=\scriptsize},
+			legend style={at={(0.5,1.02)}, anchor=south, legend columns=-1,
+					draw=none, fill=none,
+					/tikz/every even column/.append style={column sep=8pt},
+					font=\scriptsize},
+			error bars/y dir=both, error bars/y explicit,
+			error bars/error bar style={line width=0.9pt, jkuamber},
+			error bars/error mark=|,
+			error bars/error mark options={line width=0.9pt, mark size=2.2pt, jkuamber},
+			grid=major, ymajorgrids, grid style={black!10},
+			axis line style={black!45},
+			nodes near coords,
+			point meta=rawy,
+			%% text= is set explicitly: otherwise the value labels inherit the
+			%% per-plot color and stop matching each other across series.
+			every node near coord/.append style={font=\tiny, rotate=90,
+					anchor=west, inner sep=1.2pt, yshift=3.5pt, text=black!75,
+					/pgf/number format/fixed, /pgf/number format/fixed zerofill,
+					/pgf/number format/precision=1},
+			nodes near coords align={vertical},
+		}
+}
+
+%% Bars are added with \addplot (never \addplot+): the trailing "+" appends the
+%% default cycle list after the style above, which would repaint the bar edges
+%% and the legend swatches in unrelated colors.
+\newcommand{\barplot}[1]{\addplot[fill=#1, draw=black!55, line width=0.35pt]}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Title-page metadata
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\title{Dense Confidence \& Inference-Time Scaling}
+\subtitle{Extending \textit{LaSeR} for Reliable \acit{LLM} Reasoning}
+\author{Hannes Brantner}
+\institute{Institute for Machine Learning, Johannes Kepler University Linz}
+\date{Master's Thesis Examination\ \textbar\ \today}
+
+\setbeamertemplate{title page}{%
+	\begin{tikzpicture}[remember picture, overlay]
+		\fill[jkunavy] (current page.south west) rectangle (current page.north east);
+		%% Subtle diagonal wash so the title slide is not a flat block of navy.
+		\fill[jkublue, opacity=0.35]
+		($(current page.south east) + (-7.4cm, 0)$) -- (current page.south east)
+		-- ($(current page.north east) + (0, 0)$) -- cycle;
+		\node[anchor=north west, text width=0.80\paperwidth, inner sep=0pt]
+		at ($(current page.north west) + (0.85cm, -1.15cm)$) {%
+			{\color{jkumagenta}\rule{1.5cm}{1.6pt}}\\[13pt]
+			{\color{white}\usebeamerfont{title}\inserttitle\par}
+			\vspace{7pt}
+			{\color{white!85}\large\bfseries\insertsubtitle\par}
+		};
+		\node[anchor=south west, text width=0.68\paperwidth, inner sep=0pt]
+		at ($(current page.south west) + (0.85cm, 1.55cm)$) {%
+			{\color{white}\large\bfseries\insertauthor}\ {\color{white!70}\normalsize (K1614466)}\\[6pt]
+			{\color{white!80}\footnotesize
+				\hyphenpenalty=10000\exhyphenpenalty=10000
+				Supervisor: \textbf{Univ.-Prof.\ Dr.\ Sepp Hochreiter}\\[2pt]
+				Assistant Supervisors: Dr.\ Johannes Schimunek, Dipl.-Ing.\ Christoph Bartmann\\[5pt]
+				\insertinstitute\par}
+		};
+		\node[anchor=south west, inner sep=0pt]
+		at ($(current page.south west) + (0.85cm, 0.62cm)$) {%
+			{\color{white!55}\tiny\insertdate}};
+		\node[anchor=south east, inner sep=0pt]
+		at ($(current page.south east) + (-0.85cm, 0.62cm)$) {%
+			\includegraphics[width=2.6cm]{logos/jku_en_white.pdf}};
+	\end{tikzpicture}%
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+
+%% Declare the shared acronyms (typesets nothing thanks to the [nolist] option).
+\input{acronyms.tex}
+
+\begin{frame}[plain, noframenumbering]
+	\titlepage
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}{Outline}
+	\vspace{0.25cm}
+	\begin{columns}[T, onlytextwidth]
+		\begin{column}{0.49\textwidth}
+			\begin{enumerate}
+				\setlength{\itemsep}{10pt}
+				\item[\textcolor{jkublue}{\bfseries 1}] \nv{Motivation \& Background} \\
+				      {\small\color{jkugrey} One reward bit, hundreds of tokens}
+				\item[\textcolor{jkublue}{\bfseries 2}] \nv{Method: \textit{Dense Confidence}} \\
+				      {\small\color{jkugrey} One token, one hook, one loss}
+			\end{enumerate}
+		\end{column}
+		\begin{column}{0.49\textwidth}
+			\begin{enumerate}
+				\setlength{\itemsep}{10pt}
+				\item[\textcolor{jkublue}{\bfseries 3}] \nv{Experiments \& Results} \\
+				      {\small\color{jkugrey} Six training variants, six overlays}
+				\item[\textcolor{jkublue}{\bfseries 4}] \nv{Assessment \& Conclusion} \\
+				      {\small\color{jkugrey} What the evidence does and does not show}
+			\end{enumerate}
+		\end{column}
+	\end{columns}
+	\takeaway{One $0.5\,$B \acit{LLM}, trained in a \emph{single} joint pass, becomes both a reasoner \emph{and} a judge of its own correctness.}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Motivation \& Background}
+
+\begin{frame}{The Credit-Assignment Gap in \acit{RLVR}}
+	\headline{\acfit{RLVR} swaps the learned reward model for an \emph{external verifier}~\citep{deepseekmath, r1}: objective, but it speaks only once.}
+	\begin{columns}[T, onlytextwidth]
+		\begin{column}{0.47\textwidth}
+			\lead{The price}
+			\begin{itemize}
+				\setlength{\itemsep}{4pt}
+				\item \hl{One bit per trajectory}, at the very end.
+				\item Spread over \hl{hundreds of tokens}: credit assignment falls to the policy gradient.
+				\item Proxy rewards invite over-optimization~\citep{rewardoveropt, spuriousrewards}.
+			\end{itemize}
+		\end{column}
+		\begin{column}{0.49\textwidth}
+			\lead{Existing ways to densify}
+			\begin{itemize}
+				\setlength{\itemsep}{4pt}
+				\item \acpit{PRM}: label every step~\citep{verifystepbystep, mathshepherd} $-$ costs annotation or extra rollouts.
+				\item Generative verifiers: a second model~\citep{genverifiers}.
+				\item \nv{Self-rewarding}: the policy scores itself~\citep{selfrewardingllms, confasreward}.
+			\end{itemize}
+		\end{column}
+	\end{columns}
+	\takeaway{\textbf{Goal:} a \emph{bounded}, \emph{per-token} confidence signal, supervised by correctness, trained \emph{jointly} with the policy.}
+\end{frame}
+
+\begin{frame}{Closest Prior Work: \acit{LaSeR}}
+	\framesubtitle{Last-Token Self-Rewarding~\citep{laser}}
+	\begin{columns}[T, onlytextwidth]
+		\begin{column}{0.47\textwidth}
+			\lead{The mechanism}
+			\begin{itemize}
+				\setlength{\itemsep}{4pt}
+				\item After the answer, read the log-probability of one control token $z_c$.
+				\item Train it against the verifier bit with an \acit{MSE} loss, added to \acit{GRPO}.
+			\end{itemize}
+			\vspace{-0.15cm}
+			\[
+				\mathrm{score} = \beta_v \log \pi_\theta(z_c \mid x, y) - \beta_v c_{\mathrm{ref}}
+			\]
+			\vspace{-0.45cm}
+			\begin{itemize}
+				\item Verification costs \emph{one token}, not a 72B reward model.
+			\end{itemize}
+		\end{column}
+		\begin{column}{0.49\textwidth}
+			\lead{Three costs it pays}
+			\begin{enumerate}
+				\setlength{\itemsep}{5pt}
+				\item \hl{Sparse in time.} One score cannot say \emph{where} the derivation went wrong.
+				\item \hl{Unbounded.} \citet{laser} report interference once the token takes too much mass.
+				\item \hl{Extra forward pass.} The score lives \emph{after} \acit{EOS}, where decoding has stopped.
+			\end{enumerate}
+		\end{column}
+	\end{columns}
+	\takeaway{Each cost is a design choice, not a law $-$ so make the readout \emph{dense}, \emph{bounded} and \emph{in-band}.}
+\end{frame}
+
+\begin{frame}{Research Questions \& Contributions}
+	\begin{columns}[T, onlytextwidth]
+		\begin{column}{0.47\textwidth}
+			\lead{Research questions}
+			\begin{description}[RQ4]
+				\setlength{\itemsep}{5pt}
+				\item[\textcolor{jkumagenta}{RQ1}] Learn a \emph{per-token} confidence jointly with \acit{GRPO} without hurting accuracy?
+				\item[\textcolor{jkumagenta}{RQ2}] Does \emph{bounding} the logit stop it leaking into the text?
+				\item[\textcolor{jkumagenta}{RQ3}] Does feeding confidence back into the advantage help or hurt?
+				\item[\textcolor{jkumagenta}{RQ4}] Can the signal steer \emph{inference-time} compute?
+			\end{description}
+		\end{column}
+		\begin{column}{0.49\textwidth}
+			\lead{Contributions}
+			\begin{enumerate}
+				\setlength{\itemsep}{5pt}
+				\item A \nv{modern \acit{LaSeR} reimplementation} on \texttt{trl}~\citep{trl} and \texttt{peft}~\citep{peft}.
+				\item \nv{\textit{Dense Confidence}}: a bounded readout at \emph{every} response position.
+				\item A \nv{controlled ablation grid} of six training-time variants on \acit{GSM8K}~\citep{gsm8k}.
+				\item \nv{Three inference-time controllers}, no retraining.
+			\end{enumerate}
+		\end{column}
+	\end{columns}
+	\takeaway{To our knowledge the first system wiring a jointly trained \emph{dense} confidence head into all three test-time-compute mechanisms in one trainer.}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Method: \textit{Dense Confidence}}
+
+\begin{frame}{\textit{Dense Confidence}: Readout and Objective}
+	\begin{columns}[T, onlytextwidth]
+		\begin{column}{0.47\textwidth}
+			\lead{Read one token at every step}
+			\begin{itemize}
+				\setlength{\itemsep}{3pt}
+				\item Repurpose \texttt{<|vision\_pad|>}, a token our text-only pipeline never inserts.
+				\item A hook on \texttt{lm\_head}~\citep{pytorch} grabs its logit $-$ already computed, so \emph{no} extra pass.
+				\item A scaled sigmoid bounds it:
+			\end{itemize}
+			\vspace{-0.3cm}
+			\begin{equation*}
+				c_t = \sigma\!\left(\tfrac{\pi}{\sigma_{\mathrm{conf}}\sqrt{3}}
+				\bigl(\ell_t^{\mathrm{conf}} - \mu_{\mathrm{conf}}\bigr)\right) \in [0,1]
+			\end{equation*}
+		\end{column}
+		\begin{column}{0.49\textwidth}
+			\lead{Supervise it, then optionally feed it back}
+			\vspace{-0.1cm}
+			\begin{equation*}
+				L_{\mathrm{total}} = -\mathcal{J}_{\mathrm{GRPO}}(\theta) + \beta_{\mathrm{conf}} L_{\mathrm{conf}}
+			\end{equation*}
+			\vspace{-0.35cm}
+			\begin{itemize}
+				\setlength{\itemsep}{3pt}
+				\item \nv{$+\ell$}: class-rebalanced \acit{BCE} against the binary reward, broadcast to \emph{all} $T_i$ positions.
+				\item \nv{$+r$}: blend $\bar c_i$ into the advantage, $A_i = (1-\alpha)A_{r_i} + \alpha A_{\bar c_i}$ $-$ bounded, so no clipping schedule.
+			\end{itemize}
+		\end{column}
+	\end{columns}
+	\takeaway{\hl{$\beta_{\mathrm{conf}}$ is the fragile knob:} $10\times$ too large collapsed the policy onto \emph{always wrong, confidently so}.}
+\end{frame}
+
+\begin{frame}{Training-Time Architecture}
+	\framesubtitle{The same \acit{LM}-head hook reads the confidence logit twice: gradient-free while \emph{generating}, with gradients while \emph{re-evaluating}}
+	\centering
+	%% Constrain BOTH dimensions: the diagram is wider than it is tall, but the
+	%% free body area of a 16:9 frame is only about 6cm high.
+	\adjustbox{max width=\linewidth, max totalheight=5.45cm}{%
+		\begin{tikzpicture}[
+				>=Latex,
+				font=\small,
+				node distance=0pt,
+				box/.style={draw=black!55, rectangle, rounded corners=3pt, inner sep=5pt,
+						align=center, text width=3.0cm, minimum height=1.25cm},
+				db/.style={draw=black!55, cylinder, cylinder uses custom fill, shape border rotate=90,
+						aspect=0.22, inner sep=4pt, align=center, fill=black!5,
+						text width=1.9cm, minimum height=1.0cm},
+				arr/.style={thick, ->, black!70},
+				dasharr/.style={thick, ->, dashed, jkuamber!85!black},
+			]
+			%% --- Top track: the external, outcome-level path ----------------------
+			\node[db] (data) at (0, 0) {\textbf{Dataset}\\Prompts $q$, answers $a$};
+			\node[box, fill=jkublue!10] (gen) at (3.9, 0) {\textbf{Policy $\pi_\theta$}\\Generation phase\\\textit{(no gradients)}};
+			\node[box, fill=black!3] (roll) at (7.8, 0) {\textbf{Rollouts}\\$\{o_1,\dots,o_G\}$};
+			\node[box, fill=jkumagenta!8] (ext) at (11.7, 0) {\textbf{External verifier}\\\texttt{math-verify}\\format $+$ correctness $r_i$};
+
+			%% --- Bottom track: the internal, per-token confidence path ------------
+			\node[box, fill=jkuamber!12] (hook) at (3.9, -3.2) {\textbf{\acit{LM}-head hook}\\$\ell^{\mathrm{conf}}_{i,t}$ at \emph{every} step};
+			\node[box, fill=jkuamber!12, text width=3.6cm] (sig) at (7.9, -3.2) {\textbf{Internal verifier}\\$c_{i,t}=\sigma\!\bigl(\tfrac{\pi}{\sigma_{\mathrm{conf}}\sqrt{3}}(\ell^{\mathrm{conf}}_{i,t}-\mu_{\mathrm{conf}})\bigr)$};
+			\node[box, fill=jkuamber!12] (mean) at (11.7, -3.2) {\textbf{Trajectory mean}\\$\bar c_i=\tfrac{1}{T_i}\sum_t c_{i,t}$};
+
+			%% --- Right column: advantage, second pass, losses ---------------------
+			\node[box, fill=jkublue!14, text width=4.3cm] (adv) at (16.4, -1.6)
+			{\textbf{\acit{GRPO} advantage}\\$A_x=\frac{x_i-\mu_x}{\sigma_x+\epsilon_{\mathrm{std}}},\ x\in\{r,\bar c\}$\\$A_i=(1-\alpha_{\mathrm{blend}})A_{r_i}+\alpha_{\mathrm{blend}}A_{\bar c_i}$};
+
+			\node[box, fill=jkublue!10, text width=3.6cm] (gen2) at (3.9, -6.4)
+			{\textbf{Policy $\pi_\theta$}\\Re-evaluation phase\\\textit{(with gradients)}};
+			\node[box, fill=black!4, text width=3.6cm] (lrl) at (9.0, -6.4)
+			{\textbf{\acit{RL} surrogate loss}\\$-\mathcal{J}(\theta)$};
+			\node[box, fill=black!4, text width=3.6cm] (lbce) at (13.4, -6.4)
+			{\textbf{\acit{BCE} confidence loss}\\$L_{\mathrm{conf}}(\theta)$, target $r_i$};
+			\node[box, fill=jkumagenta!10, text width=4.3cm] (upd) at (16.4, -8.6)
+			{\textbf{Gradient step}\\$-\mathcal{J}(\theta)+\beta_{\mathrm{conf}}L_{\mathrm{conf}}(\theta)$};
+
+			%% --- Edges ------------------------------------------------------------
+			\draw[arr] (data) -- (gen);
+			\draw[arr] (gen) -- (roll);
+			\draw[arr] (roll) -- (ext);
+			\draw[dasharr] (gen.south) -- (hook.north);
+			\draw[arr] (hook) -- (sig);
+			\draw[arr] (sig) -- (mean);
+			\draw[arr] (ext.east) -- ++(1.0,0) |- (adv.west);
+			\draw[arr] (mean.east) -- ++(1.0,0) |- (adv.west);
+			\draw[arr] (adv.south) -- ++(0,-1.4) -| (gen2.north);
+			\draw[arr] (gen2) -- (lrl);
+			\draw[dasharr] (gen2.south) -- ++(0,-0.85) -| (lbce.south);
+			\draw[arr] (ext.north) -- ++(0,0.75) -| node[pos=0.25, above, font=\scriptsize, black!70] {target $r_i$} (lbce.north);
+			\draw[arr] (lrl.east) -- ++(0.55,0) |- (upd.west);
+			\draw[arr] (lbce.east) -- ++(0.55,0) |- (upd.west);
+			\draw[arr, jkunavy] (upd.east) -- ++(0.9,0) node[right, font=\scriptsize, jkunavy] {$\theta \leftarrow \theta - \eta\nabla$};
+		\end{tikzpicture}}
+\end{frame}
+
+\begin{frame}{Inference Time: Three Controllers, One Trained Head}
+	\framesubtitle{Each targets a different test-time-compute knob~\citep{testtimecomputescaling}; none needs retraining}
+	\begin{columns}[T, onlytextwidth]
+		\begin{column}{0.315\textwidth}
+			\headline{\textbf{1. Answer selection}\\[1pt]\emph{knob: aggregation}}
+			\small
+			Over the $G$ rollouts with scores $s_i$:
+			\begin{itemize}
+				\item \acit{MV}: plain vote~\citep{selfconsistency}.
+				\item \acit{HC}: $\arg\max_i s_i$.
+				\item \acit{CW-MV}: vote weighted by $s_i$~\citep{deepthinkwithconfidence}.
+			\end{itemize}
+		\end{column}
+		\begin{column}{0.315\textwidth}
+			\headline{\textbf{2. Temperature modulation}\\[1pt]\emph{knob: sampling distribution}}
+			\small
+			Running mean $\bar c^{(H)}_t$ over $H\!=\!8$ steps, $w_t = 1-\bar c^{(H)}_t$:
+			\vspace{-0.1cm}
+			\[
+				\tau_t = \tau_{\min} + w_t(\tau_{\max}-\tau_{\min})
+			\]
+			\vspace{-0.4cm}
+			\begin{itemize}
+				\item Exploit when confident, explore when not.
+			\end{itemize}
+		\end{column}
+		\begin{column}{0.315\textwidth}
+			\headline{\textbf{3. \acit{SMC} particle filtering}\\[1pt]\emph{knob: trajectory population}}
+			\small
+			The $G$ rollouts \emph{are} the particle set~\citep{smcsteering, twistedsmc}:
+			\begin{itemize}
+				\item Kill particles below $\delta_{\mathrm{filter}}$, clone donors $\propto \bar c^{(H)}$.
+				\item Needs \texttt{DynamicCache} \acit{KV} surgery.
+			\end{itemize}
+		\end{column}
+	\end{columns}
+	\takeaway{Controllers \textbf{2} and \textbf{3} are \emph{structurally exclusive} to \textit{Dense}: a last-token \acit{LaSeR} score exposes no per-token potential.}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Experiments \& Results}
+
+\begin{frame}{Experimental Setup}
+	\begin{columns}[T, onlytextwidth]
+		\begin{column}{0.47\textwidth}
+			\lead{Data, model, budget}
+			\begin{itemize}
+				\setlength{\itemsep}{4pt}
+				\item \acit{GSM8K}~\citep{gsm8k}, filtered: $N_{\mathrm{eval}}=1{,}222$ prompts, $G=4$ generations each.
+				\item \texttt{Qwen2.5-0.5B-Instruct}~\citep{qwen25} $+$ \acit{LoRA}~\citep{lora, peft}: only \hl{$\calcpct{8799104}{502831872}{2}$} of $503\,$M parameters trained.
+				\item One epoch on a single \textit{Quadro GV100}: ${\approx}15\,$h per variant.
+			\end{itemize}
+		\end{column}
+		\begin{column}{0.49\textwidth}
+			\lead{The ablation grid}
+			\vspace{0.05cm}
+			{\footnotesize
+				\begin{tabular}{@{}llcc@{}}
+					\toprule
+					\textbf{Variant}                              & \textbf{Method} & $\boldsymbol\ell$ & $\boldsymbol r$ \\
+					\midrule
+					\textit{Base} (untrained)                     & ---             & ---               & ---             \\
+					\acit{GRPO} ($-\ell-r$)                       & ---             & no                & no              \\
+					\textcolor{jkunavy}{\textit{Dense} $+\ell-r$} & DENSE           & yes               & no              \\
+					\textcolor{jkunavy}{\textit{Dense} $+\ell+r$} & DENSE           & yes               & yes             \\
+					\acit{LaSeR} $+\ell-r$                        & LASER           & yes               & no              \\
+					\acit{LaSeR} $+\ell+r$                        & LASER           & yes               & yes             \\
+					\bottomrule
+				\end{tabular}}
+			\vspace{0.1cm}
+			\par{\small Plus a $3\times2$ inference-time cross on \textit{Dense} $+\ell+r$.}
+		\end{column}
+	\end{columns}
+	\takeaway{\hl{Read the error bars carefully:} one training run per variant (\texttt{SEED=42}); every $\pm$ spans \emph{three evaluation runs} of that one checkpoint, not training seeds.}
+\end{frame}
+
+\begin{frame}{RQ1 \& RQ2: The Confidence Head Is Free}
+	\vspace{-0.05cm}
+	\begin{center}
+		\begin{tikzpicture}
+			\begin{axis}[
+					slidebar,
+					bar width=11pt,
+					height=4.35cm,
+					ymax=88,
+					ylabel={Answer accuracy [\%]},
+					symbolic x coords={Base, GRPO, {Dense $+\ell-r$}, {Dense $+\ell+r$}, {LaSeR $+\ell-r$}, {LaSeR $+\ell+r$}},
+					x tick label style={font=\scriptsize, yshift=-1pt},
+					enlarge x limits=0.10,
+				]
+				\barplot{jkunavy} coordinates {
+						(Base, \pmBase)             +- (0, \psBase)
+						(GRPO, \pmGRPO)             +- (0, \psGRPO)
+						({Dense $+\ell-r$}, \pmDA)  +- (0, \psDA)
+						({Dense $+\ell+r$}, \pmDS)  +- (0, \psDS)
+						({LaSeR $+\ell-r$}, \pmLA)  +- (0, \psLA)
+						({LaSeR $+\ell+r$}, \pmLS)  +- (0, \psLS)};
+				\barplot{jkublue!55} coordinates {
+						(Base, \mmBase)             +- (0, \msBase)
+						(GRPO, \mmGRPO)             +- (0, \msGRPO)
+						({Dense $+\ell-r$}, \mmDA)  +- (0, \msDA)
+						({Dense $+\ell+r$}, \mmDS)  +- (0, \msDS)
+						({LaSeR $+\ell-r$}, \mmLA)  +- (0, \msLA)
+						({LaSeR $+\ell+r$}, \mmLS)  +- (0, \msLS)};
+				\legend{\textit{Pass}@1, Majority Voting}
+			\end{axis}
+		\end{tikzpicture}
+	\end{center}
+	\vspace{-0.1cm}
+	{\small
+		\begin{columns}[T, onlytextwidth]
+			\begin{column}{0.48\textwidth}
+				\nv{RQ1.} \textit{Pass}@1 rises $\AccBeforePct{\AnsBase}{pass@1}{1} \to \AccAfterPct{\AnsDenseSR}{pass@1}{1}$; both \textit{Dense} variants sit \emph{at or above} \acit{GRPO}.
+			\end{column}
+			\begin{column}{0.48\textwidth}
+				\nv{RQ2.} The confidence token is sampled \hl{$\InclPctAfter{\AnsDenseSR}{1}$} of the time: zero in $161{,}304$ trajectories.
+			\end{column}
+		\end{columns}}
+	\takeaway{No answer-quality penalty $-$ but one checkpoint per variant cannot separate this from training-seed variation.}
+\end{frame}
+
+\begin{frame}{RQ3: \textit{Dense} Holds Up, Unbounded \acit{LaSeR} Degrades}
+	\vspace{-0.05cm}
+	\begin{center}
+		\begin{tikzpicture}
+			\begin{axis}[
+					slidebar,
+					bar width=15pt,
+					height=4.3cm,
+					ymax=104,
+					ylabel={Correctness classification},
+					symbolic x coords={{Dense $+\ell-r$}, {Dense $+\ell+r$}, {LaSeR $+\ell-r$}, {LaSeR $+\ell+r$}},
+					x tick label style={font=\scriptsize, yshift=-1pt},
+					enlarge x limits=0.18,
+				]
+				\barplot{jkunavy} coordinates {
+						({Dense $+\ell-r$}, \ccDA)  +- (0, \csDA)
+						({Dense $+\ell+r$}, \ccDS)  +- (0, \csDS)
+						({LaSeR $+\ell-r$}, \ccLA)  +- (0, \csLA)
+						({LaSeR $+\ell+r$}, \ccLS)  +- (0, \csLS)};
+				\barplot{jkublue!55} coordinates {
+						({Dense $+\ell-r$}, \rcDA)  +- (0, \rsDA)
+						({Dense $+\ell+r$}, \rcDS)  +- (0, \rsDS)
+						({LaSeR $+\ell-r$}, \rcLA)  +- (0, \rsLA)
+						({LaSeR $+\ell+r$}, \rcLS)  +- (0, \rsLS)};
+				\legend{\acit{MCC} $\times 100$, \acit{ROC-AUC} [\%]}
+			\end{axis}
+		\end{tikzpicture}
+	\end{center}
+	\vspace{-0.1cm}
+	{\small
+		\begin{columns}[T, onlytextwidth]
+			\begin{column}{0.48\textwidth}
+				\textit{Dense} holds \acit{MCC} $>0.50$ either way: the reward blend moves it by only $\ConfAfterAbsDelta{\ConfDenseAux}{\ConfDenseSR}{mcc}{3}$.
+			\end{column}
+			\begin{column}{0.48\textwidth}
+				\acit{LaSeR} \hl{degrades} when fed back: \acit{MCC} $\num{\ConfAfter{\ConfLaserAux}{mcc}} \to \num{\ConfAfter{\ConfLaserSR}{mcc}}$, a $\csvabsdeltapp{\ConfLaserSR}{\ConfLaserAux}{eval_after_train/confidence/tnr/mean}{1}\,$pp \acit{TNR} drop.
+			\end{column}
+		\end{columns}}
+	\takeaway{Consistent with the bounded-vs.-unbounded argument $-$ but the artifacts do not log the score distributions needed to \emph{prove} the drift mechanism.}
+\end{frame}
+
+\begin{frame}{RQ4: Reusing the Head at Inference Time}
+	\framesubtitle{All six settings evaluate the \emph{same} \textit{Dense} $+\ell+r$ checkpoint; only decoding changes}
+	\vspace{-0.1cm}
+	\begin{center}
+		\begin{tikzpicture}
+			\begin{axis}[
+					slidebar,
+					bar width=8.5pt,
+					height=3.8cm,
+					ymin=40, ymax=76,
+					ylabel={[\%] / \acit{MCC} $\times 100$},
+					symbolic x coords={reference, tempmod, {inv tempmod}, {SMC filter}, {tempmod + filter}, {inv + filter}},
+					x tick label style={font=\scriptsize, yshift=-1pt},
+					enlarge x limits=0.09,
+				]
+				\barplot{jkunavy} coordinates {
+						(reference, \ipRef)             +- (0, \ipRefs)
+						(tempmod, \ipTM)                +- (0, \ipTMs)
+						({inv tempmod}, \ipIT)          +- (0, \ipITs)
+						({SMC filter}, \ipFI)           +- (0, \ipFIs)
+						({tempmod + filter}, \ipTF)     +- (0, \ipTFs)
+						({inv + filter}, \ipIF)         +- (0, \ipIFs)};
+				\barplot{jkublue!55} coordinates {
+						(reference, \iwRef)             +- (0, \iwRefs)
+						(tempmod, \iwTM)                +- (0, \iwTMs)
+						({inv tempmod}, \iwIT)          +- (0, \iwITs)
+						({SMC filter}, \iwFI)           +- (0, \iwFIs)
+						({tempmod + filter}, \iwTF)     +- (0, \iwTFs)
+						({inv + filter}, \iwIF)         +- (0, \iwIFs)};
+				\barplot{jkumagenta} coordinates {
+						(reference, \icRef)             +- (0, \icRefs)
+						(tempmod, \icTM)                +- (0, \icTMs)
+						({inv tempmod}, \icIT)          +- (0, \icITs)
+						({SMC filter}, \icFI)           +- (0, \icFIs)
+						({tempmod + filter}, \icTF)     +- (0, \icTFs)
+						({inv + filter}, \icIF)         +- (0, \icIFs)};
+				\legend{\textit{Pass}@1, \acit{CW-MV}, \acit{MCC} $\times 100$}
+			\end{axis}
+		\end{tikzpicture}
+	\end{center}
+	\vspace{-0.15cm}
+	{\small
+		\begin{columns}[T, onlytextwidth]
+			\begin{column}{0.48\textwidth}
+				\nv{Selection wins outright:} \acit{CW-MV} reaches \hl{$\AccAfterPct{\AnsDenseAux}{confidence_weighted_majority_voting}{1}$} on \textit{Dense} $+\ell-r$, $\csvxdeltapp{\AnsDenseAux}{eval_after_train/answer/accuracy/confidence_weighted_majority_voting_t=1.0/mean}{\AnsDenseAux}{eval_after_train/answer/accuracy/majority_voting_t=1.0/mean}{1}\,$pp over plain \acit{MV} on the \emph{same} candidates.
+			\end{column}
+			\begin{column}{0.48\textwidth}
+				\nv{The generative overlays only trade:} tempmod $+$ filtering gives the best \acit{MCC} ($\num{\ConfAfter{\ConfTempFil}{mcc}}$) and the worst \textit{Pass}@1.
+			\end{column}
+		\end{columns}}
+	\takeaway{At $G=4$ the overlays \emph{decouple} answer accuracy from correctness classification $-$ they do not show that more inference compute is generally worth it.}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Assessment \& Conclusion}
+
+\begin{frame}{Critical Assessment}
+	\begin{columns}[T, onlytextwidth]
+		\begin{column}{0.47\textwidth}
+			\lead{\textcolor{jkunavy}{Strengths}}
+			\begin{itemize}
+				\setlength{\itemsep}{4pt}
+				\item \nv{Minimal surface.} One token, one hook, one loss $-$ no second model, no step labels.
+				\item \nv{Like-for-like comparison.} \acit{LaSeR} reimplemented \emph{inside the same trainer}.
+				\item \nv{New capability.} Tempmod and \acit{SMC} are impossible for a last-token score.
+				\item \nv{Reproducible.} Every number in this deck is read live from the released \texttt{CSVs}.
+			\end{itemize}
+		\end{column}
+		\begin{column}{0.49\textwidth}
+			\lead{\textcolor{jkumagenta}{Weaknesses \& threats to validity}}
+			\begin{itemize}
+				\setlength{\itemsep}{4pt}
+				\item \hl{One training seed.} The $\pm$ captures evaluation sampling, not the \acit{RL} seed lottery.
+				\item \hl{No calibration metric.} \acit{MCC}/\acit{ROC-AUC} measure \emph{discrimination}; \acit{ECE} was never computed.
+				\item \hl{Confounded.} \textit{Dense} vs.\ \acit{LaSeR} changes four things at once.
+				\item \hl{Narrow regime.} One dataset, $0.5\,$B, $G=4$, no hyperparameter sweep.
+			\end{itemize}
+		\end{column}
+	\end{columns}
+\end{frame}
+
+\begin{frame}{Conclusion \& Outlook}
+	\headline{A $0.5\,$B policy can be trained, in \emph{one} joint pass over $\calcpct{8799104}{502831872}{2}$ of its parameters, to reason \emph{and} to score its own correctness at every token.}
+	\begin{columns}[T, onlytextwidth]
+		\begin{column}{0.47\textwidth}
+			\lead{Established}
+			\begin{itemize}
+				\item \textit{Pass}@1 $\AccBeforePct{\AnsBase}{pass@1}{1} \to \AccAfterPct{\AnsDenseSR}{pass@1}{1}$, \acit{MCC} up to $\ConfAfterV{\ConfDenseAux}{mcc}{3}$, \acit{CW-MV} $\AccAfterPct{\AnsDenseAux}{confidence_weighted_majority_voting}{1}$.
+				\item \nv{Not established:} calibration, seed robustness, a general win from the generative overlays.
+			\end{itemize}
+		\end{column}
+		\begin{column}{0.49\textwidth}
+			\lead{Outlook}
+			\begin{itemize}
+				\item Repeated seeds, and a joint sweep over $\beta_{\mathrm{conf}}$, $\alpha_{\mathrm{blend}}$, $\delta_{\mathrm{filter}}$, $G$.
+				\item Move to code, where binary feedback is the real bottleneck.
+				\item \nv{Mid-generation reversion:} roll back when confidence collapses $-$ a self-correcting decoder no last-token score can express.
+			\end{itemize}
+		\end{column}
+	\end{columns}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}[plain, noframenumbering]
+	\begin{tikzpicture}[remember picture, overlay]
+		\fill[jkunavy] (current page.south west) rectangle (current page.north east);
+		\fill[jkublue, opacity=0.35]
+		($(current page.south east) + (-7.4cm, 0)$) -- (current page.south east)
+		-- (current page.north east) -- cycle;
+		\node[anchor=west, text width=0.78\paperwidth, inner sep=0pt]
+		at ($(current page.west) + (0.85cm, 0.45cm)$) {%
+			{\color{jkumagenta}\rule{1.5cm}{1.6pt}}\\[12pt]
+			{\color{white}\usebeamerfont{title}\LARGE\bfseries Thank you \textemdash\ questions?\par}
+			\vspace{9pt}
+			{\color{white!80}\small Hannes Brantner \ \textbar\ \ \texttt{github.com/Oidlichtnwoada/rl\_for\_llms}\par}
+		};
+		\node[anchor=south east, inner sep=0pt]
+		at ($(current page.south east) + (-0.85cm, 0.75cm)$) {%
+			\includegraphics[width=2.4cm]{logos/jku_en_white.pdf}};
+	\end{tikzpicture}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}[allowframebreaks]{References}
+	\printbibliography[heading=none]
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Backup slides (excluded from the frame count by appendixnumberbeamer).
+%% These are the slides to jump to during the Q&A session.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\appendix
+\jkubackuptrue
+
+\begin{frame}[plain, noframenumbering]
+	\begin{tikzpicture}[remember picture, overlay]
+		\fill[jkunavy] (current page.south west) rectangle (current page.north east);
+		\node[anchor=west, text width=0.78\paperwidth, inner sep=0pt]
+		at ($(current page.west) + (0.85cm, 0.3cm)$) {%
+			{\color{jkumagenta}\rule{1.5cm}{1.4pt}}\\[10pt]
+			{\color{white}\usebeamerfont{frametitle}\Large\bfseries Backup slides\par}
+		};
+	\end{tikzpicture}
+\end{frame}
+
+\begin{frame}[noframenumbering]{Backup: Which Way Should Temperature Move?}
+	\framesubtitle{The inversion ablation is a controlled sanity check on the direction of the effect}
+	\begin{columns}[T, onlytextwidth]
+		\begin{column}{0.47\textwidth}
+			\headline{\textbf{Default} $w_t = 1-\bar c^{(H)}_t$\\[1pt]\emph{Exploit when confident, explore when uncertain}}
+			\lead{Math-exam analogue}
+			\begin{itemize}
+				\item On a practiced sub-problem, commit: $\tau \to \tau_{\min}$.
+				\item On an uncertain one, a wrong guess costs nothing more, so \emph{explore}.
+				\item The downside is \hl{bounded}.
+			\end{itemize}
+		\end{column}
+		\begin{column}{0.49\textwidth}
+			\headline{\textbf{Inverted} $w_t = \bar c^{(H)}_t$\\[1pt]\emph{Explore when confident, play safe when uncertain}}
+			\lead{Race-car analogue}
+			\begin{itemize}
+				\item On a familiar corner, push off the safe line: $\tau \to \tau_{\max}$.
+				\item On an unknown corner, ease off to avoid the crash.
+				\item The downside is \hl{unbounded}.
+			\end{itemize}
+		\end{column}
+	\end{columns}
+	\takeaway{\acit{GSM8K} has the exam cost structure, so we \emph{predicted} the default mapping to win on classification $-$ and it does: \acit{MCC} $\num{\ConfAfter{\ConfDenseSR}{mcc}} \to \num{\ConfAfter{\ConfTempNoFil}{mcc}}$, vs.\ $\num{\ConfAfter{\ConfInvNoFil}{mcc}}$ inverted.}
+\end{frame}
+
+\begin{frame}[noframenumbering]{Backup: Theoretical Connection to \acit{LaSeR}}
+	\begin{columns}[T, onlytextwidth]
+		\begin{column}{0.50\textwidth}
+			The KL-regularized optimum~\citep{rlhf} has the \acit{DPO} form~\citep{directpreferenceopt}. Inverting it for a \emph{confidence token} $z_c$ given $(x,y)$ yields the \emph{exact} reward
+			\vspace{-0.1cm}
+			\[
+				r(x,y)=\beta_v\log\frac{\pi_\theta(z_c\mid x,y)}{\pi_{\mathrm{ref}}(z_c\mid x,y)}+\beta_v\log Z(x,y).
+			\]
+			\vspace{-0.35cm}
+			\par Recovering the \acit{LaSeR} score needs \hl{two approximations}:
+			\begin{itemize}
+				\item $c_{\mathrm{ref}}\approx\log\pi_{\mathrm{ref}}(z_c\mid x,y)$ treated as \emph{constant};
+				\item the partition function dropped, $Z(x,y)\approx 1$.
+			\end{itemize}
+		\end{column}
+		\begin{column}{0.46\textwidth}
+			\lead{Three orthogonal differences}
+			\begin{enumerate}
+				\setlength{\itemsep}{3pt}
+				\item \nv{Signal density.} $T_i$ \acit{BCE} terms vs.\ one \acit{MSE} term.
+				\item \nv{Bounded vs.\ unbounded.} $\bar c_i\in[0,1]$ makes the blend safe by construction.
+				\item \nv{No post-\acit{EOS} pass.} The logit is read \emph{during} the regular forward.
+			\end{enumerate}
+		\end{column}
+	\end{columns}
+	\takeaway{\textbf{Honest caveat:} the experiment changes all three at once, so it compares \emph{configurations}, not signal density in isolation.}
+\end{frame}
+
+\begin{frame}[noframenumbering]{Backup: Confidence-Guided Answer Selection}
+	\vspace{-0.05cm}
+	\begin{center}
+		\begin{tikzpicture}
+			\begin{axis}[
+					slidebar,
+					bar width=13pt,
+					height=4.6cm,
+					ymin=50, ymax=70,
+					ylabel={Answer accuracy [\%]},
+					symbolic x coords={{Dense $+\ell-r$}, {Dense $+\ell+r$}, {LaSeR $+\ell-r$}, {LaSeR $+\ell+r$}},
+					x tick label style={font=\scriptsize, yshift=-1pt},
+					enlarge x limits=0.18,
+				]
+				\barplot{black!35} coordinates {
+						({Dense $+\ell-r$}, \mmDA)  +- (0, \msDA)
+						({Dense $+\ell+r$}, \mmDS)  +- (0, \msDS)
+						({LaSeR $+\ell-r$}, \mmLA)  +- (0, \msLA)
+						({LaSeR $+\ell+r$}, \mmLS)  +- (0, \msLS)};
+				\barplot{jkublue!55} coordinates {
+						({Dense $+\ell-r$}, \hmDA)  +- (0, \hsDA)
+						({Dense $+\ell+r$}, \hmDS)  +- (0, \hsDS)
+						({LaSeR $+\ell-r$}, \hmLA)  +- (0, \hsLA)
+						({LaSeR $+\ell+r$}, \hmLS)  +- (0, \hsLS)};
+				\barplot{jkumagenta} coordinates {
+						({Dense $+\ell-r$}, \wmDA)  +- (0, \wsDA)
+						({Dense $+\ell+r$}, \wmDS)  +- (0, \wsDS)
+						({LaSeR $+\ell-r$}, \wmLA)  +- (0, \wsLA)
+						({LaSeR $+\ell+r$}, \wmLS)  +- (0, \wsLS)};
+				\legend{\acit{MV} (no confidence), \acit{HC}, \acit{CW-MV}}
+			\end{axis}
+		\end{tikzpicture}
+	\end{center}
+	\vspace{-0.1cm}
+	\takeaway{The released aggregate \texttt{CSVs} discard the per-prompt covariance, so a \emph{paired} test of the \acit{CW-MV}-vs.-\acit{MV} gap is not possible.}
+\end{frame}
+
+\begin{frame}[noframenumbering]{Backup: Full Training-Time Results}
+	\centering
+	\vspace{0.05cm}
+	\resizebox{\linewidth}{!}{\footnotesize
+		\begin{tabular}{@{}lccccc@{}}
+			\toprule
+			\textbf{Variant}           & \textit{Pass}@1                 & \textit{Pass}@4                 & \acit{MV}                                & \acit{HC}                                   & \acit{CW-MV}                                                 \\
+			\midrule
+			\textit{Base}              & \AccBefore{\AnsBase}{pass@1}    & \AccBefore{\AnsBase}{pass@4}    & \AccBefore{\AnsBase}{majority_voting}    & ---                                         & ---                                                          \\
+			\acit{GRPO} ($-\ell-r$)    & \AccAfter{\AnsGRPO}{pass@1}     & \AccAfter{\AnsGRPO}{pass@4}     & \AccAfter{\AnsGRPO}{majority_voting}     & ---                                         & ---                                                          \\
+			\textit{Dense} ($+\ell-r$) & \AccAfter{\AnsDenseAux}{pass@1} & \AccAfter{\AnsDenseAux}{pass@4} & \AccAfter{\AnsDenseAux}{majority_voting} & \AccAfter{\AnsDenseAux}{highest_confidence} & \AccAfter{\AnsDenseAux}{confidence_weighted_majority_voting} \\
+			\textit{Dense} ($+\ell+r$) & \AccAfter{\AnsDenseSR}{pass@1}  & \AccAfter{\AnsDenseSR}{pass@4}  & \AccAfter{\AnsDenseSR}{majority_voting}  & \AccAfter{\AnsDenseSR}{highest_confidence}  & \AccAfter{\AnsDenseSR}{confidence_weighted_majority_voting}  \\
+			\acit{LaSeR} ($+\ell-r$)   & \AccAfter{\AnsLaserAux}{pass@1} & \AccAfter{\AnsLaserAux}{pass@4} & \AccAfter{\AnsLaserAux}{majority_voting} & \AccAfter{\AnsLaserAux}{highest_confidence} & \AccAfter{\AnsLaserAux}{confidence_weighted_majority_voting} \\
+			\acit{LaSeR} ($+\ell+r$)   & \AccAfter{\AnsLaserSR}{pass@1}  & \AccAfter{\AnsLaserSR}{pass@4}  & \AccAfter{\AnsLaserSR}{majority_voting}  & \AccAfter{\AnsLaserSR}{highest_confidence}  & \AccAfter{\AnsLaserSR}{confidence_weighted_majority_voting}  \\
+			\bottomrule
+		\end{tabular}}
+
+	\vspace{0.16cm}
+
+	\resizebox{\linewidth}{!}{\footnotesize
+		\begin{tabular}{@{}lcccccc@{}}
+			\toprule
+			\textbf{Variant}           & Acc.                                                        & \acit{BA}                                                            & \acit{HBA}                                                                    & \acit{F1}                                                   & \acit{MCC}                                             & \acit{ROC-AUC}                                             \\
+			\midrule
+			\textit{Dense} ($+\ell-r$) & \csvms{\ConfDenseAux}{eval_after_train/confidence/accuracy} & \csvms{\ConfDenseAux}{eval_after_train/confidence/balanced_accuracy} & \csvms{\ConfDenseAux}{eval_after_train/confidence/harmonic_balanced_accuracy} & \csvms{\ConfDenseAux}{eval_after_train/confidence/f1_score} & \csvms{\ConfDenseAux}{eval_after_train/confidence/mcc} & \csvms{\ConfDenseAux}{eval_after_train/confidence/roc_auc} \\
+			\textit{Dense} ($+\ell+r$) & \csvms{\ConfDenseSR}{eval_after_train/confidence/accuracy}  & \csvms{\ConfDenseSR}{eval_after_train/confidence/balanced_accuracy}  & \csvms{\ConfDenseSR}{eval_after_train/confidence/harmonic_balanced_accuracy}  & \csvms{\ConfDenseSR}{eval_after_train/confidence/f1_score}  & \csvms{\ConfDenseSR}{eval_after_train/confidence/mcc}  & \csvms{\ConfDenseSR}{eval_after_train/confidence/roc_auc}  \\
+			\acit{LaSeR} ($+\ell-r$)   & \csvms{\ConfLaserAux}{eval_after_train/confidence/accuracy} & \csvms{\ConfLaserAux}{eval_after_train/confidence/balanced_accuracy} & \csvms{\ConfLaserAux}{eval_after_train/confidence/harmonic_balanced_accuracy} & \csvms{\ConfLaserAux}{eval_after_train/confidence/f1_score} & \csvms{\ConfLaserAux}{eval_after_train/confidence/mcc} & \csvms{\ConfLaserAux}{eval_after_train/confidence/roc_auc} \\
+			\acit{LaSeR} ($+\ell+r$)   & \csvms{\ConfLaserSR}{eval_after_train/confidence/accuracy}  & \csvms{\ConfLaserSR}{eval_after_train/confidence/balanced_accuracy}  & \csvms{\ConfLaserSR}{eval_after_train/confidence/harmonic_balanced_accuracy}  & \csvms{\ConfLaserSR}{eval_after_train/confidence/f1_score}  & \csvms{\ConfLaserSR}{eval_after_train/confidence/mcc}  & \csvms{\ConfLaserSR}{eval_after_train/confidence/roc_auc}  \\
+			\bottomrule
+		\end{tabular}}
+
+	\vspace{0.1cm}
+	{\scriptsize\color{jkugrey} Means $\pm$ std across three evaluation runs of one checkpoint ($N_{\mathrm{eval}}=1{,}222$, $G=4$).}
+\end{frame}
+
+\begin{frame}[noframenumbering]{Backup: Full Inference-Time Results}
+	\centering
+	\vspace{0.15cm}
+	\resizebox{\linewidth}{!}{\footnotesize
+		\begin{tabular}{@{}lcccc@{}}
+			\toprule
+			\textbf{Overlay}              & \textit{Pass}@1                  & \textit{Pass}@4                  & \acit{CW-MV}                                                  & \acit{MCC}                                              \\
+			\midrule
+			no adaptation (reference)     & \AccAfter{\AnsDenseSR}{pass@1}   & \AccAfter{\AnsDenseSR}{pass@4}   & \AccAfter{\AnsDenseSR}{confidence_weighted_majority_voting}   & \csvms{\ConfDenseSR}{eval_after_train/confidence/mcc}   \\
+			tempmod                       & \AccAfter{\AnsTempNoFil}{pass@1} & \AccAfter{\AnsTempNoFil}{pass@4} & \AccAfter{\AnsTempNoFil}{confidence_weighted_majority_voting} & \csvms{\ConfTempNoFil}{eval_after_train/confidence/mcc} \\
+			inverse tempmod               & \AccAfter{\AnsInvNoFil}{pass@1}  & \AccAfter{\AnsInvNoFil}{pass@4}  & \AccAfter{\AnsInvNoFil}{confidence_weighted_majority_voting}  & \csvms{\ConfInvNoFil}{eval_after_train/confidence/mcc}  \\
+			\acit{SMC} filtering          & \AccAfter{\AnsNoTempFil}{pass@1} & \AccAfter{\AnsNoTempFil}{pass@4} & \AccAfter{\AnsNoTempFil}{confidence_weighted_majority_voting} & \csvms{\ConfNoTempFil}{eval_after_train/confidence/mcc} \\
+			tempmod $+$ filtering         & \AccAfter{\AnsTempFil}{pass@1}   & \AccAfter{\AnsTempFil}{pass@4}   & \AccAfter{\AnsTempFil}{confidence_weighted_majority_voting}   & \csvms{\ConfTempFil}{eval_after_train/confidence/mcc}   \\
+			inverse tempmod $+$ filtering & \AccAfter{\AnsInvFil}{pass@1}    & \AccAfter{\AnsInvFil}{pass@4}    & \AccAfter{\AnsInvFil}{confidence_weighted_majority_voting}    & \csvms{\ConfInvFil}{eval_after_train/confidence/mcc}    \\
+			\bottomrule
+		\end{tabular}}
+
+	\vspace{0.35cm}
+	\begin{itemize}
+		\item \nv{Truncation as a coupling diagnostic.} The truncation rate rises from $\TruncPctAfter{\AnsDenseSR}{2}$ at the reference to $\TruncPctAfter{\AnsTempFil}{2}$ for tempmod $+$ filtering, i.e.\ $\csvratio{\AnsTempFil}{\AnsDenseSR}{eval_after_train/answer/truncation_percentage_t=1.0/mean}{1}\times$.
+		\item That excess is $\csvdeltapp{\AnsTempFil}{\AnsDenseSR}{eval_after_train/answer/truncation_percentage_t=1.0/mean}{2}\,$pp, below the $\AccAfterAbsDeltaPP{\AnsTempFil}{\AnsDenseSR}{pass@1}{2}\,$pp \textit{Pass}@1 gap, so truncation alone cannot explain it.
+	\end{itemize}
+\end{frame}
+
+\begin{frame}[noframenumbering]{Backup: Key Hyperparameters}
+	\begin{columns}[T, onlytextwidth]
+		\begin{column}{0.47\textwidth}
+			\lead{Training}
+			\resizebox{\linewidth}{!}{\footnotesize
+				\begin{tabular}{@{}ll@{}}
+					\toprule
+					Policy                                                 & \texttt{Qwen2.5-0.5B-Instruct} \\
+					\acit{LoRA} $r_{\mathrm{LoRA}}/\alpha_{\mathrm{LoRA}}$ & $16 / 32$, all linear          \\
+					Generations $G$                                        & $4$                            \\
+					Grad.\ accumulation $K_{\mathrm{grad}}$                & $4$                            \\
+					Learning rate $\eta$                                   & $2\times10^{-5}$               \\
+					Sampling temperature $\tau$                            & $1.0$                          \\
+					KL coefficient $\beta_{\mathrm{KL}}$                   & $0$                            \\
+					$\beta_{\mathrm{conf}}$ (\textit{Dense}/\acit{LaSeR})  & $0.01$ / $0.1$                 \\
+					Blend $\alpha_{\mathrm{blend}}$, gate $\delta_{\min}$  & $0.1$, $0.1$                   \\
+					Warmups (reason / conf.)                               & $2{,}048$ / $2{,}048$ samples  \\
+					Prompt / completion cap                                & $128$ / $1{,}024$ tokens       \\
+					Epochs                                                 & $1$                            \\
+					\bottomrule
+				\end{tabular}}
+		\end{column}
+		\begin{column}{0.49\textwidth}
+			\lead{Inference-time overlays}
+			{\footnotesize
+				\begin{tabular}{@{}ll@{}}
+					\toprule
+					Confidence history $H$                          & $8$ steps \\
+					\acit{SMC} threshold $\delta_{\mathrm{filter}}$ & $0.2$     \\
+					Particle count                                  & $=G=4$    \\
+					\bottomrule
+				\end{tabular}}
+			\vspace{0.3cm}
+
+			\lead{Reproducibility}
+			\begin{itemize}
+				\item \texttt{SEED=42} is the only stochasticity the codebase controls.
+				\item Variants are selected purely by environment variables.
+				\item \texttt{NUM\_EVAL\_REPETITIONS=3}.
+			\end{itemize}
+		\end{column}
+	\end{columns}
+\end{frame}
+
+\begin{frame}[noframenumbering]{Backup: Why \acit{SMC} Filtering Needs Cache Surgery}
+	\begin{columns}[T, onlytextwidth]
+		\begin{column}{0.50\textwidth}
+			\begin{itemize}
+				\setlength{\itemsep}{4pt}
+				\item The $G$ rollouts of a \acit{GRPO} group \emph{are} the particle set, so the marginal compute cost is unchanged.
+				\item At every step an \texttt{SMCLogitsProcessor} splits the active particles at $\delta_{\mathrm{filter}}$ into \emph{dead} and \emph{alive}.
+				\item Each dead particle is replaced by an alive donor drawn $\propto \bar c^{(H)}$.
+				\item Finished particles are masked out of \emph{both} sides, so a completed answer is never overwritten.
+			\end{itemize}
+		\end{column}
+		\begin{column}{0.46\textwidth}
+			\headline{The replacement is \emph{not} a relabeling of token streams: the donor's continuation depends on its full \acit{KV} history.}
+			\begin{itemize}
+				\setlength{\itemsep}{4pt}
+				\item A pre-hook captures the \texttt{DynamicCache}; the donor's slice is cloned across \emph{all} layers.
+				\item Copying the \emph{entire} prefix cache preserves causal correctness.
+				\item Hence the overlay refuses to run under \texttt{vLLM}~\citep{vllm}.
+			\end{itemize}
+		\end{column}
+	\end{columns}
+\end{frame}
+
+\end{document}
