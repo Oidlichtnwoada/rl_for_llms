@@ -98,6 +98,20 @@
 \definecolor{jkulight}{HTML}{EEF3F7}  % pale blue block background
 \definecolor{jkurule}{HTML}{C8D6E2}
 
+%% ---------------------------------------------------------------------------
+%% Metric colour key. Every chart in the deck draws a given metric in the SAME
+%% colour, and never reuses a colour for a different metric, so a bar can be
+%% read across slides without re-checking the legend. The two families are kept
+%% apart by hue: answer-accuracy metrics are cool (navy/grey/blue), confidence
+%% classification metrics are warm (magenta). Amber stays reserved for the error
+%% bars, so it is never assigned to a series.
+\colorlet{mPassOne}{jkunavy}       % Pass@1              (answer accuracy)
+\colorlet{mMV}{black!32}           % majority voting, no confidence
+\colorlet{mHC}{jkublue!45}         % highest confidence  (confidence selection)
+\colorlet{mCWMV}{jkublue}          % confidence-weighted majority voting
+\colorlet{mMCC}{jkumagenta}        % MCC x100            (classification)
+\colorlet{mROC}{jkumagenta!45}     % ROC-AUC             (classification)
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Theme: hand-rolled on top of the default theme for full control over the
 %% margins, so nothing collides with the frame title or the footer.
@@ -379,6 +393,21 @@
 \Xpct{icIF}{\ConfInvFil}{eval_after_train/confidence/mcc/mean}
 \Xpct{icIFs}{\ConfInvFil}{eval_after_train/confidence/mcc/std}
 
+%% Plain (unweighted) majority voting for the same six settings, so the slide can
+%% show what the confidence weighting actually adds on top of raw vote counts.
+\Xpct{imRef}{\AnsDenseSR}{eval_after_train/answer/accuracy/majority_voting_t=1.0/mean}
+\Xpct{imRefs}{\AnsDenseSR}{eval_after_train/answer/accuracy/majority_voting_t=1.0/std}
+\Xpct{imTM}{\AnsTempNoFil}{eval_after_train/answer/accuracy/majority_voting_t=1.0/mean}
+\Xpct{imTMs}{\AnsTempNoFil}{eval_after_train/answer/accuracy/majority_voting_t=1.0/std}
+\Xpct{imIT}{\AnsInvNoFil}{eval_after_train/answer/accuracy/majority_voting_t=1.0/mean}
+\Xpct{imITs}{\AnsInvNoFil}{eval_after_train/answer/accuracy/majority_voting_t=1.0/std}
+\Xpct{imFI}{\AnsNoTempFil}{eval_after_train/answer/accuracy/majority_voting_t=1.0/mean}
+\Xpct{imFIs}{\AnsNoTempFil}{eval_after_train/answer/accuracy/majority_voting_t=1.0/std}
+\Xpct{imTF}{\AnsTempFil}{eval_after_train/answer/accuracy/majority_voting_t=1.0/mean}
+\Xpct{imTFs}{\AnsTempFil}{eval_after_train/answer/accuracy/majority_voting_t=1.0/std}
+\Xpct{imIF}{\AnsInvFil}{eval_after_train/answer/accuracy/majority_voting_t=1.0/mean}
+\Xpct{imIFs}{\AnsInvFil}{eval_after_train/answer/accuracy/majority_voting_t=1.0/std}
+
 %% Shared style for every slide bar chart.
 \pgfplotsset{
 	slidebar/.style={
@@ -403,8 +432,14 @@
 			point meta=rawy,
 			%% text= is set explicitly: otherwise the value labels inherit the
 			%% per-plot color and stop matching each other across series.
+			%% The value label is rotated, so the constant gap that separates it from
+			%% the error-bar cap is an XSHIFT: "rotate=90" is applied first, which
+			%% maps the node's local +x onto the page's "up". A yshift here would
+			%% instead slide the label sideways off the centre of its bar. The
+			%% variable part of the lift (the cap height, which differs per bar) is
+			%% added by \barplot below.
 			every node near coord/.append style={font=\tiny, rotate=90,
-					anchor=west, inner sep=1.2pt, yshift=3.5pt, text=black!75,
+					anchor=west, inner sep=1.2pt, xshift=2.5pt, text=black!75,
 					/pgf/number format/fixed, /pgf/number format/fixed zerofill,
 					/pgf/number format/precision=1},
 			nodes near coords align={vertical},
@@ -414,7 +449,14 @@
 %% Bars are added with \addplot (never \addplot+): the trailing "+" appends the
 %% default cycle list after the style above, which would repaint the bar edges
 %% and the legend swatches in unrelated colors.
-\newcommand{\barplot}[1]{\addplot[fill=#1, draw=black!55, line width=0.35pt]}
+%% Each series carries its standard deviation as the table column "e", and the
+%% shift below raises that series' value labels by exactly that many axis units,
+%% so every label clears its OWN error bar instead of the chart's worst one.
+%% These two keys must sit on the plot: set from inside a \pgfplotsset style,
+%% "visualization depends on" cannot resolve \thisrow and the build fails.
+\newcommand{\barplot}[1]{\addplot[fill=#1, draw=black!55, line width=0.35pt,
+		visualization depends on={\thisrow{e} \as \pterr},
+		every node near coord/.append style={shift={(axis direction cs:0,\pterr)}}]}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Title-page metadata
@@ -592,7 +634,10 @@
 				\item A hook on \texttt{lm\_head}~\citep{pytorch} grabs its logit $-$ already computed, so \emph{no} extra pass.
 				\item A scaled sigmoid bounds it:
 			\end{itemize}
-			\vspace{-0.3cm}
+			%% Only a hair of negative space: the auto-sized delimiters around the
+			%% fraction reach well above the equation's baseline, so pulling this
+			%% up any further makes them collide with the bullet line above.
+			\vspace{-0.08cm}
 			\begin{equation*}
 				c_t = \sigma\!\left(\tfrac{\pi}{\sigma_{\mathrm{conf}}\sqrt{3}}
 				\bigl(\ell_t^{\mathrm{conf}} - \mu_{\mathrm{conf}}\bigr)\right) \in [0,1]
@@ -616,63 +661,95 @@
 \end{frame}
 
 \begin{frame}{Training-Time Architecture}
-	\framesubtitle{The same \acit{LM}-head hook reads the confidence logit twice: gradient-free while \emph{generating}, with gradients while \emph{re-evaluating}}
+	\framesubtitle{Solid arrows carry data, dashed arrows mark the two \acit{LM}-head hook readings}
 	\centering
-	%% Constrain BOTH dimensions: the diagram is wider than it is tall, but the
-	%% free body area of a 16:9 frame is only about 6cm high.
-	\adjustbox{max width=\linewidth, max totalheight=5.45cm}{%
+	%% Landscape transposition of the shared architecture_tikz.tex that
+	%% main-thesis.tex and main-poster.tex include: the same thirteen nodes, the
+	%% same colour roles and the same arrow semantics, laid out left-to-right in
+	%% three tracks instead of top-to-bottom in two columns. The shared file is
+	%% not reused verbatim because its 21.6cm x 34.2cm portrait bounding box
+	%% scales to about 5cm wide (roughly 2pt type) inside the 5.9cm-high body
+	%% area of a 16:9 frame, which is unreadable when projected.
+	\adjustbox{max width=\linewidth, max totalheight=5.82cm}{%
 		\begin{tikzpicture}[
 				>=Latex,
 				font=\small,
-				node distance=0pt,
 				box/.style={draw=black!55, rectangle, rounded corners=3pt, inner sep=5pt,
-						align=center, text width=3.0cm, minimum height=1.25cm},
+						align=center, text width=3.3cm, minimum height=1.3cm, fill=black!2},
 				db/.style={draw=black!55, cylinder, cylinder uses custom fill, shape border rotate=90,
 						aspect=0.22, inner sep=4pt, align=center, fill=black!5,
-						text width=1.9cm, minimum height=1.0cm},
+						text width=2.1cm, minimum height=1.1cm},
+				sub/.style={draw=black!55, rectangle, rounded corners=2pt, fill=white,
+						align=center, font=\scriptsize, minimum height=0.55cm, minimum width=1.6cm},
 				arr/.style={thick, ->, black!70},
 				dasharr/.style={thick, ->, dashed, jkuamber!85!black},
+				lbl/.style={font=\scriptsize, text=black!70, inner sep=2.5pt},
 			]
-			%% --- Top track: the external, outcome-level path ----------------------
+			%% --- Track 1: the external, outcome-level path -------------------------
 			\node[db] (data) at (0, 0) {\textbf{Dataset}\\Prompts $q$, answers $a$};
-			\node[box, fill=jkublue!10] (gen) at (3.9, 0) {\textbf{Policy $\pi_\theta$}\\Generation phase\\\textit{(no gradients)}};
-			\node[box, fill=black!3] (roll) at (7.8, 0) {\textbf{Rollouts}\\$\{o_1,\dots,o_G\}$};
-			\node[box, fill=jkumagenta!8] (ext) at (11.7, 0) {\textbf{External verifier}\\\texttt{math-verify}\\format $+$ correctness $r_i$};
+			\node[box, fill=jkublue!10] (gen) at (4.6, 0)
+			{\textbf{\acit{LLM} Policy}\\Generation phase\\\textit{(no gradients)}};
+			\node[box] (roll) at (9.2, 0) {\textbf{Sampled trajectories}\\$\{o_1,\dots,o_G\}$};
+			\node[box, fill=jkumagenta!8, minimum height=2.3cm, text width=3.6cm] (ext) at (13.9, 0) {};
+			\node[align=center, font=\small] at ($(ext.north)+(0,-0.52)$)
+			{\textbf{External verifier}\\\texttt{math-verify}};
+			\node[sub] (form) at ($(ext.south)+(-0.88,0.45)$) {Format};
+			\node[sub] (corr) at ($(ext.south)+(0.88,0.45)$) {Correctness};
 
-			%% --- Bottom track: the internal, per-token confidence path ------------
-			\node[box, fill=jkuamber!12] (hook) at (3.9, -3.2) {\textbf{\acit{LM}-head hook}\\$\ell^{\mathrm{conf}}_{i,t}$ at \emph{every} step};
-			\node[box, fill=jkuamber!12, text width=3.6cm] (sig) at (7.9, -3.2) {\textbf{Internal verifier}\\$c_{i,t}=\sigma\!\bigl(\tfrac{\pi}{\sigma_{\mathrm{conf}}\sqrt{3}}(\ell^{\mathrm{conf}}_{i,t}-\mu_{\mathrm{conf}})\bigr)$};
-			\node[box, fill=jkuamber!12] (mean) at (11.7, -3.2) {\textbf{Trajectory mean}\\$\bar c_i=\tfrac{1}{T_i}\sum_t c_{i,t}$};
+			%% --- Track 2: the internal, per-token confidence path ------------------
+			\node[box, fill=jkuamber!12] (hook1) at (4.6, -3.7)
+			{\textbf{Forward hook \textcircled{\scriptsize 1}}\\$\ell^{\mathrm{conf}}_{i,t}$ at \emph{every} step};
+			\node[box, fill=jkuamber!12, minimum height=2.3cm, text width=4.0cm] (int) at (9.4, -3.7) {};
+			\node[align=center, font=\small] at ($(int.north)+(0,-0.95)$)
+			{\textbf{Internal verifier}\\[3pt]%
+				\resizebox{3.7cm}{!}{$c_{i,t}=\sigma\!\left(\frac{\pi}{\sigma_{\mathrm{conf}}\sqrt{3}}\left(\ell^{\mathrm{conf}}_{i,t}-\mu_{\mathrm{conf}}\right)\right)$}};
+			\node[box, fill=jkuamber!12] (mean) at (14.1, -3.7)
+			{\textbf{Trajectory mean}\\$\bar c_i=\frac{1}{T_i}\sum_{t=1}^{T_i} c_{i,t}$};
 
-			%% --- Right column: advantage, second pass, losses ---------------------
-			\node[box, fill=jkublue!14, text width=4.3cm] (adv) at (16.4, -1.6)
-			{\textbf{\acit{GRPO} advantage}\\$A_x=\frac{x_i-\mu_x}{\sigma_x+\epsilon_{\mathrm{std}}},\ x\in\{r,\bar c\}$\\$A_i=(1-\alpha_{\mathrm{blend}})A_{r_i}+\alpha_{\mathrm{blend}}A_{\bar c_i}$};
+			%% --- Both tracks merge into the advantage ------------------------------
+			\node[box, fill=jkublue!14, text width=7.0cm, minimum height=1.9cm] (adv) at (21.4, -2.0)
+			{\textbf{\acit{RL} advantage computation}\\[2pt]$A_x=\frac{x_i-\mu_x}{\sigma_x+\epsilon_{\mathrm{std}}}\quad\text{for }x\in\{r,\bar c\}$\\[2pt]
+				Blended $A_i=(1-\alpha_{\mathrm{blend}})A_{r_i}+\alpha_{\mathrm{blend}}A_{\bar c_i}$};
 
-			\node[box, fill=jkublue!10, text width=3.6cm] (gen2) at (3.9, -6.4)
-			{\textbf{Policy $\pi_\theta$}\\Re-evaluation phase\\\textit{(with gradients)}};
-			\node[box, fill=black!4, text width=3.6cm] (lrl) at (9.0, -6.4)
-			{\textbf{\acit{RL} surrogate loss}\\$-\mathcal{J}(\theta)$};
-			\node[box, fill=black!4, text width=3.6cm] (lbce) at (13.4, -6.4)
-			{\textbf{\acit{BCE} confidence loss}\\$L_{\mathrm{conf}}(\theta)$, target $r_i$};
-			\node[box, fill=jkumagenta!10, text width=4.3cm] (upd) at (16.4, -8.6)
-			{\textbf{Gradient step}\\$-\mathcal{J}(\theta)+\beta_{\mathrm{conf}}L_{\mathrm{conf}}(\theta)$};
+			%% --- Track 3: the re-evaluation pass and the two losses ----------------
+			\node[box, fill=jkublue!10] (gen2) at (4.6, -7.6)
+			{\textbf{\acit{LLM} Policy}\\Re-evaluation phase\\\textit{(with gradients)}};
+			\node[box, fill=jkuamber!12] (hook2) at (4.6, -11.0)
+			{\textbf{Forward hook \textcircled{\scriptsize 2}}\\$\ell^{\mathrm{conf}}_{i,t}$ at \emph{every} step};
+			\node[box, fill=jkuamber!25] (lrl) at (10.0, -7.6)
+			{\textbf{\acit{RL} surrogate loss}\\$\mathcal{J}(\theta)$};
+			\node[box, fill=jkuamber!25] (lbce) at (10.0, -11.0)
+			{\textbf{\acit{BCE} confidence loss}\\$L_{\mathrm{conf}}(\theta)$};
+			\node[box, fill=jkumagenta!12, text width=7.0cm] (upd) at (21.4, -9.3)
+			{\textbf{Loss \& gradient descent update}\\$-\mathcal{J}(\theta)+\beta_{\mathrm{conf}}L_{\mathrm{conf}}(\theta)$};
 
-			%% --- Edges ------------------------------------------------------------
+			%% --- Edges -------------------------------------------------------------
 			\draw[arr] (data) -- (gen);
 			\draw[arr] (gen) -- (roll);
 			\draw[arr] (roll) -- (ext);
-			\draw[dasharr] (gen.south) -- (hook.north);
-			\draw[arr] (hook) -- (sig);
-			\draw[arr] (sig) -- (mean);
-			\draw[arr] (ext.east) -- ++(1.0,0) |- (adv.west);
-			\draw[arr] (mean.east) -- ++(1.0,0) |- (adv.west);
-			\draw[arr] (adv.south) -- ++(0,-1.4) -| (gen2.north);
+			\draw[dasharr] (gen.south) -- (hook1.north);
+			\draw[arr] (hook1) -- (int);
+			\draw[arr] (int) -- (mean);
+			%% The reference answer travels over the top into the correctness check.
+			\draw[arr] (data.north) |- (2.0, 2.1) -- (13.9, 2.1)
+			node[lbl, pos=0.55, above] {answer $a$} -- (ext.north);
+			%% Format + correctness drive the advantage; correctness alone is the
+			%% target of the confidence loss (the shared figure's "+" node, spelled out).
+			\draw[arr] (ext.east) -- (19.6, 0)
+			node[lbl, pos=0.45, above] {$r_{\mathrm{fmt}}\!+\!r_i$} -- (19.6, -1.05);
+			\draw[arr] (mean.east) -- (20.6, -3.7) -- (20.6, -2.95);
+			\draw[arr] (corr.east) -- (28.4, -0.7)
+			node[lbl, pos=0.86, above] {target $r_i$} -- (28.4, -11.0) -- (lbce.east);
+			%% The blended advantage drives the gradient-carrying second pass.
+			\draw[arr] ($(adv.south)+(1.6,0)$) -- (23.0, -5.9) -- (1.5, -5.9) -- (1.5, -7.6) -- (gen2.west);
 			\draw[arr] (gen2) -- (lrl);
-			\draw[dasharr] (gen2.south) -- ++(0,-0.85) -| (lbce.south);
-			\draw[arr] (ext.north) -- ++(0,0.75) -| node[pos=0.25, above, font=\scriptsize, black!70] {target $r_i$} (lbce.north);
-			\draw[arr] (lrl.east) -- ++(0.55,0) |- (upd.west);
-			\draw[arr] (lbce.east) -- ++(0.55,0) |- (upd.west);
-			\draw[arr, jkunavy] (upd.east) -- ++(0.9,0) node[right, font=\scriptsize, jkunavy] {$\theta \leftarrow \theta - \eta\nabla$};
+			\draw[dasharr] (gen2.south) -- (hook2.north);
+			\draw[arr] (hook2) -- (lbce);
+			%% Both losses ride the same bus into the update box.
+			\draw[arr] (lrl.south) -- (10.0, -9.3) -- (upd.west);
+			\draw[arr] (lbce.north) -- (10.0, -9.3) -- (upd.west);
+			\draw[arr, jkunavy] (upd.east) -- ++(0.5,0)
+			node[right, font=\scriptsize, jkunavy] {$\theta \leftarrow \theta-\eta\nabla$};
 		\end{tikzpicture}}
 \end{frame}
 
@@ -760,27 +837,29 @@
 					slidebar,
 					bar width=11pt,
 					height=4.35cm,
-					ymax=88,
+					ymax=84,
 					ylabel={Answer accuracy [\%]},
-					symbolic x coords={Base, GRPO, {Dense $+\ell-r$}, {Dense $+\ell+r$}, {LaSeR $+\ell-r$}, {LaSeR $+\ell+r$}},
+					xticklabels={Base, GRPO, {Dense $+\ell-r$}, {Dense $+\ell+r$}, {LaSeR $+\ell-r$}, {LaSeR $+\ell+r$}},
 					x tick label style={font=\scriptsize, yshift=-1pt},
 					enlarge x limits=0.10,
 				]
-				\barplot{jkunavy} coordinates {
-						(Base, \pmBase)             +- (0, \psBase)
-						(GRPO, \pmGRPO)             +- (0, \psGRPO)
-						({Dense $+\ell-r$}, \pmDA)  +- (0, \psDA)
-						({Dense $+\ell+r$}, \pmDS)  +- (0, \psDS)
-						({LaSeR $+\ell-r$}, \pmLA)  +- (0, \psLA)
-						({LaSeR $+\ell+r$}, \pmLS)  +- (0, \psLS)};
-				\barplot{jkublue!55} coordinates {
-						(Base, \mmBase)             +- (0, \msBase)
-						(GRPO, \mmGRPO)             +- (0, \msGRPO)
-						({Dense $+\ell-r$}, \mmDA)  +- (0, \msDA)
-						({Dense $+\ell+r$}, \mmDS)  +- (0, \msDS)
-						({LaSeR $+\ell-r$}, \mmLA)  +- (0, \msLA)
-						({LaSeR $+\ell+r$}, \mmLS)  +- (0, \msLS)};
-				\legend{\textit{Pass}@1, Majority Voting}
+				\barplot{mPassOne} table[x=x, y=y, y error=e, row sep=\\] {
+						x y e \\
+						1 {\pmBase} {\psBase} \\
+						2 {\pmGRPO} {\psGRPO} \\
+						3 {\pmDA} {\psDA} \\
+						4 {\pmDS} {\psDS} \\
+						5 {\pmLA} {\psLA} \\
+						6 {\pmLS} {\psLS} \\};;
+				\barplot{mMV} table[x=x, y=y, y error=e, row sep=\\] {
+						x y e \\
+						1 {\mmBase} {\msBase} \\
+						2 {\mmGRPO} {\msGRPO} \\
+						3 {\mmDA} {\msDA} \\
+						4 {\mmDS} {\msDS} \\
+						5 {\mmLA} {\msLA} \\
+						6 {\mmLS} {\msLS} \\};;
+				\legend{\textit{Pass}@1, \acit{MV}}
 			\end{axis}
 		\end{tikzpicture}
 	\end{center}
@@ -797,30 +876,33 @@
 	\takeaway{No answer-quality penalty $-$ but one checkpoint per variant cannot separate this from training-seed variation.}
 \end{frame}
 
-\begin{frame}{RQ3: \textit{Dense} Holds Up, Unbounded \acit{LaSeR} Degrades}
+\begin{frame}{RQ3: A Trade $-$ Cheap for \textit{Dense}, Costly for \acit{LaSeR}}
+	\framesubtitle{Dark magenta bars are \acit{MCC}$\times100$; a gap counts only if it clears the run-to-run noise, $d_{\mathrm{pool}}=|\Delta|/s_{\mathrm{pool}}$}
 	\vspace{-0.05cm}
 	\begin{center}
 		\begin{tikzpicture}
 			\begin{axis}[
 					slidebar,
 					bar width=15pt,
-					height=4.3cm,
-					ymax=104,
+					height=3.45cm,
+					ymax=112,
 					ylabel={Correctness classification},
-					symbolic x coords={{Dense $+\ell-r$}, {Dense $+\ell+r$}, {LaSeR $+\ell-r$}, {LaSeR $+\ell+r$}},
+					xticklabels={{Dense $+\ell-r$}, {Dense $+\ell+r$}, {LaSeR $+\ell-r$}, {LaSeR $+\ell+r$}},
 					x tick label style={font=\scriptsize, yshift=-1pt},
 					enlarge x limits=0.18,
 				]
-				\barplot{jkunavy} coordinates {
-						({Dense $+\ell-r$}, \ccDA)  +- (0, \csDA)
-						({Dense $+\ell+r$}, \ccDS)  +- (0, \csDS)
-						({LaSeR $+\ell-r$}, \ccLA)  +- (0, \csLA)
-						({LaSeR $+\ell+r$}, \ccLS)  +- (0, \csLS)};
-				\barplot{jkublue!55} coordinates {
-						({Dense $+\ell-r$}, \rcDA)  +- (0, \rsDA)
-						({Dense $+\ell+r$}, \rcDS)  +- (0, \rsDS)
-						({LaSeR $+\ell-r$}, \rcLA)  +- (0, \rsLA)
-						({LaSeR $+\ell+r$}, \rcLS)  +- (0, \rsLS)};
+				\barplot{mMCC} table[x=x, y=y, y error=e, row sep=\\] {
+						x y e \\
+						1 {\ccDA} {\csDA} \\
+						2 {\ccDS} {\csDS} \\
+						3 {\ccLA} {\csLA} \\
+						4 {\ccLS} {\csLS} \\};;
+				\barplot{mROC} table[x=x, y=y, y error=e, row sep=\\] {
+						x y e \\
+						1 {\rcDA} {\rsDA} \\
+						2 {\rcDS} {\rsDS} \\
+						3 {\rcLA} {\rsLA} \\
+						4 {\rcLS} {\rsLS} \\};;
 				\legend{\acit{MCC} $\times 100$, \acit{ROC-AUC} [\%]}
 			\end{axis}
 		\end{tikzpicture}
@@ -829,13 +911,13 @@
 	{\small
 		\begin{columns}[T, onlytextwidth]
 			\begin{column}{0.48\textwidth}
-				\textit{Dense} holds \acit{MCC} $>0.50$ either way: the reward blend moves it by only $\ConfAfterAbsDelta{\ConfDenseAux}{\ConfDenseSR}{mcc}{3}$.
+				\nv{\textit{Dense}} only \emph{rebalances} the head: \acit{TNR} $\csvdeltapp{\ConfDenseSR}{\ConfDenseAux}{eval_after_train/confidence/tnr/mean}{1}\,$pp, \textit{Pass}@1 $\csvdeltapp{\AnsDenseSR}{\AnsDenseAux}{eval_after_train/answer/accuracy/pass@1_t=1.0/mean}{1}\,$pp, \acit{MCC} $\ConfAfter{\ConfDenseAux}{mcc}\!\to\!\ConfAfter{\ConfDenseSR}{mcc}$ ($d_{\mathrm{pool}}=\csvpoold{\ConfDenseAux}{\ConfDenseSR}{eval_after_train/confidence/mcc}{1}$).
 			\end{column}
 			\begin{column}{0.48\textwidth}
-				\acit{LaSeR} \hl{degrades} when fed back: \acit{MCC} $\num{\ConfAfter{\ConfLaserAux}{mcc}} \to \num{\ConfAfter{\ConfLaserSR}{mcc}}$, a $\csvabsdeltapp{\ConfLaserSR}{\ConfLaserAux}{eval_after_train/confidence/tnr/mean}{1}\,$pp \acit{TNR} drop.
+				\acit{LaSeR} \hl{trades badly}: \textit{Pass}@1 $\csvdeltapp{\AnsLaserSR}{\AnsLaserAux}{eval_after_train/answer/accuracy/pass@1_t=1.0/mean}{1}\,$pp, bought with \acit{MCC} $\ConfAfter{\ConfLaserAux}{mcc}\!\to\!\ConfAfter{\ConfLaserSR}{mcc}$ ($d_{\mathrm{pool}}=\csvpoold{\ConfLaserAux}{\ConfLaserSR}{eval_after_train/confidence/mcc}{1}$) and \acit{TNR} $\csvdeltapp{\ConfLaserSR}{\ConfLaserAux}{eval_after_train/confidence/tnr/mean}{1}\,$pp to chance.
 			\end{column}
 		\end{columns}}
-	\takeaway{Consistent with the bounded-vs.-unbounded argument $-$ but the artifacts do not log the score distributions needed to \emph{prove} the drift mechanism.}
+	\takeaway{Feeding confidence back \emph{trades} correctness classification for answer accuracy: near-free for bounded \textit{Dense}, ruinous for unbounded \acit{LaSeR}.}
 \end{frame}
 
 \begin{frame}{RQ4: Reusing the Head at Inference Time}
@@ -845,36 +927,47 @@
 		\begin{tikzpicture}
 			\begin{axis}[
 					slidebar,
-					bar width=8.5pt,
+					bar width=6.3pt,
 					height=3.8cm,
-					ymin=40, ymax=76,
+					ymin=40, ymax=77,
 					ylabel={[\%] / \acit{MCC} $\times 100$},
-					symbolic x coords={reference, tempmod, {inv tempmod}, {SMC filter}, {tempmod + filter}, {inv + filter}},
+					xticklabels={reference, tempmod, {inv tempmod}, {SMC filter}, {tempmod + filter}, {inv + filter}},
 					x tick label style={font=\scriptsize, yshift=-1pt},
 					enlarge x limits=0.09,
 				]
-				\barplot{jkunavy} coordinates {
-						(reference, \ipRef)             +- (0, \ipRefs)
-						(tempmod, \ipTM)                +- (0, \ipTMs)
-						({inv tempmod}, \ipIT)          +- (0, \ipITs)
-						({SMC filter}, \ipFI)           +- (0, \ipFIs)
-						({tempmod + filter}, \ipTF)     +- (0, \ipTFs)
-						({inv + filter}, \ipIF)         +- (0, \ipIFs)};
-				\barplot{jkublue!55} coordinates {
-						(reference, \iwRef)             +- (0, \iwRefs)
-						(tempmod, \iwTM)                +- (0, \iwTMs)
-						({inv tempmod}, \iwIT)          +- (0, \iwITs)
-						({SMC filter}, \iwFI)           +- (0, \iwFIs)
-						({tempmod + filter}, \iwTF)     +- (0, \iwTFs)
-						({inv + filter}, \iwIF)         +- (0, \iwIFs)};
-				\barplot{jkumagenta} coordinates {
-						(reference, \icRef)             +- (0, \icRefs)
-						(tempmod, \icTM)                +- (0, \icTMs)
-						({inv tempmod}, \icIT)          +- (0, \icITs)
-						({SMC filter}, \icFI)           +- (0, \icFIs)
-						({tempmod + filter}, \icTF)     +- (0, \icTFs)
-						({inv + filter}, \icIF)         +- (0, \icIFs)};
-				\legend{\textit{Pass}@1, \acit{CW-MV}, \acit{MCC} $\times 100$}
+				\barplot{mPassOne} table[x=x, y=y, y error=e, row sep=\\] {
+						x y e \\
+						1 {\ipRef} {\ipRefs} \\
+						2 {\ipTM} {\ipTMs} \\
+						3 {\ipIT} {\ipITs} \\
+						4 {\ipFI} {\ipFIs} \\
+						5 {\ipTF} {\ipTFs} \\
+						6 {\ipIF} {\ipIFs} \\};;
+				\barplot{mMV} table[x=x, y=y, y error=e, row sep=\\] {
+						x y e \\
+						1 {\imRef} {\imRefs} \\
+						2 {\imTM} {\imTMs} \\
+						3 {\imIT} {\imITs} \\
+						4 {\imFI} {\imFIs} \\
+						5 {\imTF} {\imTFs} \\
+						6 {\imIF} {\imIFs} \\};;
+				\barplot{mCWMV} table[x=x, y=y, y error=e, row sep=\\] {
+						x y e \\
+						1 {\iwRef} {\iwRefs} \\
+						2 {\iwTM} {\iwTMs} \\
+						3 {\iwIT} {\iwITs} \\
+						4 {\iwFI} {\iwFIs} \\
+						5 {\iwTF} {\iwTFs} \\
+						6 {\iwIF} {\iwIFs} \\};;
+				\barplot{mMCC} table[x=x, y=y, y error=e, row sep=\\] {
+						x y e \\
+						1 {\icRef} {\icRefs} \\
+						2 {\icTM} {\icTMs} \\
+						3 {\icIT} {\icITs} \\
+						4 {\icFI} {\icFIs} \\
+						5 {\icTF} {\icTFs} \\
+						6 {\icIF} {\icIFs} \\};;
+				\legend{\textit{Pass}@1, \acit{MV}, \acit{CW-MV}, \acit{MCC} $\times 100$}
 			\end{axis}
 		\end{tikzpicture}
 	\end{center}
@@ -882,13 +975,13 @@
 	{\small
 		\begin{columns}[T, onlytextwidth]
 			\begin{column}{0.48\textwidth}
-				\nv{Selection wins outright:} \acit{CW-MV} reaches \hl{$\AccAfterPct{\AnsDenseAux}{confidence_weighted_majority_voting}{1}$} on \textit{Dense} $+\ell-r$, $\csvxdeltapp{\AnsDenseAux}{eval_after_train/answer/accuracy/confidence_weighted_majority_voting_t=1.0/mean}{\AnsDenseAux}{eval_after_train/answer/accuracy/majority_voting_t=1.0/mean}{1}\,$pp over plain \acit{MV} on the \emph{same} candidates.
+				\nv{Confidence weighting wins in \hl{all six} settings:} \acit{CW-MV} over plain \acit{MV} is $\csvxdeltapp{\AnsDenseSR}{eval_after_train/answer/accuracy/confidence_weighted_majority_voting_t=1.0/mean}{\AnsDenseSR}{eval_after_train/answer/accuracy/majority_voting_t=1.0/mean}{1}\,$pp at the reference ($d_{\mathrm{pool}}=\csvxpoold{\AnsDenseSR}{eval_after_train/answer/accuracy/confidence_weighted_majority_voting_t=1.0}{\AnsDenseSR}{eval_after_train/answer/accuracy/majority_voting_t=1.0}{1}$), up to $\csvxdeltapp{\AnsInvNoFil}{eval_after_train/answer/accuracy/confidence_weighted_majority_voting_t=1.0/mean}{\AnsInvNoFil}{eval_after_train/answer/accuracy/majority_voting_t=1.0/mean}{1}\,$pp.
 			\end{column}
 			\begin{column}{0.48\textwidth}
 				\nv{The generative overlays only trade:} tempmod $+$ filtering gives the best \acit{MCC} ($\num{\ConfAfter{\ConfTempFil}{mcc}}$) and the worst \textit{Pass}@1.
 			\end{column}
 		\end{columns}}
-	\takeaway{At $G=4$ the overlays \emph{decouple} answer accuracy from correctness classification $-$ they do not show that more inference compute is generally worth it.}
+	\takeaway{Re-weighting the vote by confidence is the robust win. The \emph{generative} overlays only move the accuracy-vs.-classification trade-off around at $G=4$.}
 \end{frame}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -899,21 +992,22 @@
 		\begin{column}{0.47\textwidth}
 			\lead{\textcolor{jkunavy}{Strengths}}
 			\begin{itemize}
-				\setlength{\itemsep}{4pt}
+				\setlength{\itemsep}{2pt}
 				\item \nv{Minimal surface.} One token, one hook, one loss $-$ no second model, no step labels.
 				\item \nv{Like-for-like comparison.} \acit{LaSeR} reimplemented \emph{inside the same trainer}.
 				\item \nv{New capability.} Tempmod and \acit{SMC} are impossible for a last-token score.
-				\item \nv{Reproducible.} Every number in this deck is read live from the released \texttt{CSVs}.
+				\item \nv{Reproducible.} Every number here is read live from the released \texttt{CSVs}.
 			\end{itemize}
 		\end{column}
 		\begin{column}{0.49\textwidth}
 			\lead{\textcolor{jkumagenta}{Weaknesses \& threats to validity}}
 			\begin{itemize}
-				\setlength{\itemsep}{4pt}
-				\item \hl{One training seed.} The $\pm$ captures evaluation sampling, not the \acit{RL} seed lottery.
+				\setlength{\itemsep}{2pt}
+				\item \hl{One training seed.} The $\pm$ is evaluation sampling only, not the \acit{RL} seed lottery.
 				\item \hl{No calibration metric.} \acit{MCC}/\acit{ROC-AUC} measure \emph{discrimination}; \acit{ECE} was never computed.
 				\item \hl{Confounded.} \textit{Dense} vs.\ \acit{LaSeR} changes four things at once.
-				\item \hl{Narrow regime.} One dataset, $0.5\,$B, $G=4$, no hyperparameter sweep.
+				\item \hl{Narrow regime.} One dataset, $0.5\,$B, $G=4$, no sweep.
+				\item \hl{No multiplicity control.} 11 conditions, no correction: effect sizes are descriptive only.
 			\end{itemize}
 		\end{column}
 	\end{columns}
@@ -983,6 +1077,33 @@
 	\end{tikzpicture}
 \end{frame}
 
+\begin{frame}[noframenumbering]{Backup: Method Details \& Design Caveats}
+	\begin{columns}[T, onlytextwidth]
+		\begin{column}{0.47\textwidth}
+			\lead{Two-stage warmup}
+			\begin{itemize}
+				\item First $2{,}048$ samples: $\beta_{\mathrm{conf}}$ gated to $0$, so bare \acit{GRPO} teaches reasoning first. Next $2{,}048$: \acit{BCE} on, but $\alpha_{\mathrm{blend}}$ still gated, so the head calibrates before it feeds back.
+			\end{itemize}
+			\vspace{0.12cm}
+			\lead{Why \acit{GRPO}, and why $\beta_{\mathrm{KL}}=0$}
+			\begin{itemize}
+				\item \acit{GRPO} drops the value network, $\beta_{\mathrm{KL}}=0$ drops the frozen reference copy: together roughly half the memory. Stability then rests on clipping alone.
+			\end{itemize}
+		\end{column}
+		\begin{column}{0.49\textwidth}
+			\lead{Token hijacking is a convenience, not a claim}
+			\begin{itemize}
+				\item We do \emph{not} claim the \texttt{<|vision\_pad|>} row was untrained or semantically empty. A model without a spare control token can simply \emph{append} one.
+			\end{itemize}
+			\vspace{0.12cm}
+			\lead{The external verifier is the ceiling}
+			\begin{itemize}
+				\item A self-reward \emph{amplifies} verifiable truth, it cannot synthesize it. So the method fits domains where a verifier exists and \emph{sparsity} is the bottleneck.
+			\end{itemize}
+		\end{column}
+	\end{columns}
+\end{frame}
+
 \begin{frame}[noframenumbering]{Backup: Which Way Should Temperature Move?}
 	\framesubtitle{The inversion ablation is a controlled sanity check on the direction of the effect}
 	\begin{columns}[T, onlytextwidth]
@@ -1046,26 +1167,29 @@
 					height=4.6cm,
 					ymin=50, ymax=70,
 					ylabel={Answer accuracy [\%]},
-					symbolic x coords={{Dense $+\ell-r$}, {Dense $+\ell+r$}, {LaSeR $+\ell-r$}, {LaSeR $+\ell+r$}},
+					xticklabels={{Dense $+\ell-r$}, {Dense $+\ell+r$}, {LaSeR $+\ell-r$}, {LaSeR $+\ell+r$}},
 					x tick label style={font=\scriptsize, yshift=-1pt},
 					enlarge x limits=0.18,
 				]
-				\barplot{black!35} coordinates {
-						({Dense $+\ell-r$}, \mmDA)  +- (0, \msDA)
-						({Dense $+\ell+r$}, \mmDS)  +- (0, \msDS)
-						({LaSeR $+\ell-r$}, \mmLA)  +- (0, \msLA)
-						({LaSeR $+\ell+r$}, \mmLS)  +- (0, \msLS)};
-				\barplot{jkublue!55} coordinates {
-						({Dense $+\ell-r$}, \hmDA)  +- (0, \hsDA)
-						({Dense $+\ell+r$}, \hmDS)  +- (0, \hsDS)
-						({LaSeR $+\ell-r$}, \hmLA)  +- (0, \hsLA)
-						({LaSeR $+\ell+r$}, \hmLS)  +- (0, \hsLS)};
-				\barplot{jkumagenta} coordinates {
-						({Dense $+\ell-r$}, \wmDA)  +- (0, \wsDA)
-						({Dense $+\ell+r$}, \wmDS)  +- (0, \wsDS)
-						({LaSeR $+\ell-r$}, \wmLA)  +- (0, \wsLA)
-						({LaSeR $+\ell+r$}, \wmLS)  +- (0, \wsLS)};
-				\legend{\acit{MV} (no confidence), \acit{HC}, \acit{CW-MV}}
+				\barplot{mMV} table[x=x, y=y, y error=e, row sep=\\] {
+						x y e \\
+						1 {\mmDA} {\msDA} \\
+						2 {\mmDS} {\msDS} \\
+						3 {\mmLA} {\msLA} \\
+						4 {\mmLS} {\msLS} \\};;
+				\barplot{mHC} table[x=x, y=y, y error=e, row sep=\\] {
+						x y e \\
+						1 {\hmDA} {\hsDA} \\
+						2 {\hmDS} {\hsDS} \\
+						3 {\hmLA} {\hsLA} \\
+						4 {\hmLS} {\hsLS} \\};;
+				\barplot{mCWMV} table[x=x, y=y, y error=e, row sep=\\] {
+						x y e \\
+						1 {\wmDA} {\wsDA} \\
+						2 {\wmDS} {\wsDS} \\
+						3 {\wmLA} {\wsLA} \\
+						4 {\wmLS} {\wsLS} \\};;
+				\legend{\acit{MV}, \acit{HC}, \acit{CW-MV}}
 			\end{axis}
 		\end{tikzpicture}
 	\end{center}
