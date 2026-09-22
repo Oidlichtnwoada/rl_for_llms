@@ -601,7 +601,7 @@
 			\lead{Research questions}
 			\begin{description}[RQ4]
 				\setlength{\itemsep}{5pt}
-				\item[\textcolor{jkumagenta}{RQ1}] Learn a \emph{per-token} confidence jointly with \acit{GRPO} without hurting accuracy?
+				\item[\textcolor{jkumagenta}{RQ1}] Can a \emph{per-token} confidence be learned jointly with \acit{GRPO} without hurting accuracy?
 				\item[\textcolor{jkumagenta}{RQ2}] Does \emph{bounding} the logit stop it leaking into the text?
 				\item[\textcolor{jkumagenta}{RQ3}] Does feeding confidence back into the advantage help or hurt?
 				\item[\textcolor{jkumagenta}{RQ4}] Can the signal steer \emph{inference-time} compute?
@@ -829,14 +829,14 @@
 	\takeaway{\hl{Read the error bars carefully:} one training run per variant (\texttt{SEED=42}); every $\pm$ spans \emph{three evaluation runs} of that one checkpoint, not training seeds.}
 \end{frame}
 
-\begin{frame}{RQ1 \& RQ2: The Confidence Head Is Free}
+\begin{frame}{RQ1 \& RQ2: The Confidence Head Costs No Accuracy}
 	\vspace{-0.05cm}
 	\begin{center}
 		\begin{tikzpicture}
 			\begin{axis}[
 					slidebar,
 					bar width=11pt,
-					height=4.35cm,
+					height=4.2cm,
 					ymax=84,
 					ylabel={Answer accuracy [\%]},
 					xticklabels={Base, GRPO, {Dense $+\ell-r$}, {Dense $+\ell+r$}, {LaSeR $+\ell-r$}, {LaSeR $+\ell+r$}},
@@ -867,13 +867,13 @@
 	{\small
 		\begin{columns}[T, onlytextwidth]
 			\begin{column}{0.48\textwidth}
-				\nv{RQ1.} \textit{Pass}@1 rises $\AccBeforePct{\AnsBase}{pass@1}{1} \to \AccAfterPct{\AnsDenseSR}{pass@1}{1}$; both \textit{Dense} variants sit \emph{at or above} \acit{GRPO}.
+				\nv{RQ1.} \textit{Pass}@1 rises $\AccBeforePct{\AnsBase}{pass@1}{1} \to \AccAfterPct{\AnsDenseSR}{pass@1}{1}$, \textit{Pass}@4 $\AccBeforePct{\AnsBase}{pass@4}{1} \to \AccAfterPct{\AnsDenseSR}{pass@4}{1}$; both \textit{Dense} variants sit \emph{at or above} \acit{GRPO}.
 			\end{column}
 			\begin{column}{0.48\textwidth}
 				\nv{RQ2.} The confidence token is sampled \hl{$\InclPctAfter{\AnsDenseSR}{1}$} of the time: zero in $161{,}304$ trajectories.
 			\end{column}
 		\end{columns}}
-	\takeaway{No answer-quality penalty $-$ but one checkpoint per variant cannot separate this from training-seed variation.}
+	\takeaway{No answer-quality penalty. Caveats: one checkpoint per variant cannot rule out seed variation, and $0\,\%$ observed is \emph{non-inclusion}, not a bound on the token probability.}
 \end{frame}
 
 \begin{frame}{RQ3: A Trade $-$ Cheap for \textit{Dense}, Costly for \acit{LaSeR}}
@@ -1020,14 +1020,14 @@
 			\lead{Established}
 			\begin{itemize}
 				\item \textit{Pass}@1 $\AccBeforePct{\AnsBase}{pass@1}{1} \to \AccAfterPct{\AnsDenseSR}{pass@1}{1}$, \acit{MCC} up to $\ConfAfterV{\ConfDenseAux}{mcc}{3}$, \acit{CW-MV} $\AccAfterPct{\AnsDenseAux}{confidence_weighted_majority_voting}{1}$.
-				\item \nv{Not established:} calibration, seed robustness, a general win from the generative overlays.
+				\item \nv{Not established:} calibration, seed robustness, zero compute cost, a general win from the generative overlays.
 			\end{itemize}
 		\end{column}
 		\begin{column}{0.49\textwidth}
 			\lead{Outlook}
 			\begin{itemize}
 				\item Repeated seeds, and a joint sweep over $\beta_{\mathrm{conf}}$, $\alpha_{\mathrm{blend}}$, $\delta_{\mathrm{filter}}$, $G$.
-				\item Move to code, where binary feedback is the real bottleneck.
+				\item Scale up (the planned \texttt{Qwen3.5-0.8B} ablation), and move to code, where binary feedback is the real bottleneck.
 				\item \nv{Mid-generation reversion:} roll back when confidence collapses $-$ a self-correcting decoder no last-token score can express.
 			\end{itemize}
 		\end{column}
