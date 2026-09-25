@@ -789,7 +789,7 @@
 			\end{itemize}
 		\end{column}
 	\end{columns}
-	\takeaway{Controllers \textbf{2} and \textbf{3} are \emph{structurally exclusive} to \textit{Dense}: a last-token \acit{LaSeR} score exposes no per-token potential.}
+	\takeaway{Controllers \textbf{2} and \textbf{3} need a \emph{per-token} score: only \textit{Dense} has one, \acit{LaSeR} scores the last token only.}
 \end{frame}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -826,7 +826,7 @@
 			\par{\small Plus a $3\times2$ inference-time cross on \textit{Dense} $+\ell+r$.}
 		\end{column}
 	\end{columns}
-	\takeaway{\hl{Read the error bars carefully:} one training run per variant (\texttt{SEED=42}); every $\pm$ spans \emph{three evaluation runs} of that one checkpoint, not training seeds.}
+	\takeaway{\hl{Error bars:} one training run per variant (\texttt{SEED=42}); every $\pm$ spans \emph{three evaluation runs} of that checkpoint, not training seeds.}
 \end{frame}
 
 \begin{frame}{RQ1 \& RQ2: The Confidence Head Costs No Accuracy}
@@ -870,14 +870,14 @@
 				\nv{RQ1.} \textit{Pass}@1 rises $\AccBeforePct{\AnsBase}{pass@1}{1} \to \AccAfterPct{\AnsDenseSR}{pass@1}{1}$, \textit{Pass}@4 $\AccBeforePct{\AnsBase}{pass@4}{1} \to \AccAfterPct{\AnsDenseSR}{pass@4}{1}$; both \textit{Dense} variants sit \emph{at or above} \acit{GRPO}.
 			\end{column}
 			\begin{column}{0.48\textwidth}
-				\nv{RQ2.} The confidence token is sampled \hl{$\InclPctAfter{\AnsDenseSR}{1}$} of the time: zero in $161{,}304$ trajectories.
+				\nv{RQ2.} The confidence token is never sampled: \hl{$\InclPctAfter{\AnsDenseSR}{1}$} of $161{,}304$ trajectories.
 			\end{column}
 		\end{columns}}
-	\takeaway{No answer-quality penalty. Caveats: one checkpoint per variant cannot rule out seed variation, and $0\,\%$ observed is \emph{non-inclusion}, not a bound on the token probability.}
+	\takeaway{No accuracy penalty. Caveat: $0\,\%$ observed means \emph{never sampled}, not zero probability.}
 \end{frame}
 
 \begin{frame}{RQ3: A Trade $-$ Cheap for \textit{Dense}, Costly for \acit{LaSeR}}
-	\framesubtitle{Dark magenta bars are \acit{MCC}$\times100$; a gap counts only if it clears the run-to-run noise, $d_{\mathrm{pool}}=|\Delta|/s_{\mathrm{pool}}$}
+	\framesubtitle{A gap counts only if it clears the run-to-run noise: $d_{\mathrm{pool}}=|\Delta|/s_{\mathrm{pool}}$}
 	\vspace{-0.05cm}
 	\begin{center}
 		\begin{tikzpicture}
@@ -981,7 +981,7 @@
 				\nv{The generative overlays only trade:} tempmod $+$ filtering gives the best \acit{MCC} ($\num{\ConfAfter{\ConfTempFil}{mcc}}$) and the worst \textit{Pass}@1.
 			\end{column}
 		\end{columns}}
-	\takeaway{Re-weighting the vote by confidence is the robust win. The \emph{generative} overlays only move the accuracy-vs.-classification trade-off around at $G=4$.}
+	\takeaway{Confidence-weighted voting is the robust win; the \emph{generative} overlays only shift the accuracy-vs.-classification trade-off at $G=4$.}
 \end{frame}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
